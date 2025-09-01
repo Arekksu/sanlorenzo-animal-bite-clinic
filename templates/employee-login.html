@@ -19,7 +19,8 @@
                 <p class="clinic-subtitle">Employee Login Portal</p>
             </div>
             
-            <form class="login-form" onsubmit="handleEmployeeLogin(event)">
+           <form class="login-form" method="POST" action="{{ url_for('employee_login') }}">
+
                 <div class="form-group">
                     <label for="employeeId">Employee ID:</label>
                     <input type="text" id="employeeId" name="employeeId" placeholder="Enter your employee ID" required>
@@ -48,6 +49,20 @@
     </div>
 
     <!-- Correct Flask way to load JS -->
-    <script src="{{ url_for('static', filename='employee-login-script.js') }}"></script>
+    <script src="{{ url_for('static', filename='employee-login-script.js') }}">
+
+        function handleEmployeeLogin(event) {
+    event.preventDefault();
+
+    const empId = document.getElementById("employeeId").value;
+    const password = document.getElementById("password").value;
+
+    if (empId === "admin" && password === "admin123") {
+        window.location.href = "/employee-dashboard";  // 👈 Flask must have this route
+    } else {
+        alert("Invalid credentials");
+    }
+}
+    </script>
 </body>
 </html>
