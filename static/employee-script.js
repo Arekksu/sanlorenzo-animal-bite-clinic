@@ -2,205 +2,243 @@
 let currentTab = 0;
 let currentSection = 'dashboard';
 
-// Sample patient data for demonstration
-let patientDatabase = [
-    {
-        registrationNumber: 'USL8YXX557',
-        name: 'John Doe',
-        age: 35,
-        gender: 'Male',
-        contact: '09123456789',
-        address: '123 Main St, San Lorenzo',
-        biteDate: '2024-08-07',
-        biteLocation: 'Right arm',
-        placeOfBite: 'Home',
-        sourceOfBite: 'Cat',
-        status: 'Active',
-        nextAppointment: '2024-08-27'
-    },
-    {
-        registrationNumber: 'USL9ABC123',
-        name: 'Maria Santos',
-        age: 28,
-        gender: 'Female',
-        contact: '09876543210',
-        address: '456 Oak Ave, San Lorenzo',
-        biteDate: '2024-08-15',
-        biteLocation: 'Left leg',
-        placeOfBite: 'Park',
-        sourceOfBite: 'Dog',
-        status: 'Active',
-        nextAppointment: '2024-08-29'
-    },
-    {
-        registrationNumber: 'USL7DEF456',
-        name: 'Pedro Garcia',
-        age: 42,
-        gender: 'Male',
-        contact: '09555123456',
-        address: '789 Pine St, San Lorenzo',
-        biteDate: '2024-08-10',
-        biteLocation: 'Hand',
-        placeOfBite: 'Street',
-        sourceOfBite: 'Stray Dog',
-        status: 'Completed',
-        nextAppointment: 'N/A'
-    },
-    {
-        registrationNumber: 'USL6GHI789',
-        name: 'Ana Reyes',
-        age: 31,
-        gender: 'Female',
-        contact: '09333654321',
-        address: '321 Maple Dr, San Lorenzo',
-        biteDate: '2024-08-20',
-        biteLocation: 'Face',
-        placeOfBite: 'Home',
-        sourceOfBite: 'Cat',
-        status: 'Active',
-        nextAppointment: '2024-08-30'
-    }
-];
-
-// Initialize the dashboard
-document.addEventListener('DOMContentLoaded', function() {
-    updateCurrentDate();
-    generateRegistrationNumber();
-    loadPatientTable();
-    setupEmployeeSearchBar();
-    initializeUserInfo();
-});
-
-// Update current date
-function updateCurrentDate() {
-    const now = new Date();
-    const options = { 
-        weekday: 'long', 
-        year: 'numeric', 
-        month: 'long', 
-        day: 'numeric' 
-    };
-    document.getElementById('currentDate').textContent = now.toLocaleDateString('en-US', options);
+// Modal functions
+function viewPatientDetails(patientId) {
+    const modal = document.getElementById('patientModal');
+    const content = document.getElementById('patientDetailsContent');
+    
+    // Show loading
+    content.innerHTML = '<div style="text-align: center; padding: 2rem;"><div class="loading">Loading patient details...</div></div>';
+    modal.style.display = 'block';
+    
+    // Fetch patient details
+    fetch(`/patient/${patientId}`)
+        .then(response => response.json())
+        .then(patient => {
+            content.innerHTML = `
+                <div class="patient-detail-container">
+                    <div class="detail-section">
+                        <h3>Personal Information</h3>
+                        <div class="detail-row">
+                            <span class="detail-label">Name:</span>
+                            <span class="detail-value">${patient.patient_name || 'N/A'}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Age:</span>
+                            <span class="detail-value">${patient.age || 'N/A'}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Gender:</span>
+                            <span class="detail-value">${patient.gender || 'N/A'}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Contact:</span>
+                            <span class="detail-value">${patient.contact_number || 'N/A'}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Address:</span>
+                            <span class="detail-value">${patient.address || 'N/A'}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="detail-section">
+                        <h3>Bite Information</h3>
+                        <div class="detail-row">
+                            <span class="detail-label">Date of Bite:</span>
+                            <span class="detail-value">${patient.date_of_bite || 'N/A'}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Bite Location:</span>
+                            <span class="detail-value">${patient.bite_location || 'N/A'}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Place of Bite:</span>
+                            <span class="detail-value">${patient.place_of_bite || 'N/A'}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Type of Bite:</span>
+                            <span class="detail-value">${patient.type_of_bite || 'N/A'}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Source of Bite:</span>
+                            <span class="detail-value">${patient.source_of_bite || 'N/A'}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Source Status:</span>
+                            <span class="detail-value">${patient.source_status || 'N/A'}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Exposure:</span>
+                            <span class="detail-value">${patient.exposure || 'N/A'}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Vaccinated:</span>
+                            <span class="detail-value">${patient.vaccinated || 'N/A'}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="detail-section">
+                        <h3>Treatment Information</h3>
+                        <div class="detail-row">
+                            <span class="detail-label">Service Type:</span>
+                            <span class="detail-value">${patient.service_type || 'N/A'}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="detail-section">
+                        <h3>Schedule</h3>
+                        <div class="detail-row">
+                            <span class="detail-label">Day 0:</span>
+                            <span class="detail-value">${patient.day0 || 'N/A'}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Day 3:</span>
+                            <span class="detail-value">${patient.day3 || 'N/A'}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Day 7:</span>
+                            <span class="detail-value">${patient.day7 || 'N/A'}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Day 14:</span>
+                            <span class="detail-value">${patient.day14 || 'N/A'}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Day 28:</span>
+                            <span class="detail-value">${patient.day28 || 'N/A'}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        })
+        .catch(error => {
+            console.error('Error fetching patient details:', error);
+            content.innerHTML = '<div style="text-align: center; padding: 2rem; color: red;">Error loading patient details</div>';
+        });
 }
 
-// Generate random registration number
-function generateRegistrationNumber() {
-    const prefix = 'USL';
-    const numbers = Math.floor(Math.random() * 900000) + 100000;
-    const letters = String.fromCharCode(65 + Math.floor(Math.random() * 26)) + 
-                   String.fromCharCode(65 + Math.floor(Math.random() * 26)) + 
-                   String.fromCharCode(65 + Math.floor(Math.random() * 26));
-    const regNumber = prefix + numbers + letters;
-    document.getElementById('registrationNumber').textContent = regNumber;
-}
-
-// Employee search functionality
-function performEmployeeSearch() {
-    const searchTerm = document.getElementById('employeeHeaderSearch').value.toLowerCase().trim();
+function editPatient(patientId) {
+    const modal = document.getElementById('editPatientModal');
+    const form = document.getElementById('editPatientForm');
     
-    if (!searchTerm) {
-        alert('Please enter a search term');
-        return;
-    }
+    // Set form action
+    form.action = `/edit-patient/${patientId}`;
+    console.log('Setting form action to:', form.action);
     
-    // Search through patient database
-    const searchResults = patientDatabase.filter(patient => {
-        return patient.name.toLowerCase().includes(searchTerm) ||
-               patient.registrationNumber.toLowerCase().includes(searchTerm) ||
-               patient.contact.includes(searchTerm) ||
-               patient.address.toLowerCase().includes(searchTerm);
-    });
-    
-    if (searchResults.length === 0) {
-        alert(`No patients found for "${searchTerm}"`);
-        return;
-    }
-    
-    // Switch to view patient section and filter results
-    showSection('view-patient');
-    filterPatientTable(searchResults);
-    
-    // Show search results summary
-    if (searchResults.length === 1) {
-        alert(`Found 1 patient: ${searchResults[0].name} (${searchResults[0].registrationNumber})`);
-    } else {
-        alert(`Found ${searchResults.length} patients matching "${searchTerm}"`);
-    }
-    
-    // Clear search bar
-    document.getElementById('employeeHeaderSearch').value = '';
-}
-
-// Setup employee search bar
-function setupEmployeeSearchBar() {
-    const searchBar = document.getElementById('employeeHeaderSearch');
-    if (searchBar) {
-        searchBar.addEventListener('keypress', function(event) {
-            if (event.key === 'Enter') {
-                performEmployeeSearch();
+    // Fetch patient details to populate form
+    fetch(`/patient/${patientId}`)
+        .then(response => response.json())
+        .then(patient => {
+            console.log('Patient data loaded:', patient);
+            document.getElementById('edit_patient_name').value = patient.patient_name || '';
+            document.getElementById('edit_age').value = patient.age || '';
+            document.getElementById('edit_gender').value = patient.gender || '';
+            document.getElementById('edit_contact_number').value = patient.contact_number || '';
+            document.getElementById('edit_address').value = patient.address || '';
+            document.getElementById('edit_service_type').value = patient.service_type || '';
+            document.getElementById('edit_date_of_bite').value = patient.date_of_bite || '';
+            document.getElementById('edit_bite_location').value = patient.bite_location || '';
+            document.getElementById('edit_place_of_bite').value = patient.place_of_bite || '';
+            document.getElementById('edit_type_of_bite').value = patient.type_of_bite || '';
+            document.getElementById('edit_source_of_bite').value = patient.source_of_bite || '';
+            document.getElementById('edit_source_status').value = patient.source_status || '';
+            document.getElementById('edit_exposure').value = patient.exposure || '';
+            
+            // Handle radio buttons for vaccinated
+            if (patient.vaccinated === 'Yes') {
+                document.getElementById('edit_vaccinated_yes').checked = true;
+            } else if (patient.vaccinated === 'No') {
+                document.getElementById('edit_vaccinated_no').checked = true;
             }
+            
+            modal.style.display = 'block';
+        })
+        .catch(error => {
+            console.error('Error fetching patient details:', error);
+            alert('Error loading patient details for editing');
+        });
+}
+
+function deletePatient(patientId) {
+    if (confirm('Are you sure you want to delete this patient? This action cannot be undone.')) {
+        fetch(`/delete-patient/${patientId}`, {
+            method: 'POST',
+        })
+        .then(response => {
+            if (response.ok) {
+                alert('Patient deleted successfully');
+                location.reload(); // Refresh the page to update the table
+            } else {
+                throw new Error('Failed to delete patient');
+            }
+        })
+        .catch(error => {
+            console.error('Error deleting patient:', error);
+            alert('Error deleting patient');
         });
     }
 }
 
-// Load patient table with data
-function loadPatientTable() {
-    const tableBody = document.querySelector('.patient-table tbody');
-    if (!tableBody) return;
-    
-    tableBody.innerHTML = '';
-    
-    patientDatabase.forEach(patient => {
-        const row = document.createElement('tr');
-        row.innerHTML = `
-            <td>${patient.registrationNumber}</td>
-            <td>${patient.name}</td>
-            <td>${patient.biteDate}</td>
-            <td><span class="status-badge ${patient.status.toLowerCase()}">${patient.status}</span></td>
-            <td>
-                <button class="btn-small btn-primary" onclick="viewPatient('${patient.registrationNumber}')">View</button>
-                <button class="btn-small btn-secondary" onclick="editPatient('${patient.registrationNumber}')">Edit</button>
-            </td>
-        `;
-        tableBody.appendChild(row);
-    });
+function closeModal() {
+    document.getElementById('patientModal').style.display = 'none';
 }
 
-// Filter patient table based on search results
-function filterPatientTable(filteredPatients) {
-    const tableBody = document.querySelector('.patient-table tbody');
-    if (!tableBody) return;
-    
-    tableBody.innerHTML = '';
-    
-    filteredPatients.forEach(patient => {
-        const row = document.createElement('tr');
-        row.innerHTML = `
-            <td>${patient.registrationNumber}</td>
-            <td>${patient.name}</td>
-            <td>${patient.biteDate}</td>
-            <td><span class="status-badge ${patient.status.toLowerCase()}">${patient.status}</span></td>
-            <td>
-                <button class="btn-small btn-primary" onclick="viewPatient('${patient.registrationNumber}')">View</button>
-                <button class="btn-small btn-secondary" onclick="editPatient('${patient.registrationNumber}')">Edit</button>
-            </td>
-        `;
-        tableBody.appendChild(row);
-    });
+function closeEditModal() {
+    document.getElementById('editPatientModal').style.display = 'none';
 }
 
-// View patient details
-function viewPatient(registrationNumber) {
-    const patient = patientDatabase.find(p => p.registrationNumber === registrationNumber);
-    if (patient) {
-        alert(`Patient Details:\n\nName: ${patient.name}\nAge: ${patient.age}\nGender: ${patient.gender}\nContact: ${patient.contact}\nAddress: ${patient.address}\nBite Date: ${patient.biteDate}\nBite Location: ${patient.biteLocation}\nSource: ${patient.sourceOfBite}\nStatus: ${patient.status}\nNext Appointment: ${patient.nextAppointment}`);
+// Close modals when clicking outside of them
+window.onclick = function(event) {
+    const patientModal = document.getElementById('patientModal');
+    const editModal = document.getElementById('editPatientModal');
+    
+    if (event.target === patientModal) {
+        closeModal();
+    }
+    if (event.target === editModal) {
+        closeEditModal();
     }
 }
 
-// Edit patient (placeholder function)
-function editPatient(registrationNumber) {
-    alert(`Edit functionality for ${registrationNumber} would be implemented here`);
-}
+// Add event listeners when DOM is loaded
+document.addEventListener('DOMContentLoaded', function() {
+    // Add event listeners for action buttons
+    document.addEventListener('click', function(e) {
+        if (e.target.closest('.btn-view')) {
+            const patientId = e.target.closest('.btn-view').getAttribute('data-patient-id');
+            viewPatientDetails(patientId);
+        }
+        
+        if (e.target.closest('.btn-edit')) {
+            const patientId = e.target.closest('.btn-edit').getAttribute('data-patient-id');
+            editPatient(patientId);
+        }
+        
+        if (e.target.closest('.btn-delete')) {
+            const patientId = e.target.closest('.btn-delete').getAttribute('data-patient-id');
+            deletePatient(patientId);
+        }
+        
+        // Handle modal close buttons
+        if (e.target.getAttribute('data-action') === 'close-modal') {
+            closeModal();
+        }
+        
+        if (e.target.getAttribute('data-action') === 'close-edit-modal') {
+            closeEditModal();
+        }
+    });
+    
+    // Add form submission handler for edit patient form
+    const editForm = document.getElementById('editPatientForm');
+    if (editForm) {
+        editForm.addEventListener('submit', function(e) {
+            console.log('Form submitting to:', this.action);
+            console.log('Form method:', this.method);
+            // Let the form submit normally - don't prevent default
+        });
+    }
+});
 
 // Show section
 function showSection(sectionName) {
@@ -259,233 +297,4 @@ function showTab(tabName) {
     // Update current tab index
     const tabs = ['personal-info', 'vaccine-bite-info', 'schedule'];
     currentTab = tabs.indexOf(tabName);
-}
-
-// Select service type
-function selectService(serviceType) {
-    const serviceButtons = document.querySelectorAll('.service-btn');
-    serviceButtons.forEach(btn => btn.classList.remove('active'));
-    
-    const activeButton = Array.from(serviceButtons).find(btn => {
-        const btnText = btn.textContent.toLowerCase();
-        return (serviceType === 'booster' && btnText.includes('booster')) ||
-               (serviceType === 'pre-exposure' && btnText.includes('pre-exposure')) ||
-               (serviceType === 'post-exposure' && btnText.includes('post-exposure'));
-    });
-    
-    if (activeButton) {
-        activeButton.classList.add('active');
-    }
-}
-
-// Navigation functions for tabs
-function nextTab() {
-    const tabs = ['personal-info', 'vaccine-bite-info', 'schedule'];
-    if (currentTab < tabs.length - 1) {
-        currentTab++;
-        showTab(tabs[currentTab]);
-    }
-}
-
-function previousTab() {
-    const tabs = ['personal-info', 'vaccine-bite-info', 'schedule'];
-    if (currentTab > 0) {
-        currentTab--;
-        showTab(tabs[currentTab]);
-    }
-}
-
-// Save record function
-function saveRecord() {
-    // Collect form data
-    const personalData = {
-        name: document.getElementById('patientName').value,
-        age: document.getElementById('age').value,
-        gender: document.getElementById('gender').value,
-        contact: document.getElementById('contact').value,
-        address: document.getElementById('address').value
-    };
-    
-    const biteData = {
-        biteDate: document.getElementById('biteDate').value,
-        biteLocation: document.getElementById('biteLocation').value,
-        placeOfBite: document.getElementById('placeOfBite').value,
-        typeOfBite: document.getElementById('typeOfBite').value,
-        sourceOfBite: document.getElementById('sourceOfBite').value,
-        otherSource: document.getElementById('otherSource').value,
-        sourceStatus: document.getElementById('sourceStatus').value,
-        exposure: document.getElementById('exposure').value,
-        vaccinated: document.querySelector('input[name="vaccinated"]:checked').value
-    };
-    
-    // Validate required fields
-    if (!personalData.name || !personalData.age || !personalData.gender || !personalData.contact) {
-        alert('Please fill in all required personal information fields.');
-        showTab('personal-info');
-        return;
-    }
-    
-    if (!biteData.biteDate || !biteData.biteLocation) {
-        alert('Please fill in all required bite information fields.');
-        showTab('vaccine-bite-info');
-        return;
-    }
-    
-    // Simulate saving
-    const registrationNumber = document.getElementById('registrationNumber').textContent;
-    
-    // Show success message
-    alert(`Record saved successfully!\nRegistration Number: ${registrationNumber}\nPatient: ${personalData.name}`);
-    
-    // Reset form and generate new registration number
-    resetForm();
-    generateRegistrationNumber();
-    
-    // Go back to dashboard
-    showSection('dashboard');
-}
-
-// Reset form
-function resetForm() {
-    document.querySelectorAll('input[type="text"], input[type="number"], input[type="tel"], input[type="date"], textarea, select').forEach(field => {
-        if (field.type === 'date') {
-            field.value = new Date().toISOString().split('T')[0];
-        } else {
-            field.value = '';
-        }
-    });
-    
-    // Reset radio buttons
-    document.querySelector('input[name="vaccinated"][value="yes"]').checked = true;
-    
-    // Reset service buttons
-    selectService('post-exposure');
-    
-    // Go back to first tab
-    showTab('personal-info');
-}
-
-// Logout function
-function logout() {
-    if (confirm('Are you sure you want to logout?')) {
-        // Redirect to employee login page
-        window.location.href = 'employee-login.html';
-    }
-}
-
-// Search functionality
-function searchPatients() {
-    const searchTerm = document.querySelector('.search-input').value.toLowerCase();
-    
-    if (!searchTerm) {
-        loadPatientTable(); // Show all patients if search is empty
-        return;
-    }
-    
-    const searchResults = patientDatabase.filter(patient => {
-        return patient.name.toLowerCase().includes(searchTerm) ||
-               patient.registrationNumber.toLowerCase().includes(searchTerm) ||
-               patient.contact.includes(searchTerm);
-    });
-    
-    filterPatientTable(searchResults);
-}
-
-// Add event listener for search
-document.addEventListener('DOMContentLoaded', function() {
-    const searchInput = document.querySelector('.search-input');
-    if (searchInput) {
-        searchInput.addEventListener('input', searchPatients);
-    }
-});
-
-// Auto-calculate vaccination dates
-document.addEventListener('DOMContentLoaded', function() {
-    const biteDateInput = document.getElementById('biteDate');
-    if (biteDateInput) {
-        biteDateInput.addEventListener('change', function() {
-            const biteDate = new Date(this.value);
-            if (!isNaN(biteDate.getTime())) {
-                updateVaccinationSchedule(biteDate);
-            }
-        });
-    }
-});
-
-function updateVaccinationSchedule(biteDate) {
-    const scheduleInputs = {
-        'day0': 0,
-        'day3': 3,
-        'day7': 7,
-        'day14': 14,
-        'day28': 28
-    };
-    
-    Object.entries(scheduleInputs).forEach(([inputName, daysToAdd]) => {
-        const input = document.querySelector(`input[name="${inputName}"]`);
-        if (input) {
-            const scheduleDate = new Date(biteDate);
-            scheduleDate.setDate(scheduleDate.getDate() + daysToAdd);
-            input.value = scheduleDate.toISOString().split('T')[0];
-        }
-    });
-}
-
-// Print functionality
-function printRecord() {
-    window.print();
-}
-
-// Export functionality
-function exportRecord() {
-    // This would typically generate a PDF or Excel file
-    alert('Export functionality would be implemented here');
-}
-
-// Complete vaccination
-function completeVaccination(registrationNumber) {
-    if (confirm(`Mark vaccination as complete for ${registrationNumber}?`)) {
-        alert('Vaccination marked as complete');
-        // Update the UI or refresh the schedule
-    }
-}
-
-// Initialize user information
-function initializeUserInfo() {
-    // Get user info from localStorage or use default
-    const currentUser = localStorage.getItem('currentUser') || 'Admin User';
-    const loginTime = localStorage.getItem('loginTime') || new Date().toLocaleTimeString('en-US', {
-        hour: 'numeric',
-        minute: '2-digit',
-        hour12: true
-    });
-    
-    // Update user display
-    document.getElementById('currentUser').textContent = currentUser;
-    document.getElementById('loginTime').textContent = `Logged in: ${loginTime}`;
-    
-    // Set user initial (first letter of name)
-    const userInitial = currentUser.charAt(0).toUpperCase();
-    document.getElementById('userInitial').textContent = userInitial;
-}
-
-// Function to set user info (call this from login page)
-function setUserInfo(username) {
-    const loginTime = new Date().toLocaleTimeString('en-US', {
-        hour: 'numeric',
-        minute: '2-digit',
-        hour12: true
-    });
-    
-    localStorage.setItem('currentUser', username);
-    localStorage.setItem('loginTime', loginTime);
-}
-
-// Reschedule appointment
-function rescheduleAppointment(registrationNumber) {
-    const newDate = prompt('Enter new date (YYYY-MM-DD):');
-    if (newDate) {
-        alert(`Appointment rescheduled for ${newDate}`);
-        // Update the schedule
-    }
 }
