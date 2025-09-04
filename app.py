@@ -161,6 +161,23 @@ def delete_patient(patient_id):
     
     return "Patient deleted successfully", 200
 
+@app.route("/api/patient-schedules")
+def patient_schedules():
+    conn = get_db()
+    patients = conn.execute("""
+        SELECT patient_name, service_type, day0, day3, day7, day14, day28
+        FROM patients
+        WHERE day0 IS NOT NULL OR day3 IS NOT NULL OR day7 IS NOT NULL 
+           OR day14 IS NOT NULL OR day28 IS NOT NULL
+    """).fetchall()
+    
+    # Convert to list of dictionaries
+    patients_list = []
+    for patient in patients:
+        patients_list.append(dict(patient))
+    
+    return patients_list
+
 
 if __name__ == "__main__":
     app.run(debug=True, port=5001)
