@@ -42,16 +42,8 @@
               View Schedule
             </button>
           </li>
+          <li><a href="{{ url_for('home') }}" class="menu-btn">Logout</a></li>
         </ul>
-        <div class="sidebar-user-bottom">
-          <div class="sidebar-user-greet">
-            Hi, {{ session['employee_name'] if session['employee_name'] else 'Employee' }}
-          </div>
-          <div class="sidebar-bottom-group horizontal-group">
-            <a href="{{ url_for('settings') }}" class="menu-btn settings-btn">Settings</a>
-            <a href="{{ url_for('home') }}" class="menu-btn logout-btn">Logout</a>
-          </div>
-        </div>
       </nav>
 
       <!-- Main Content -->

@@ -80,20 +80,30 @@ def employee_dashboard():
 
     # Get all patients for display
     patients = conn.execute("""
-    SELECT id, patient_name, date_of_bite, service_type, age, gender, contact_number
+    SELECT id, patient_name, date_of_bite, service_type, age, gender, contact_number,
+           day0, day3, day7, day14, day28
     FROM patients
         """).fetchall()
 
-    # Get statistics for dashboard
-    upcoming_appointments = []  # You can implement this based on your schedule logic
+    # Calculate dashboard statistics
+    today = date.today().isoformat()
+    
+    # For upcoming appointments, we'll use patients who have day3, day7, day14, or day28 scheduled
+    upcoming_appointments = conn.execute("""
+        SELECT COUNT(*) as count FROM patients 
+        WHERE day3 >= ? OR day7 >= ? OR day14 >= ? OR day28 >= ?
+    """, (today, today, today, today)).fetchone()
+    
+    # Patients today (based on any scheduled appointment today)
     patients_today = conn.execute("""
-    SELECT * FROM patients WHERE date_of_bite = ?
-    """, (date.today(),)).fetchall()
+        SELECT COUNT(*) as count FROM patients 
+        WHERE day0 = ? OR day3 = ? OR day7 = ? OR day14 = ? OR day28 = ?
+    """, (today, today, today, today, today)).fetchone()
 
     return render_template("employee-dashboard.html", 
-                         patients=patients, 
-                         upcoming_appointments=upcoming_appointments,
-                         patients_today=patients_today)
+                         patients=patients,
+                         upcoming_appointments=[{'count': upcoming_appointments['count'] if upcoming_appointments else 0}],
+                         patients_today=[{'count': patients_today['count'] if patients_today else 0}])
 
 @app.route("/patient/<int:patient_id>")
 def patient_detail(patient_id):
@@ -110,73 +120,61 @@ def patient_detail(patient_id):
 
     return patient_dict  # Flask will jsonify this automatically
 
-@app.route("/edit-patient/<int:patient_id>", methods=["POST"])
-def edit_patient(patient_id):
-    conn = get_db()
-    
-    print(f"Editing patient {patient_id}")
-    print(f"Form data: {dict(request.form)}")
-    
-    # Update patient data with all fields
-    data = (
-        request.form['patient_name'],
-        request.form['age'],
-        request.form['gender'],
-        request.form['contact_number'],
-        request.form['address'],
-        request.form['service_type'],
-        request.form['date_of_bite'],
-        request.form['bite_location'],
-        request.form.get('place_of_bite'),
-        request.form.get('type_of_bite'),
-        request.form.get('source_of_bite'),
-        request.form.get('source_status'),
-        request.form.get('exposure'),
-        request.form.get('vaccinated'),
-        patient_id
-    )
-    
-    try:
-        conn.execute("""
-            UPDATE patients 
-            SET patient_name = ?, age = ?, gender = ?, contact_number = ?, 
-                address = ?, service_type = ?, date_of_bite = ?, bite_location = ?,
-                place_of_bite = ?, type_of_bite = ?, source_of_bite = ?, 
-                source_status = ?, exposure = ?, vaccinated = ?
-            WHERE id = ?
-        """, data)
-        conn.commit()
-        print(f"Successfully updated patient {patient_id}")
-    except Exception as e:
-        print(f"Error updating patient: {e}")
-        conn.rollback()
-    
-    return redirect(url_for("employee_dashboard"))
-
-@app.route("/delete-patient/<int:patient_id>", methods=["POST"])
+@app.route("/delete-patient/<int:patient_id>", methods=["DELETE"])
 def delete_patient(patient_id):
     conn = get_db()
     
-    # Delete patient
+    # Check if patient exists
+    patient = conn.execute(
+        "SELECT id FROM patients WHERE id = ?", (patient_id,)
+    ).fetchone()
+    
+    if not patient:
+        return "Patient not found", 404
+    
+    # Delete the patient
     conn.execute("DELETE FROM patients WHERE id = ?", (patient_id,))
     conn.commit()
     
-    return "Patient deleted successfully", 200
+    return {"message": "Patient deleted successfully"}, 200
 
-@app.route("/api/patient-schedules")
-def patient_schedules():
+@app.route("/api/patients")
+def api_patients():
     conn = get_db()
     patients = conn.execute("""
-        SELECT patient_name, service_type, day0, day3, day7, day14, day28
+        SELECT id, patient_name, date_of_bite, service_type, age, gender, contact_number,
+               day0, day3, day7, day14, day28
         FROM patients
-        WHERE day0 IS NOT NULL OR day3 IS NOT NULL OR day7 IS NOT NULL 
-           OR day14 IS NOT NULL OR day28 IS NOT NULL
+    """).fetchall()
+    
+    # Convert to list of dictionaries
+    patients_list = [dict(patient) for patient in patients]
+    
+    return {"patients": patients_list}
+
+@app.route("/api/patients-schedule")
+def get_patients_schedule():
+    conn = get_db()
+    patients = conn.execute("""
+        SELECT id, patient_name, service_type, date_of_bite, 
+               day0, day3, day7, day14, day28
+        FROM patients
     """).fetchall()
     
     # Convert to list of dictionaries
     patients_list = []
     for patient in patients:
-        patients_list.append(dict(patient))
+        patients_list.append({
+            'id': patient['id'],
+            'name': patient['patient_name'],
+            'service': patient['service_type'],
+            'dateBite': patient['date_of_bite'],
+            'day0': patient['day0'],
+            'day3': patient['day3'],
+            'day7': patient['day7'],
+            'day14': patient['day14'],
+            'day28': patient['day28']
+        })
     
     return patients_list
 
