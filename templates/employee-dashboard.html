@@ -1,465 +1,539 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>San Lorenzo Animal Bite Center - Employee Dashboard</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='employee-styles.css') }}">
-</head>
-<body>
-  <div class="dashboard-container">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>San Lorenzo Animal Bite Center - Employee Dashboard</title>
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='employee-styles.css') }}"
+    />
+  </head>
+  <body>
+    <div class="dashboard-container">
+      <!-- Sidebar -->
+      <nav class="sidebar">
+        <div class="sidebar-header">
+          <img
+            src="{{ url_for('static', filename='images/san lorenzo.jpg') }}"
+            alt="Clinic Logo"
+            class="sidebar-logo"
+          />
+          <h3>San Lorenzo Animal Bite Center</h3>
+        </div>
+        <ul class="sidebar-menu">
+          <li>
+            <button class="menu-btn active" onclick="showSection('dashboard')">
+              Dashboard
+            </button>
+          </li>
+          <li>
+            <button class="menu-btn" onclick="showSection('add-record')">
+              Add Record
+            </button>
+          </li>
+          <li>
+            <button class="menu-btn" onclick="showSection('view-patient')">
+              View Patient
+            </button>
+          </li>
+          <li>
+            <button class="menu-btn" onclick="showSection('view-schedule')">
+              View Schedule
+            </button>
+          </li>
+          <li><a href="{{ url_for('home') }}" class="menu-btn">Logout</a></li>
+        </ul>
+      </nav>
 
-    <!-- Sidebar -->
-    <nav class="sidebar">
-      <div class="sidebar-header">
-        <img src="{{ url_for('static', filename='images/san lorenzo.jpg') }}" alt="Clinic Logo" class="sidebar-logo">
-        <h3>San Lorenzo Animal Bite Center</h3>
-      </div>
-      <ul class="sidebar-menu">
-        <li><button class="menu-btn active" onclick="showSection('dashboard')">Dashboard</button></li>
-        <li><button class="menu-btn" onclick="showSection('add-record')">Add Record</button></li>
-        <li><button class="menu-btn" onclick="showSection('view-patient')">View Patient</button></li>
-        <li><button class="menu-btn" onclick="showSection('view-schedule')">View Schedule</button></li>
-        <li><a href="{{ url_for('home') }}" class="menu-btn">Logout</a></li>
-      </ul>
-    </nav>
-
-    <!-- Main Content -->
-    <main class="main-content">
-
-      <!-- Dashboard -->
-      <section id="dashboard" class="content-section active">
-        <h2>Dashboard</h2>
-        <div class="stats-grid">
-          
+      <!-- Main Content -->
+      <main class="main-content">
+        <!-- Dashboard -->
+        <section id="dashboard" class="content-section active">
+          <h2>Dashboard</h2>
           <div class="stats-grid">
-        <div class="stat-card">
-    <div class="stat-icon">👤</div>
-    <h3>Total Patients</h3>
-    <div class="stat-number">{{ patients|length }}</div>
-  </div>
-  <div class="stat-card">
-    <div class="stat-icon">📅</div>
-    <h3>Upcoming Appointments</h3>
-    <div class="stat-number">{{ upcoming_appointments|length }}</div>
-  </div>
-  <div class="stat-card">
-    <div class="stat-icon">📅</div>
-    <h3>Patients Today</h3>
-    <div class="stat-number">{{ patients_today|length }}</div>
-  </div>
-</div>
-
-        </div>
-      </section>
-
-      <!-- Add Record -->
-      <section id="add-record" class="content-section">
-        <form method="POST" action="{{ url_for('employee_dashboard') }}">
-
-          <!-- Form Tabs -->
-          <div class="form-header">
-            <div class="form-tabs">
-              <button type="button" class="tab-btn active" onclick="showTab('personal-info')">Personal Information</button>
-              <button type="button" class="tab-btn" onclick="showTab('vaccine-bite-info')">Vaccine and Bite Information</button>
-              <button type="button" class="tab-btn" onclick="showTab('schedule')">Schedule</button>
+            <div class="stat-card">
+              <div class="stat-icon">👤</div>
+              <h3>Total Patients</h3>
+              <div class="stat-number">{{ patients|length }}</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon">📅</div>
+              <h3>Upcoming Appointments</h3>
+              <div class="stat-number">{{ upcoming_appointments|length }}</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon">📅</div>
+              <h3>Patients Today</h3>
+              <div class="stat-number">{{ patients_today|length }}</div>
             </div>
           </div>
+        </section>
 
-          <!-- Personal Info -->
-          <div id="personal-info" class="tab-content active">
-            <div class="form-grid">
-              <div class="form-group">
-                <label>Patient Name:</label>
-                <input type="text" name="patient_name" required>
-              </div>
-              <div class="form-group">
-                <label>Age:</label>
-                <input type="number" name="age" required>
-              </div>
-              <div class="form-group">
-                <label>Gender:</label>
-                <select name="gender" required>
-                  <option value="">Select</option>
-                  <option value="Male">Male</option>
-                  <option value="Female">Female</option>
-                </select>
-              </div>
-              <div class="form-group">
-                <label>Contact Number:</label>
-                <input type="tel" name="contact_number" required>
-              </div>
-              <div class="form-group full-width">
-                <label>Address:</label>
-                <textarea name="address" rows="3" required></textarea>
+        <!-- Add Record -->
+        <section id="add-record" class="content-section">
+          <form method="POST" action="{{ url_for('employee_dashboard') }}">
+            <!-- Form Tabs -->
+            <div class="form-header">
+              <div class="form-tabs">
+                <button
+                  type="button"
+                  class="tab-btn active"
+                  onclick="showTab('personal-info')"
+                >
+                  Personal Information
+                </button>
+                <button
+                  type="button"
+                  class="tab-btn"
+                  onclick="showTab('vaccine-bite-info')"
+                >
+                  Vaccine and Bite Information
+                </button>
+                <button
+                  type="button"
+                  class="tab-btn"
+                  onclick="showTab('schedule')"
+                >
+                  Schedule
+                </button>
               </div>
             </div>
-          </div>
 
-          <!-- Vaccine & Bite Info -->
-          <div id="vaccine-bite-info" class="tab-content">
-            <div class="form-grid">
-              <div class="form-group">
-                <label>Service Type:</label>
-                <select name="service_type" required>
-                  <option value="Booster">Booster</option>
-                  <option value="Pre-Exposure Prophylaxis">Pre-Exposure Prophylaxis</option>
-                  <option value="Post-Exposure Prophylaxis">Post-Exposure Prophylaxis</option>
-                </select>
-              </div>
-              <div class="form-group">
-                <label>Date of Bite:</label>
-                <input type="date" name="date_of_bite">
-              </div>
-              <div class="form-group">
-                <label>Bite Location:</label>
-                <input type="text" name="bite_location">
-              </div>
-              <div class="form-group">
-                <label>Place of Bite:</label>
-                <input type="text" name="place_of_bite">
-              </div>
-              <div class="form-group">
-                <label>Type of Bite:</label>
-                <select name="type_of_bite">
-                  <option value="One Bite">One Bite</option>
-                  <option value="Multiple Bites">Multiple Bites</option>
-                  <option value="Scratch">Scratch</option>
-                </select>
-              </div>
-              <div class="form-group">
-                <label>Source of Bite:</label>
-                <select name="source_of_bite">
-                  <option value="Cat">Cat</option>
-                  <option value="Dog">Dog</option>
-                  <option value="Other">Other</option>
-                </select>
-              </div>
-              <div class="form-group">
-                <label>Other Source:</label>
-                <input type="text" name="other_source_of_bite">
-              </div>
-              <div class="form-group">
-                <label>Source Status:</label>
-                <select name="source_status">
-                  <option value="Alive">Alive</option>
-                  <option value="Dead">Dead</option>
-                </select>
-              </div>
-              <div class="form-group">
-                <label>Exposure:</label>
-                <select name="exposure">
-                  <option value="Neighbor">Neighbor</option>
-                  <option value="Stranger">Stranger</option>
-                  <option value="Family">Family</option>
-                  <option value="Other">Other</option>
-                </select>
-              </div>
-              <div class="form-group">
-                <label>Vaccinated:</label>
-                <label><input type="radio" name="vaccinated" value="Yes" checked> Yes</label>
-                <label><input type="radio" name="vaccinated" value="No"> No</label>
+            <!-- Personal Info -->
+            <div id="personal-info" class="tab-content active">
+              <div class="form-grid">
+                <div class="form-group">
+                  <label>Patient Name:</label>
+                  <input type="text" name="patient_name" required />
+                </div>
+                <div class="form-group">
+                  <label>Age:</label>
+                  <input type="number" name="age" required />
+                </div>
+                <div class="form-group">
+                  <label>Gender:</label>
+                  <select name="gender" required>
+                    <option value="">Select</option>
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>Contact Number:</label>
+                  <input type="tel" name="contact_number" required />
+                </div>
+                <div class="form-group full-width">
+                  <label>Address:</label>
+                  <textarea name="address" rows="3" required></textarea>
+                </div>
               </div>
             </div>
-          </div>
 
-          <!-- Schedule -->
-<div id="schedule" class="tab-content schedule-section">
-  <div class="schedule-grid">
-    <div class="schedule-item">
-      <label>Day 0:</label>
-      <input type="date" name="day0">
-    </div>
-    <div class="schedule-item">
-      <label>Day 3:</label>
-      <input type="date" name="day3">
-    </div>
-    <div class="schedule-item">
-      <label>Day 7:</label>
-      <input type="date" name="day7">
-    </div>
-    <div class="schedule-item">
-      <label>Day 14:</label>
-      <input type="date" name="day14">
-    </div>
-    <div class="schedule-item">
-      <label>Day 28:</label>
-      <input type="date" name="day28">
-    </div>
-  </div>
-</div>
+            <!-- Vaccine & Bite Info -->
+            <div id="vaccine-bite-info" class="tab-content">
+              <div class="form-grid">
+                <div class="form-group">
+                  <label>Service Type:</label>
+                  <select name="service_type" required>
+                    <option value="Booster">Booster</option>
+                    <option value="Pre-Exposure Prophylaxis">
+                      Pre-Exposure Prophylaxis
+                    </option>
+                    <option value="Post-Exposure Prophylaxis">
+                      Post-Exposure Prophylaxis
+                    </option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>Date of Bite:</label>
+                  <input type="date" name="date_of_bite" />
+                </div>
+                <div class="form-group">
+                  <label>Bite Location:</label>
+                  <input type="text" name="bite_location" />
+                </div>
+                <div class="form-group">
+                  <label>Place of Bite:</label>
+                  <input type="text" name="place_of_bite" />
+                </div>
+                <div class="form-group">
+                  <label>Type of Bite:</label>
+                  <select name="type_of_bite">
+                    <option value="One Bite">One Bite</option>
+                    <option value="Multiple Bites">Multiple Bites</option>
+                    <option value="Scratch">Scratch</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>Source of Bite:</label>
+                  <select name="source_of_bite">
+                    <option value="Cat">Cat</option>
+                    <option value="Dog">Dog</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>Other Source:</label>
+                  <input type="text" name="other_source_of_bite" />
+                </div>
+                <div class="form-group">
+                  <label>Source Status:</label>
+                  <select name="source_status">
+                    <option value="Alive">Alive</option>
+                    <option value="Dead">Dead</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>Exposure:</label>
+                  <select name="exposure">
+                    <option value="Neighbor">Neighbor</option>
+                    <option value="Stranger">Stranger</option>
+                    <option value="Family">Family</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>Vaccinated:</label>
+                  <label
+                    ><input
+                      type="radio"
+                      name="vaccinated"
+                      value="Yes"
+                      checked
+                    />
+                    Yes</label
+                  >
+                  <label
+                    ><input type="radio" name="vaccinated" value="No" />
+                    No</label
+                  >
+                </div>
+              </div>
+            </div>
 
+            <!-- Schedule -->
+            <div id="schedule" class="tab-content schedule-section">
+              <div class="schedule-grid">
+                <div class="schedule-item">
+                  <label>Day 0:</label>
+                  <input type="date" name="day0" />
+                </div>
+                <div class="schedule-item">
+                  <label>Day 3:</label>
+                  <input type="date" name="day3" />
+                </div>
+                <div class="schedule-item">
+                  <label>Day 7:</label>
+                  <input type="date" name="day7" />
+                </div>
+                <div class="schedule-item">
+                  <label>Day 14:</label>
+                  <input type="date" name="day14" />
+                </div>
+                <div class="schedule-item">
+                  <label>Day 28:</label>
+                  <input type="date" name="day28" />
+                </div>
+              </div>
+            </div>
 
-          <!-- Actions -->
-          <div class="form-actions">
-            <button type="submit" class="btn-success">Save Record</button>
-          </div>
-        </form>
-      </section>
+            <!-- Actions -->
+            <div class="form-actions">
+              <button type="submit" class="btn-success">Save Record</button>
+            </div>
+          </form>
+        </section>
 
-      <!-- View Patient -->
-      <section id="view-patient" class="content-section">
-        <h2>Patient Records</h2>
-        <div class="table-container">
-          <table class="patient-table">
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Patient Name</th>
-                <th>Date of Bite</th>
-                <th>Service</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {% for p in patients %}
-              <tr>
-                <td>{{ p['id'] }}</td>
-                <td>{{ p['patient_name'] }}</td>
-                <td>{{ p['date_of_bite']  }}</td>
-                <td>{{ p['service_type'] }}</td>
-                <td class="action-buttons">
-                  <button class="btn-view" data-patient-id="{{ p['id'] }}" title="View Details">
-                    <img src="{{ url_for('static', filename='images/icons/istockphoto-845329690-612x612-removebg-preview.png') }}" alt="View" class="action-icon">
-                  </button>
-                  <button class="btn-edit" data-patient-id="{{ p['id'] }}" title="Edit Patient">
-                    <img src="{{ url_for('static', filename='images/icons/3512833-removebg-preview.png') }}" alt="Edit" class="action-icon">
-                  </button>
-                  <button class="btn-delete" data-patient-id="{{ p['id'] }}" title="Delete Patient">
-                    <img src="{{ url_for('static', filename='images/icons/images-removebg-preview.png') }}" alt="Delete" class="action-icon">
-                  </button>
-                </td>
-              </tr>
-              {% else %}
-              <tr><td colspan="5">No patients found.</td></tr>
-              {% endfor %}
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-      <!-- View Schedule -->
-      <section id="view-schedule" class="content-section">
-        <h2>Schedule Calendar</h2>
-        
-        <!-- Calendar Stats -->
-        <div class="calendar-stats">
-          <div class="stat-card">
-            <h3>Today's Patients</h3>
-            <div class="stat-number">{{ patients_today|length }}</div>
-          </div>
-          <div class="stat-card">
-            <h3>This Week</h3>
-            <div class="stat-number" id="weekPatients">0</div>
-          </div>
-          <div class="stat-card">
-            <h3>This Month</h3>
-            <div class="stat-number" id="monthPatients">0</div>
-          </div>
-          <div class="stat-card">
-            <h3>Total Scheduled</h3>
-            <div class="stat-number" id="totalScheduled">0</div>
-          </div>
-        </div>
-
-        <!-- Calendar -->
-        <div class="calendar-container">
-          <div class="calendar-header">
-            <button class="nav-btn" id="prevMonth">&lt;</button>
-            <h3 id="currentMonth"></h3>
-            <button class="nav-btn" id="nextMonth">&gt;</button>
-          </div>
+        <!-- View Patient -->
+        <section id="view-patient" class="content-section">
+          <h2>Patient Records</h2>
           
-          <div class="calendar-grid">
-            <div class="calendar-day-header">Sun</div>
-            <div class="calendar-day-header">Mon</div>
-            <div class="calendar-day-header">Tue</div>
-            <div class="calendar-day-header">Wed</div>
-            <div class="calendar-day-header">Thu</div>
-            <div class="calendar-day-header">Fri</div>
-            <div class="calendar-day-header">Sat</div>
-            <!-- Calendar days will be generated by JavaScript -->
+          <!-- Search and Filter Controls -->
+          <div class="patient-controls">
+            <div class="search-container">
+              <div class="search-box">
+                <input type="text" id="patient-search" placeholder="Search patients by name, ID, or service..." />
+                <button id="clear-search" class="clear-btn" onclick="clearSearch()" title="Clear search">
+                  ❌
+                </button>
+              </div>
+            </div>
+            
+            <div class="sort-container">
+              <label for="sort-select">Sort by:</label>
+              <select id="sort-select" onchange="sortPatients()">
+                <option value="id">ID</option>
+                <option value="name">Name (A-Z)</option>
+                <option value="name-desc">Name (Z-A)</option>
+                <option value="date">Date of Bite (Newest)</option>
+                <option value="date-desc">Date of Bite (Oldest)</option>
+                <option value="service">Service Type</option>
+              </select>
+            </div>
+            
+            <div class="results-info">
+              <span id="results-count">Showing all patients</span>
+            </div>
           </div>
-        </div>
 
-        <!-- Schedule Details -->
-        <div class="schedule-details">
-          <h3>Selected Date Details</h3>
-          <div id="selectedDateInfo">
-            <p>Click on a date to view scheduled appointments</p>
+          <div class="table-container">
+            <table class="patient-table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Patient Name</th>
+                  <th>Date of Bite</th>
+                  <th>Service</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for p in patients %}
+                <tr>
+                  <td>{{ p['id'] }}</td>
+                  <td>{{ p['patient_name'] }}</td>
+                  <td>{{ p['date_of_bite'] }}</td>
+                  <td>{{ p['service_type'] }}</td>
+                  <td class="actions-cell">
+                    <button
+                      class="btn-action btn-view"
+                      data-patient-id="{{ p['id'] }}"
+                      data-action="view"
+                      title="View Details"
+                    >
+                      👁️
+                    </button>
+                    <button
+                      class="btn-action btn-edit"
+                      data-patient-id="{{ p['id'] }}"
+                      data-action="edit"
+                      title="Edit Patient"
+                    >
+                      ✏️
+                    </button>
+                    <button
+                      class="btn-action btn-delete"
+                      data-patient-id="{{ p['id'] }}"
+                      data-action="delete"
+                      title="Delete Patient"
+                    >
+                      🗑️
+                    </button>
+                  </td>
+                </tr>
+                {% else %}
+                <tr>
+                  <td colspan="5">No patients found.</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
           </div>
-        </div>
-      </section>
+        </section>
 
-    </main>
-  </div>
+        <!-- View Schedule -->
+        <section id="view-schedule" class="content-section">
+          <h2>Patient Schedule</h2>
+          
+          <!-- Calendar Navigation -->
+          <div class="calendar-header">
+            <button class="calendar-nav-btn" onclick="changeMonth(-1)">‹</button>
+            <h3 id="calendar-month-year"></h3>
+            <button class="calendar-nav-btn" onclick="changeMonth(1)">›</button>
+          </div>
 
-  <!-- Patient Details Modal -->
-  <div id="patientModal" class="modal">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h2>Patient Details</h2>
-        <span class="close" data-action="close-modal">&times;</span>
-      </div>
-      <div class="modal-body">
-        <div id="patientDetailsContent">
-          <!-- Patient details will be loaded here -->
-        </div>
-      </div>
-    </div>
-  </div>
+          <!-- Calendar Grid -->
+          <div class="calendar-container">
+            <div class="calendar-weekdays">
+              <div class="weekday">Sun</div>
+              <div class="weekday">Mon</div>
+              <div class="weekday">Tue</div>
+              <div class="weekday">Wed</div>
+              <div class="weekday">Thu</div>
+              <div class="weekday">Fri</div>
+              <div class="weekday">Sat</div>
+            </div>
+            <div class="calendar-days" id="calendar-days">
+              <!-- Calendar days will be generated by JavaScript -->
+            </div>
+          </div>
 
-  <!-- Edit Patient Modal -->
-  <div id="editPatientModal" class="modal">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h2>Edit Patient</h2>
-        <span class="close" data-action="close-edit-modal">&times;</span>
-      </div>
-      <div class="modal-body">
-        <form id="editPatientForm" method="POST">
-          <div class="form-grid">
-            <div class="form-group">
-              <label>Patient Name:</label>
-              <input type="text" id="edit_patient_name" name="patient_name" required>
-            </div>
-            <div class="form-group">
-              <label>Age:</label>
-              <input type="number" id="edit_age" name="age" required>
-            </div>
-            <div class="form-group">
-              <label>Gender:</label>
-              <select id="edit_gender" name="gender" required>
-                <option value="Male">Male</option>
-                <option value="Female">Female</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label>Contact Number:</label>
-              <input type="tel" id="edit_contact_number" name="contact_number" required>
-            </div>
-            <div class="form-group full-width">
-              <label>Address:</label>
-              <textarea id="edit_address" name="address" rows="3" required></textarea>
-            </div>
-            <div class="form-group">
-              <label>Service Type:</label>
-              <select id="edit_service_type" name="service_type" required>
-                <option value="Booster">Booster</option>
-                <option value="Pre-Exposure Prophylaxis">Pre-Exposure Prophylaxis</option>
-                <option value="Post-Exposure Prophylaxis">Post-Exposure Prophylaxis</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label>Date of Bite:</label>
-              <input type="date" id="edit_date_of_bite" name="date_of_bite">
-            </div>
-            <div class="form-group">
-              <label>Bite Location:</label>
-              <input type="text" id="edit_bite_location" name="bite_location">
-            </div>
-            <div class="form-group">
-              <label>Place of Bite:</label>
-              <input type="text" id="edit_place_of_bite" name="place_of_bite">
-            </div>
-            <div class="form-group">
-              <label>Type of Bite:</label>
-              <select id="edit_type_of_bite" name="type_of_bite">
-                <option value="One Bite">One Bite</option>
-                <option value="Multiple Bites">Multiple Bites</option>
-                <option value="Scratch">Scratch</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label>Source of Bite:</label>
-              <select id="edit_source_of_bite" name="source_of_bite">
-                <option value="Cat">Cat</option>
-                <option value="Dog">Dog</option>
-                <option value="Other">Other</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label>Source Status:</label>
-              <select id="edit_source_status" name="source_status">
-                <option value="Alive">Alive</option>
-                <option value="Dead">Dead</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label>Exposure:</label>
-              <select id="edit_exposure" name="exposure">
-                <option value="Neighbor">Neighbor</option>
-                <option value="Stranger">Stranger</option>
-                <option value="Family">Family</option>
-                <option value="Other">Other</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label>Vaccinated:</label>
-              <div style="display: flex; gap: 1rem;">
-                <label><input type="radio" id="edit_vaccinated_yes" name="vaccinated" value="Yes"> Yes</label>
-                <label><input type="radio" id="edit_vaccinated_no" name="vaccinated" value="No"> No</label>
+          <!-- Schedule Legend -->
+          <div class="schedule-legend">
+            <h4>Schedule Legend:</h4>
+            <div class="legend-items">
+              <div class="legend-item">
+                <div class="legend-color day0"></div>
+                <span>Day 0 (Initial Dose)</span>
+              </div>
+              <div class="legend-item">
+                <div class="legend-color day3"></div>
+                <span>Day 3</span>
+              </div>
+              <div class="legend-item">
+                <div class="legend-color day7"></div>
+                <span>Day 7</span>
+              </div>
+              <div class="legend-item">
+                <div class="legend-color day14"></div>
+                <span>Day 14</span>
+              </div>
+              <div class="legend-item">
+                <div class="legend-color day28"></div>
+                <span>Day 28 (Final)</span>
               </div>
             </div>
           </div>
-          <div class="modal-actions">
-            <button type="button" class="btn-cancel" data-action="close-edit-modal">Cancel</button>
-            <button type="submit" class="btn-success">Update Patient</button>
-          </div>
-        </form>
-      </div>
-    </div>
-  </div>
 
-  <!-- Appointment Details Modal -->
-  <div id="appointmentModal" class="modal">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h2>Appointment Details</h2>
-        <span class="close" data-action="close-appointment-modal">&times;</span>
-      </div>
-      <div class="modal-body">
-        <div id="appointmentDetailsContent">
-          <!-- Appointment details will be loaded here -->
+          <!-- Daily Schedule Details -->
+          <div class="daily-schedule" id="daily-schedule">
+            <h4>Appointments for <span id="selected-date"></span></h4>
+            <div class="appointment-list" id="appointment-list">
+              <p>Select a date to view appointments</p>
+            </div>
+          </div>
+
+          <!-- Appointment Actions Modal -->
+          <div id="appointmentActionsModal" class="modal">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h2>Appointment Actions</h2>
+                <span class="close" onclick="closeAppointmentModal()">&times;</span>
+              </div>
+              <div class="modal-body">
+                <div class="appointment-info">
+                  <h3 id="modal-appointment-patient"></h3>
+                  <p><strong>Date:</strong> <span id="modal-appointment-date"></span></p>
+                  <p><strong>Service:</strong> <span id="modal-appointment-service"></span></p>
+                  <p><strong>Schedule:</strong> <span id="modal-appointment-schedule"></span></p>
+                </div>
+                <div class="appointment-actions-grid">
+                  <button class="action-btn view-btn" onclick="viewAppointmentDetails()">
+                    👁️ View Details
+                  </button>
+                  <button class="action-btn done-btn" onclick="markAsDone()">
+                    ✅ Mark as Done
+                  </button>
+                  <button class="action-btn noshow-btn" onclick="markAsNoShow()">
+                    ❌ Mark as No Show
+                  </button>
+                  <button class="action-btn reschedule-btn" onclick="rescheduleAppointment()">
+                    📅 Reschedule
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <!-- Patient Details Modal -->
+    <div id="patientModal" class="modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>Patient Details</h2>
+          <span class="close" onclick="closePatientModal()">&times;</span>
+        </div>
+        <div class="modal-body">
+          <div class="patient-details-grid">
+            <div class="detail-section">
+              <h3>Personal Information</h3>
+              <div class="detail-row">
+                <label>Patient ID:</label>
+                <span id="modal-id"></span>
+              </div>
+              <div class="detail-row">
+                <label>Name:</label>
+                <span id="modal-name"></span>
+              </div>
+              <div class="detail-row">
+                <label>Age:</label>
+                <span id="modal-age"></span>
+              </div>
+              <div class="detail-row">
+                <label>Gender:</label>
+                <span id="modal-gender"></span>
+              </div>
+              <div class="detail-row">
+                <label>Contact:</label>
+                <span id="modal-contact"></span>
+              </div>
+              <div class="detail-row">
+                <label>Address:</label>
+                <span id="modal-address"></span>
+              </div>
+            </div>
+
+            <div class="detail-section">
+              <h3>Bite & Service Information</h3>
+              <div class="detail-row">
+                <label>Service Type:</label>
+                <span id="modal-service"></span>
+              </div>
+              <div class="detail-row">
+                <label>Date of Bite:</label>
+                <span id="modal-bite-date"></span>
+              </div>
+              <div class="detail-row">
+                <label>Bite Location:</label>
+                <span id="modal-bite-location"></span>
+              </div>
+              <div class="detail-row">
+                <label>Place of Bite:</label>
+                <span id="modal-place-bite"></span>
+              </div>
+              <div class="detail-row">
+                <label>Type of Bite:</label>
+                <span id="modal-type-bite"></span>
+              </div>
+              <div class="detail-row">
+                <label>Source of Bite:</label>
+                <span id="modal-source-bite"></span>
+              </div>
+              <div class="detail-row">
+                <label>Source Status:</label>
+                <span id="modal-source-status"></span>
+              </div>
+              <div class="detail-row">
+                <label>Exposure:</label>
+                <span id="modal-exposure"></span>
+              </div>
+              <div class="detail-row">
+                <label>Vaccinated:</label>
+                <span id="modal-vaccinated"></span>
+              </div>
+            </div>
+
+            <div class="detail-section">
+              <h3>Schedule</h3>
+              <div class="detail-row">
+                <label>Day 0:</label>
+                <span id="modal-day0"></span>
+              </div>
+              <div class="detail-row">
+                <label>Day 3:</label>
+                <span id="modal-day3"></span>
+              </div>
+              <div class="detail-row">
+                <label>Day 7:</label>
+                <span id="modal-day7"></span>
+              </div>
+              <div class="detail-row">
+                <label>Day 14:</label>
+                <span id="modal-day14"></span>
+              </div>
+              <div class="detail-row">
+                <label>Day 28:</label>
+                <span id="modal-day28"></span>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
-  </div>
 
-  <!-- Reschedule Modal -->
-  <div id="rescheduleModal" class="modal">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h2>Reschedule Appointment</h2>
-        <span class="close" data-action="close-reschedule-modal">&times;</span>
-      </div>
-      <div class="modal-body">
-        <form id="rescheduleForm">
-          <div class="form-group">
-            <label>Patient Name:</label>
-            <input type="text" id="reschedule_patient_name" readonly>
-          </div>
-          <div class="form-group">
-            <label>Current Schedule Type:</label>
-            <input type="text" id="reschedule_current_type" readonly>
-          </div>
-          <div class="form-group">
-            <label>New Date:</label>
-            <input type="date" id="reschedule_new_date" required>
-          </div>
-          <div class="form-group">
-            <label>Reason for Reschedule:</label>
-            <textarea id="reschedule_reason" rows="3" placeholder="Optional reason..."></textarea>
-          </div>
-          <div class="modal-actions">
-            <button type="button" class="btn-cancel" data-action="close-reschedule-modal">Cancel</button>
-            <button type="submit" class="btn-success">Reschedule</button>
-          </div>
-        </form>
-      </div>
-    </div>
-  </div>
-
-  <script src="{{ url_for('static', filename='employee-script.js') }}"></script>
-</body>
+    <script src="{{ url_for('static', filename='employee-script.js') }}"></script>
+  </body>
 </html>
