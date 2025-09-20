@@ -1,3 +1,18 @@
+
+.sidebar-user-bottom {
+    margin-top: auto;
+    padding: 0.5rem 0 0.7rem 0;
+    text-align: center;
+}
+
+.sidebar-user-greet {
+    color: #fff;
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 0.7rem;
+    letter-spacing: 0.5px;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.08);
+}
 * {
     margin: 0;
     padding: 0;
@@ -61,10 +76,59 @@ body {
     margin: 0;
 }
 
+
 .sidebar-menu {
     list-style: none;
     padding: 1rem 0;
-    flex: 1;
+    flex: 1 1 auto;
+}
+
+
+
+
+.sidebar-bottom-group {
+    padding: 0;
+    text-align: center;
+}
+
+.sidebar-bottom-group.horizontal-group {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+}
+
+.settings-btn, .logout-btn {
+    min-width: 90px;
+    margin: 0;
+}
+
+.settings-btn {
+    background: rgba(255,255,255,0.08);
+    color: #fff !important;
+    border-radius: 8px;
+    font-weight: bold;
+    transition: background 0.2s, color 0.2s;
+}
+.settings-btn:hover {
+    background: #fff3cd;
+    color: #800020 !important;
+}
+
+.logout-btn {
+    background: #800020;
+    color: #fff !important;
+    border-radius: 8px;
+    font-weight: bold;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    transition: background 0.2s, color 0.2s;
+    border: 2px solid #fff;
+}
+.logout-btn:hover {
+    background: #a0002a;
+    color: #fff !important;
+    border-color: #fff3cd;
 }
 
 .sidebar-menu li {

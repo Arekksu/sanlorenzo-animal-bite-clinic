@@ -7,6 +7,7 @@ from io import BytesIO
 
 
 app = Flask(__name__)
+app.secret_key = 'your_secret_key'  # Needed for session
 DATABASE = "database.db"
 
 def get_db():
@@ -58,6 +59,7 @@ def employee_login():
 
         # Demo credentials
         if emp_id == "admin" and password == "admin123":
+            session['employee_name'] = 'Admin'  # Set the name for the sidebar greeting
             return redirect(url_for('employee_dashboard'))
         else:
             return render_template('employee-login.html', error="Invalid credentials")
@@ -202,6 +204,10 @@ def get_patients_schedule():
         })
     
     return patients_list
+
+@app.route('/settings')
+def settings():
+    return render_template('settings.html')
 
 
 if __name__ == "__main__":

@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Settings - San Lorenzo Animal Bite Center</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='employee-styles.css') }}" />
+</head>
+<body>
+  <div class="dashboard-container">
+    <!-- Sidebar -->
+    <nav class="sidebar">
+      <div class="sidebar-header">
+        <img src="{{ url_for('static', filename='images/san lorenzo.jpg') }}" alt="Clinic Logo" class="sidebar-logo" />
+        <h3>San Lorenzo Animal Bite Center</h3>
+      </div>
+      <ul class="sidebar-menu">
+        <li><a href="{{ url_for('employee_dashboard') }}" class="menu-btn">Dashboard</a></li>
+        <li><a href="#" class="menu-btn">Add Record</a></li>
+        <li><a href="#" class="menu-btn">View Patient</a></li>
+        <li><a href="#" class="menu-btn">View Schedule</a></li>
+        <li><a href="{{ url_for('settings') }}" class="menu-btn active">Settings</a></li>
+      </ul>
+      <div class="sidebar-logout">
+        <a href="{{ url_for('home') }}" class="menu-btn logout-btn">Logout</a>
+      </div>
+    </nav>
+    <main class="main-content">
+      <section class="content-section active">
+        <h2>Settings</h2>
+        <div class="settings-content">
+          <p>Settings page content goes here. (Clinic info, user management, etc.)</p>
+        </div>
+      </section>
+    </main>
+  </div>
+</body>
+</html>

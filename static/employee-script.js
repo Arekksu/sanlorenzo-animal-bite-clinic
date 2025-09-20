@@ -904,244 +904,202 @@ function updateDailySchedule(date) {
     const selectedDateElement = document.getElementById('selected-date');
     const appointmentListElement = document.getElementById('appointment-list');
     
-    if (!selectedDateElement || !appointmentListElement) return;
-    
-    const dateString = date.toLocaleDateString('en-US', { 
-        weekday: 'long', 
-        year: 'numeric', 
-        month: 'long', 
-        day: 'numeric' 
-    });
-    
-    selectedDateElement.textContent = dateString;
-    
-    const appointments = getAppointmentsForDate(date.toISOString().split('T')[0]);
-    
-    if (appointments.length === 0) {
-        appointmentListElement.innerHTML = '<p>No appointments scheduled for this date.</p>';
-        return;
-    }
-    
-    appointmentListElement.innerHTML = appointments.map((appointment, index) => `
-        <div class="appointment-item ${appointment.type}">
-            <div class="appointment-info">
-                <strong>${appointment.patient}</strong>
-                <br>
-                <small>${appointment.service}</small>
-                <br>
-                <span class="badge">${appointment.type.toUpperCase()}</span>
-            </div>
-            <div class="appointment-actions">
-                <button onclick="openAppointmentActions('${appointment.patient}', '${dateString}', '${appointment.service}', '${appointment.type}', '${appointment.patientId || ''}')" title="Actions">
-                    ⚙️
-                </button>
-            </div>
-        </div>
-    `).join('');
+    if (weekElement) weekElement.textContent = weekCount;
+    if (monthElement) monthElement.textContent = monthCount;
+    if (totalElement) totalElement.textContent = totalCount;
 }
 
-// Appointment Actions Modal Variables
-let currentAppointmentData = {};
+// Status management functions
+function getAppointmentStatus(appointmentId) {
+    const status = localStorage.getItem(`appointment_status_${appointmentId}`) || 'scheduled';
+    console.log('Getting status for', appointmentId, ':', status);
+    return status;
+}
 
-function openAppointmentActions(patient, date, service, scheduleType, patientId) {
-    currentAppointmentData = {
-        patient: patient,
-        date: date,
-        service: service,
-        scheduleType: scheduleType,
-        patientId: patientId
-    };
+function setAppointmentStatus(appointmentId, status) {
+    console.log('Setting status for', appointmentId, ':', status);
+    localStorage.setItem(`appointment_status_${appointmentId}`, status);
+}
+
+function getAppointmentStatusClass(status) {
+    switch(status) {
+        case 'completed': return 'status-completed';
+        case 'absent': return 'status-absent';
+        case 'discarded': return 'status-discarded';
+        default: return 'status-scheduled';
+    }
+}
+
+function getStatusText(status) {
+    switch(status) {
+        case 'completed': return 'Done';
+        case 'absent': return 'No Show';
+        case 'discarded': return 'Discarded';
+        default: return 'Scheduled';
+    }
+}
+
+// Action handlers
+function addAppointmentActionHandlers() {
+    console.log('Adding appointment action handlers...');
     
-    document.getElementById('modal-appointment-patient').textContent = patient;
-    document.getElementById('modal-appointment-date').textContent = date;
-    document.getElementById('modal-appointment-service').textContent = service;
-    document.getElementById('modal-appointment-schedule').textContent = scheduleType.toUpperCase();
+    // View appointment details
+    const viewBtns = document.querySelectorAll('.btn-view-appointment');
+    console.log('Found view buttons:', viewBtns.length);
+    viewBtns.forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            console.log('View button clicked');
+            try {
+                const appointment = JSON.parse(this.dataset.appointment.replace(/&apos;/g, "'"));
+                console.log('Showing appointment modal for:', appointment);
+                showAppointmentModal(appointment);
+            } catch (error) {
+                console.error('Error parsing appointment data:', error);
+            }
+        });
+    });
     
-    document.getElementById('appointmentActionsModal').style.display = 'block';
+    // Mark as done
+    const doneBtns = document.querySelectorAll('.btn-mark-done');
+    console.log('Found done buttons:', doneBtns.length);
+    doneBtns.forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            console.log('Done button clicked');
+            const appointmentId = this.dataset.appointmentId;
+            console.log('Marking appointment as done:', appointmentId);
+            setAppointmentStatus(appointmentId, 'completed');
+            renderCalendar();
+            updateCalendarStats();
+            if (selectedDate) updateSelectedDateDetails(selectedDate);
+        });
+    });
+    
+    // Mark as absent
+    const absentBtns = document.querySelectorAll('.btn-mark-absent');
+    console.log('Found absent buttons:', absentBtns.length);
+    absentBtns.forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            console.log('Absent button clicked');
+            const appointmentId = this.dataset.appointmentId;
+            console.log('Marking appointment as absent:', appointmentId);
+            setAppointmentStatus(appointmentId, 'absent');
+            renderCalendar();
+            updateCalendarStats();
+            if (selectedDate) updateSelectedDateDetails(selectedDate);
+        });
+    });
+    
+    // Reschedule
+    const rescheduleBtns = document.querySelectorAll('.btn-reschedule');
+    console.log('Found reschedule buttons:', rescheduleBtns.length);
+    rescheduleBtns.forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            console.log('Reschedule button clicked');
+            try {
+                const appointment = JSON.parse(this.dataset.appointment.replace(/&apos;/g, "'"));
+                console.log('Showing reschedule modal for:', appointment);
+                showRescheduleModal(appointment);
+            } catch (error) {
+                console.error('Error parsing appointment data for reschedule:', error);
+            }
+        });
+    });
+    
+    // Discard
+    const discardBtns = document.querySelectorAll('.btn-discard');
+    console.log('Found discard buttons:', discardBtns.length);
+    discardBtns.forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            console.log('Discard button clicked');
+            const appointmentId = this.dataset.appointmentId;
+            console.log('Discarding appointment:', appointmentId);
+            if (confirm('Are you sure you want to discard this appointment? This will make it inactive.')) {
+                setAppointmentStatus(appointmentId, 'discarded');
+                renderCalendar();
+                updateCalendarStats();
+                if (selectedDate) updateSelectedDateDetails(selectedDate);
+            }
+        });
+    });
+}
+
+// Modal functions
+function showAppointmentModal(appointment) {
+    const modal = document.getElementById('appointmentModal');
+    const content = document.getElementById('appointmentDetailsContent');
+    
+    content.innerHTML = `
+        <div class="appointment-detail-container">
+            <div class="detail-section">
+                <h3>Patient Information</h3>
+                <div class="detail-row">
+                    <span class="detail-label">Name:</span>
+                    <span class="detail-value">${appointment.patient_name}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Service Type:</span>
+                    <span class="detail-value">${appointment.service_type}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Schedule Type:</span>
+                    <span class="detail-value">${appointment.scheduleType}</span>
+                </div>
+            </div>
+            
+            <div class="detail-section">
+                <h3>Incident Details</h3>
+                <div class="detail-row">
+                    <span class="detail-label">Bite Location:</span>
+                    <span class="detail-value">${appointment.bite_location || 'N/A'}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Place of Bite:</span>
+                    <span class="detail-value">${appointment.place_of_bite || 'N/A'}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Source of Bite:</span>
+                    <span class="detail-value">${appointment.source_of_bite || 'N/A'}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Type of Bite:</span>
+                    <span class="detail-value">${appointment.type_of_bite || 'N/A'}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Source Status:</span>
+                    <span class="detail-value">${appointment.source_status || 'N/A'}</span>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    modal.style.display = 'block';
+}
+
+function showRescheduleModal(appointment) {
+    const modal = document.getElementById('rescheduleModal');
+    
+    document.getElementById('reschedule_patient_name').value = appointment.patient_name;
+    document.getElementById('reschedule_current_type').value = appointment.scheduleType;
+    
+    // Set minimum date to today
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('reschedule_new_date').min = today;
+    
+    modal.style.display = 'block';
+    
+    // Store appointment data for form submission
+    modal.dataset.appointment = JSON.stringify(appointment);
 }
 
 function closeAppointmentModal() {
-    document.getElementById('appointmentActionsModal').style.display = 'none';
+    document.getElementById('appointmentModal').style.display = 'none';
 }
 
-function viewAppointmentDetails() {
-    if (currentAppointmentData.patientId) {
-        viewPatientDetails(currentAppointmentData.patientId);
-        closeAppointmentModal();
-    } else {
-        alert('Patient ID not found. Unable to view details.');
-    }
+function closeRescheduleModal() {
+    document.getElementById('rescheduleModal').style.display = 'none';
 }
-
-function markAsDone() {
-    const { patient, scheduleType } = currentAppointmentData;
-    
-    if (confirm(`Mark ${patient}'s ${scheduleType.toUpperCase()} appointment as completed?`)) {
-        // Here you would typically make an API call to update the appointment status
-        alert(`✅ ${patient}'s ${scheduleType.toUpperCase()} appointment has been marked as completed!`);
-        
-        // Update the UI - in a real app, you'd refresh the calendar data
-        updateCalendar();
-        closeAppointmentModal();
-    }
-}
-
-function markAsNoShow() {
-    const { patient, scheduleType } = currentAppointmentData;
-    
-    if (confirm(`Mark ${patient}'s ${scheduleType.toUpperCase()} appointment as no-show?`)) {
-        // Here you would typically make an API call to update the appointment status
-        alert(`❌ ${patient}'s ${scheduleType.toUpperCase()} appointment has been marked as no-show.`);
-        
-        // Update the UI - in a real app, you'd refresh the calendar data
-        updateCalendar();
-        closeAppointmentModal();
-    }
-}
-
-function rescheduleAppointment() {
-    const { patient, scheduleType } = currentAppointmentData;
-    const newDate = prompt(`Enter new date for ${patient}'s ${scheduleType.toUpperCase()} appointment (YYYY-MM-DD):`);
-    
-    if (newDate) {
-        // Validate date format
-        if (!/^\d{4}-\d{2}-\d{2}$/.test(newDate)) {
-            alert('Please enter date in YYYY-MM-DD format');
-            return;
-        }
-        
-        // Here you would typically make an API call to update the appointment date
-        alert(`📅 ${patient}'s ${scheduleType.toUpperCase()} appointment has been rescheduled to ${newDate}!`);
-        
-        // Update the UI - in a real app, you'd refresh the calendar data
-        updateCalendar();
-        closeAppointmentModal();
-    }
-}
-
-function getAppointmentsForDate(dateString) {
-    const appointments = [];
-    
-    console.log('Looking for appointments on:', dateString); // Debug log
-    console.log('Available patients:', patientsData); // Debug log
-    
-    patientsData.forEach(patient => {
-        if (patient.day0 === dateString) {
-            appointments.push({
-                patient: patient.name,
-                service: patient.service,
-                type: 'day0',
-                patientId: patient.id
-            });
-        }
-        if (patient.day3 === dateString) {
-            appointments.push({
-                patient: patient.name,
-                service: patient.service,
-                type: 'day3',
-                patientId: patient.id
-            });
-        }
-        if (patient.day7 === dateString) {
-            appointments.push({
-                patient: patient.name,
-                service: patient.service,
-                type: 'day7',
-                patientId: patient.id
-            });
-        }
-        if (patient.day14 === dateString) {
-            appointments.push({
-                patient: patient.name,
-                service: patient.service,
-                type: 'day14',
-                patientId: patient.id
-            });
-        }
-        if (patient.day28 === dateString) {
-            appointments.push({
-                patient: patient.name,
-                service: patient.service,
-                type: 'day28',
-                patientId: patient.id
-            });
-        }
-    });
-    
-    console.log('Found appointments:', appointments); // Debug log
-    return appointments;
-}
-
-function populateModal(patient) {
-    // Personal Information
-    document.getElementById('modal-id').textContent = patient.id || 'N/A';
-    document.getElementById('modal-name').textContent = patient.patient_name || 'N/A';
-    document.getElementById('modal-age').textContent = patient.age || 'N/A';
-    document.getElementById('modal-gender').textContent = patient.gender || 'N/A';
-    document.getElementById('modal-contact').textContent = patient.contact_number || 'N/A';
-    document.getElementById('modal-address').textContent = patient.address || 'N/A';
-    
-    // Bite & Service Information
-    document.getElementById('modal-service').textContent = patient.service_type || 'N/A';
-    document.getElementById('modal-bite-date').textContent = patient.date_of_bite || 'N/A';
-    document.getElementById('modal-bite-location').textContent = patient.bite_location || 'N/A';
-    document.getElementById('modal-place-bite').textContent = patient.place_of_bite || 'N/A';
-    document.getElementById('modal-type-bite').textContent = patient.type_of_bite || 'N/A';
-    document.getElementById('modal-source-bite').textContent = patient.source_of_bite || 'N/A';
-    document.getElementById('modal-source-status').textContent = patient.source_status || 'N/A';
-    document.getElementById('modal-exposure').textContent = patient.exposure || 'N/A';
-    document.getElementById('modal-vaccinated').textContent = patient.vaccinated || 'N/A';
-    
-    // Schedule
-    document.getElementById('modal-day0').textContent = patient.day0 || 'Not scheduled';
-    document.getElementById('modal-day3').textContent = patient.day3 || 'Not scheduled';
-    document.getElementById('modal-day7').textContent = patient.day7 || 'Not scheduled';
-    document.getElementById('modal-day14').textContent = patient.day14 || 'Not scheduled';
-    document.getElementById('modal-day28').textContent = patient.day28 || 'Not scheduled';
-}
-
-function closePatientModal() {
-    document.getElementById('patientModal').style.display = 'none';
-}
-
-// Close modal when clicking outside of it
-window.onclick = function(event) {
-    const modal = document.getElementById('patientModal');
-    if (event.target == modal) {
-        modal.style.display = 'none';
-    }
-}
-
-// Edit Patient Function
-function editPatient(patientId) {
-    if (confirm('Are you sure you want to edit this patient? This will redirect you to the edit form.')) {
-        // For now, we'll alert the user. You can implement redirect to edit form later
-        alert(`Edit functionality for Patient ID ${patientId} will be implemented. For now, you can manually update the database.`);
-        
-        // Future implementation:
-        // window.location.href = `/edit-patient/${patientId}`;
-    }
-}
-
-// Delete Patient Function
-async function deletePatient(patientId) {
-    if (confirm('Are you sure you want to delete this patient? This action cannot be undone.')) {
-        try {
-            const response = await fetch(`/delete-patient/${patientId}`, {
-                method: 'DELETE'
-            });
-            
-            if (response.ok) {
-                alert('Patient deleted successfully!');
-                location.reload(); // Reload the page to update the table
-            } else {
-                alert('Error deleting patient. Please try again.');
-            }
-        } catch (error) {
-            console.error('Error:', error);
-            alert('Error deleting patient. Please try again.');
-        }
-    }
-    
-}
-
