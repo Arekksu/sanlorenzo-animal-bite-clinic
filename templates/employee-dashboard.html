@@ -8,6 +8,9 @@
       rel="stylesheet"
       href="{{ url_for('static', filename='employee-styles.css') }}"
     />
+    <!-- ANALYTICS -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1"></script>
+
   </head>
   <body>
     <div class="dashboard-container">
@@ -42,6 +45,11 @@
               View Schedule
             </button>
           </li>
+          <li>
+         <a href="/backup-csv" class="menu-btn">Backup</a>
+         </li><br>
+         </li>
+         </li>
           <li><a href="{{ url_for('home') }}" class="menu-btn">Logout</a></li>
         </ul>
       </nav>
@@ -68,7 +76,10 @@
               <div class="stat-number">{{ patients_today|length }}</div>
             </div>
           </div>
+
+        
         </section>
+        
 
         <!-- Add Record -->
         <section id="add-record" class="content-section">
@@ -128,6 +139,7 @@
                   <textarea name="address" rows="3" required></textarea>
                 </div>
               </div>
+              
             </div>
 
             <!-- Vaccine & Bite Info -->
@@ -210,6 +222,7 @@
                   >
                 </div>
               </div>
+              
             </div>
 
             <!-- Schedule -->
@@ -244,11 +257,13 @@
             </div>
           </form>
         </section>
+       
 
-        <!-- View Patient -->
-        <section id="view-patient" class="content-section">
-          <h2>Patient Records</h2>
-          
+
+      <!-- View Patient -->
+      <section id="view-patient" class="content-section">
+        <h2>Patient Records</h2>
+
           <!-- Search and Filter Controls -->
           <div class="patient-controls">
             <div class="search-container">
@@ -331,7 +346,7 @@
             </table>
           </div>
         </section>
-
+        
         <!-- View Schedule -->
         <section id="view-schedule" class="content-section">
           <h2>Patient Schedule</h2>
@@ -535,5 +550,6 @@
     </div>
 
     <script src="{{ url_for('static', filename='employee-script.js') }}"></script>
+    
   </body>
 </html>

@@ -1,0 +1,17 @@
+{
+	"folders": [
+		{
+			"path": ".."
+		},
+		{
+			"path": "../../San-Lorenzo-Animal-Bite-Clinic/venv"
+		},
+		{
+			"path": "../../San-Lorenzo-Animal-Bite-Clinic/.vscode"
+		},
+		{
+			"path": "../../San-Lorenzo-Animal-Bite-Clinic/.git"
+		}
+	],
+	"settings": {}
+}

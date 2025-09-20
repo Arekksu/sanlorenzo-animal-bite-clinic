@@ -1,6 +1,9 @@
-from flask import Flask, render_template, request, redirect, url_for, g
+from flask import Flask, render_template, request, redirect, url_for, g, send_file
 import sqlite3
 from datetime import date
+import psycopg2
+import pandas as pd
+from io import BytesIO
 
 
 app = Flask(__name__)
@@ -13,6 +16,30 @@ def get_db():
         db.row_factory = sqlite3.Row
     return db
 
+
+@app.route('/backup-csv')
+def backup_csv():
+    conn = get_db()  # however you open your SQLite connection
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM patients")
+    rows = cursor.fetchall()
+
+    # Convert sqlite3.Row objects into dicts
+    data = [dict(row) for row in rows]
+
+    df = pd.DataFrame(data)
+    output = BytesIO()
+    df.to_csv(output, index=False)
+    output.seek(0)
+
+    return send_file(
+        output,
+        mimetype="text/csv",
+        as_attachment=True,
+        download_name="patients_backup.csv"
+    )
+
+    
 @app.teardown_appcontext
 def close_connection(exception):
     db = getattr(g, '_database', None)

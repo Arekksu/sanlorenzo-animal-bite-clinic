@@ -11,6 +11,19 @@ body {
     min-height: 100vh;
 }
 
+.chart-card{
+  margin-top: 16px;
+  background:#fff;
+  border:1px solid rgba(0,0,0,.06);
+  border-radius:12px;
+  padding:16px 20px;
+  box-shadow:0 4px 14px rgba(0,0,0,.05);
+}
+.chart-card-header{
+  display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:8px
+}
+.chart-card-header h3{margin:0;font-size:1rem}
+
 .dashboard-container {
     display: flex;
     min-height: 100vh;

@@ -1142,4 +1142,6 @@ async function deletePatient(patientId) {
             alert('Error deleting patient. Please try again.');
         }
     }
+    
 }
+
