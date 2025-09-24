@@ -8,7 +8,6 @@
 </head>
 <body>
   <div class="dashboard-container">
-
     <!-- Sidebar -->
     <nav class="sidebar">
       <div class="sidebar-header">
@@ -25,59 +24,57 @@
       </ul>
     </nav>
 
-      <!-- Main Content -->
-      <main class="main-content">
-        <!-- Dashboard -->
-        <section id="dashboard" class="content-section active">
-          <h2>Dashboard</h2>
-          <div class="stats-grid">
-        <div class="stat-card">
-    <div class="stat-icon">👤</div>
-    <h3>Total Patients</h3>
-    <div class="stat-number">{{ patients|length }}</div>
-  </div>
-  <div class="stat-card">
-    <div class="stat-icon">📅</div>
-    <h3>Upcoming Appointments</h3>
-    <div class="stat-number">{{ upcoming_appointments|length }}</div>
-  </div>
-  <div class="stat-card">
-    <div class="stat-icon">📅</div>
-    <h3>Patients Today</h3>
-    <div class="stat-number">{{ patients_today|length }}</div>
-  </div>
-</div>
-
+    <!-- Main Content -->
+    <main class="main-content">
+      <!-- Dashboard -->
+      <section id="dashboard" class="content-section active">
+        <h2>Dashboard</h2>
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-icon">👤</div>
+            <h3>Total Patients</h3>
+            <div class="stat-number">{{ patients|length }}</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">📅</div>
+            <h3>Upcoming Appointments</h3>
+            <div class="stat-number">{{ upcoming_appointments[0]['count'] if upcoming_appointments else 0 }}</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">📅</div>
+            <h3>Patients Today</h3>
+            <div class="stat-number">{{ patients_today[0]['count'] if patients_today else 0 }}</div>
+          </div>
         </div>
       </section>
 
-        <!-- Add Record -->
-        <section id="add-record" class="content-section">
-          <form method="POST" action="{{ url_for('employee_dashboard') }}">
-            <!-- Form Tabs -->
-            <div class="form-header">
-              <div class="form-tabs">
-                <button
-                  type="button"
-                  class="tab-btn active"
-                  onclick="showTab('personal-info')"
-                >
-                  Personal Information
-                </button>
-                <button
-                  type="button"
-                  class="tab-btn"
-                  onclick="showTab('vaccine-bite-info')"
-                >
-                  Vaccine and Bite Information
-                </button>
-                <button
-                  type="button"
-                  class="tab-btn"
-                  onclick="showTab('schedule')"
-                >
-                  Schedule
-                </button>
+      <!-- Add Record -->
+      <section id="add-record" class="content-section">
+        <form method="POST" action="{{ url_for('employee_dashboard') }}">
+          <!-- Form Tabs -->
+          <div class="form-header">
+            <div class="form-tabs">
+              <button
+                type="button"
+                class="tab-btn active"
+                onclick="showTab('personal-info')"
+              >
+                Personal Information
+              </button>
+              <button
+                type="button"
+                class="tab-btn"
+                onclick="showTab('vaccine-bite-info')"
+              >
+                Vaccine and Bite Information
+              </button>
+              <button
+                type="button"
+                class="tab-btn"
+                onclick="showTab('schedule')"
+              >
+                Schedule
+              </button>
               </div>
             </div>
 
@@ -255,14 +252,18 @@
       <!-- View Schedule -->
       <section id="view-schedule" class="content-section">
         <h2>Schedule Calendar</h2>
-        
+        <!-- Calendar Header (ADDED) -->
+        <div class="calendar-header">
+          <button class="calendar-nav-btn" onclick="changeMonth(-1)">‹</button>
+          <div id="calendar-month-year" style="font-weight:600;"></div>
+          <button class="calendar-nav-btn" onclick="changeMonth(1)">›</button>
+        </div>
         <!-- Calendar Stats -->
         <div class="calendar-stats">
           <div class="stat-card">
             <h3>Today's Patients</h3>
-            <div class="stat-number">{{ patients_today|length }}</div>
+            <div class="stat-number">{{ patients_today[0]['count'] if patients_today else 0 }}</div>
           </div>
-
           <!-- Calendar Grid -->
           <div class="calendar-container">
             <div class="calendar-weekdays">

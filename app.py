@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, g, send_file
+from flask import Flask, render_template, request, redirect, url_for, g, send_file, session
 import sqlite3
 from datetime import date
 import psycopg2
