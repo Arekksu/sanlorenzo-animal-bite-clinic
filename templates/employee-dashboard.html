@@ -455,6 +455,118 @@
       </div>
     </div>
 
+    <!-- VIEW PATIENT MODAL -->
+    <div id="patientModal" class="modal" style="display:none">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>Patient Details</h2>
+          <span class="close" onclick="closeModal('patientModal')">&times;</span>
+        </div>
+        <div id="patientModalBody" class="modal-body"></div>
+      </div>
+    </div>
+
+    <!-- EDIT PATIENT MODAL -->
+    <div id="editPatientModal" class="modal" style="display:none">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>Edit Patient</h2>
+          <span class="close" onclick="closeModal('editPatientModal')">&times;</span>
+        </div>
+        <div class="modal-body">
+          <form id="editPatientForm" onsubmit="return submitEditPatient(event)">
+            <input type="hidden" id="edit_patient_id">
+
+            <div class="form-grid">
+              <div class="form-group">
+                <label for="edit_patient_name">Patient Name</label>
+                <input id="edit_patient_name" type="text" required>
+              </div>
+              <div class="form-group">
+                <label for="edit_date_of_bite">Date of Bite</label>
+                <input id="edit_date_of_bite" type="date">
+              </div>
+              <div class="form-group">
+                <label for="edit_service_type">Service</label>
+                <input id="edit_service_type" type="text">
+              </div>
+              <div class="form-group">
+                <label for="edit_contact_number">Contact</label>
+                <input id="edit_contact_number" type="text">
+              </div>
+              <div class="form-group">
+                <label for="edit_age">Age</label>
+                <input id="edit_age" type="number" min="0">
+              </div>
+              <div class="form-group">
+                <label for="edit_gender">Gender</label>
+                <select id="edit_gender">
+                  <option value=""></option>
+                  <option>Male</option>
+                  <option>Female</option>
+                </select>
+              </div>
+              <div class="form-group form-group full-width">
+                <label for="edit_address">Address</label>
+                <input id="edit_address" type="text">
+              </div>
+
+              <div class="form-group">
+                <label for="edit_bite_location">Bite Location</label>
+                <input id="edit_bite_location" type="text">
+              </div>
+              <div class="form-group">
+                <label for="edit_place_of_bite">Place of Bite</label>
+                <input id="edit_place_of_bite" type="text">
+              </div>
+              <div class="form-group">
+                <label for="edit_source_of_bite">Source of Bite</label>
+                <input id="edit_source_of_bite" type="text">
+              </div>
+              <div class="form-group">
+                <label for="edit_type_of_bite">Type of Bite</label>
+                <input id="edit_type_of_bite" type="text">
+              </div>
+              <div class="form-group">
+                <label for="edit_source_status">Source Status</label>
+                <input id="edit_source_status" type="text">
+              </div>
+              <div class="form-group">
+                <label for="edit_exposure">Exposure</label>
+                <input id="edit_exposure" type="text">
+              </div>
+
+              <div class="form-group">
+                <label for="edit_day0">Day 0</label>
+                <input id="edit_day0" type="date">
+              </div>
+              <div class="form-group">
+                <label for="edit_day3">Day 3</label>
+                <input id="edit_day3" type="date">
+              </div>
+              <div class="form-group">
+                <label for="edit_day7">Day 7</label>
+                <input id="edit_day7" type="date">
+              </div>
+              <div class="form-group">
+                <label for="edit_day14">Day 14</label>
+                <input id="edit_day14" type="date">
+              </div>
+              <div class="form-group">
+                <label for="edit_day28">Day 28</label>
+                <input id="edit_day28" type="date">
+              </div>
+            </div>
+
+            <div class="form-actions">
+              <button type="button" class="btn-secondary" onclick="closeModal('editPatientModal')">Cancel</button>
+              <button type="submit" class="btn-primary">Save Changes</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
   <script src="{{ url_for('static', filename='employee-script.js') }}"></script>
 </body>
 </html>

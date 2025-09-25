@@ -1,3 +1,236 @@
+/* ========= VIEW PATIENT: DATA + ACTIONS ========= */
+
+// Utility
+function escapeHtml(s){ const d=document.createElement('div'); d.textContent=s??''; return d.innerHTML; }
+
+// Modal helpers
+function openModal(id){
+  const m=document.getElementById(id); if(!m) return;
+  m.style.display='block';
+  function onBg(e){ if(e.target===m){ closeModal(id); m.removeEventListener('click',onBg);} }
+  function onEsc(ev){ if(ev.key==='Escape'){ closeModal(id); document.removeEventListener('keydown',onEsc);} }
+  m.addEventListener('click',onBg);
+  document.addEventListener('keydown',onEsc);
+}
+function closeModal(id){ const m=document.getElementById(id); if(m) m.style.display='none'; }
+
+// LOAD TABLE FROM API
+async function reloadPatientTableFromAPI(){
+  const tbody=document.querySelector('#view-patient .patient-table tbody');
+  if(!tbody) return;
+  try{
+    const res=await fetch('/api/patients');
+    if(!res.ok) throw new Error(`HTTP ${res.status}`);
+    const payload=await res.json();
+    const patients=payload.patients || payload;
+
+    tbody.innerHTML = patients.map(p=>`
+      <tr>
+        <td>${p.id}</td>
+        <td>${escapeHtml(p.patient_name||'')}</td>
+        <td>${p.date_of_bite || ''}</td>
+        <td>${escapeHtml(p.service_type||'')}</td>
+        <td class="actions-cell">
+          <button class="btn-view"  data-patient-id="${p.id}" title="View">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"></path><circle cx="12" cy="12" r="3"></circle>
+            </svg>
+          </button>
+          <button class="btn-edit" data-patient-id="${p.id}" title="Edit">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M17 3a2.828 2.828 0 1 1 4 4L7 21H3v-4L17 3z"></path>
+            </svg>
+          </button>
+          <button class="btn-delete" data-patient-id="${p.id}" title="Delete">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="3 6 5 6 21 6"></polyline>
+              <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path>
+              <path d="M10 11v6M14 11v6M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"></path>
+            </svg>
+          </button>
+        </td>
+      </tr>
+    `).join('');
+
+    wirePatientRowActions();
+  }catch(err){
+    console.error(err);
+    tbody.innerHTML = `<tr><td colspan="5">Failed to load patients.</td></tr>`;
+  }
+}
+
+// WIRE ACTION BUTTONS (View / Edit / Delete)
+function wirePatientRowActions(){
+  // VIEW
+  document.querySelectorAll('.btn-view').forEach(b=>{
+    b.onclick = async ()=>{
+      const id=b.getAttribute('data-patient-id');
+      try{
+        const res=await fetch(`/patient/${id}`);
+        if(!res.ok) throw new Error(`HTTP ${res.status}`);
+        const p=await res.json();
+        openPatientDetailsModal(p);
+      }catch(err){
+        console.error(err);
+        alert('Error loading patient details.');
+      }
+    };
+  });
+
+  // EDIT
+  document.querySelectorAll('.btn-edit').forEach(b=>{
+    b.onclick = async ()=>{
+      const id=b.getAttribute('data-patient-id');
+      try{
+        const res=await fetch(`/patient/${id}`);
+        if(!res.ok) throw new Error(`HTTP ${res.status}`);
+        const p=await res.json();
+        openEditPatientModal(p);
+      }catch(err){
+        console.error(err);
+        alert('Error loading patient for edit.');
+      }
+    };
+  });
+
+  // DELETE (with confirm)
+  document.querySelectorAll('.btn-delete').forEach(b=>{
+    b.onclick = async ()=>{
+      const id=b.getAttribute('data-patient-id');
+      const ok = confirm('Are you sure you want to delete this patient?');
+      if(!ok) return;
+      try{
+        const res=await fetch(`/delete-patient/${id}`,{method:'DELETE'});
+        if(!res.ok) throw new Error(`HTTP ${res.status}`);
+        await reloadPatientTableFromAPI();
+      }catch(err){
+        console.error(err);
+        alert('Failed to delete patient.');
+      }
+    };
+  });
+}
+
+// VIEW MODAL CONTENT (all relevant details)
+function openPatientDetailsModal(p){
+  const body=document.getElementById('patientModalBody');
+  if(!body){ alert(p.patient_name||'Patient'); return; }
+
+  const show = v => (v===null || v===undefined || v==='') ? '—' : escapeHtml(String(v));
+  body.innerHTML = `
+    <div class="patient-details-grid">
+      <div class="detail-section">
+        <h3>Patient</h3>
+        <div class="detail-row"><label>Name:</label><span>${show(p.patient_name)}</span></div>
+        <div class="detail-row"><label>Age:</label><span>${show(p.age)}</span></div>
+        <div class="detail-row"><label>Gender:</label><span>${show(p.gender)}</span></div>
+        <div class="detail-row"><label>Contact:</label><span>${show(p.contact_number)}</span></div>
+        <div class="detail-row"><label>Address:</label><span>${show(p.address)}</span></div>
+      </div>
+      <div class="detail-section">
+        <h3>Incident & Service</h3>
+        <div class="detail-row"><label>Date of Bite:</label><span>${show(p.date_of_bite)}</span></div>
+        <div class="detail-row"><label>Bite Location:</label><span>${show(p.bite_location)}</span></div>
+        <div class="detail-row"><label>Place of Bite:</label><span>${show(p.place_of_bite)}</span></div>
+        <div class="detail-row"><label>Source of Bite:</label><span>${show(p.source_of_bite)}</span></div>
+        <div class="detail-row"><label>Type of Bite:</label><span>${show(p.type_of_bite)}</span></div>
+        <div class="detail-row"><label>Source Status:</label><span>${show(p.source_status)}</span></div>
+        <div class="detail-row"><label>Exposure:</label><span>${show(p.exposure)}</span></div>
+        <div class="detail-row"><label>Service:</label><span>${show(p.service_type)}</span></div>
+      </div>
+      <div class="detail-section">
+        <h3>Schedule</h3>
+        <div class="detail-row"><label>Day 0:</label><span>${show(p.day0)}</span></div>
+        <div class="detail-row"><label>Day 3:</label><span>${show(p.day3)}</span></div>
+        <div class="detail-row"><label>Day 7:</label><span>${show(p.day7)}</span></div>
+        <div class="detail-row"><label>Day 14:</label><span>${show(p.day14)}</span></div>
+        <div class="detail-row"><label>Day 28:</label><span>${show(p.day28)}</span></div>
+      </div>
+    </div>
+  `;
+  openModal('patientModal');
+}
+
+// EDIT MODAL (prefill)
+function openEditPatientModal(p){
+  const val = (x)=> x??'';
+  document.getElementById('edit_patient_id').value = p.id;
+  document.getElementById('edit_patient_name').value = val(p.patient_name);
+  document.getElementById('edit_date_of_bite').value = val((p.date_of_bite||'').slice(0,10));
+  document.getElementById('edit_service_type').value = val(p.service_type);
+  document.getElementById('edit_contact_number').value = val(p.contact_number);
+  document.getElementById('edit_age').value = val(p.age);
+  document.getElementById('edit_gender').value = val(p.gender);
+  document.getElementById('edit_address').value = val(p.address);
+
+  document.getElementById('edit_bite_location').value = val(p.bite_location);
+  document.getElementById('edit_place_of_bite').value = val(p.place_of_bite);
+  document.getElementById('edit_source_of_bite').value = val(p.source_of_bite);
+  document.getElementById('edit_type_of_bite').value = val(p.type_of_bite);
+  document.getElementById('edit_source_status').value = val(p.source_status);
+  document.getElementById('edit_exposure').value = val(p.exposure);
+
+  document.getElementById('edit_day0').value  = val((p.day0 || '').slice(0,10));
+  document.getElementById('edit_day3').value  = val((p.day3 || '').slice(0,10));
+  document.getElementById('edit_day7').value  = val((p.day7 || '').slice(0,10));
+  document.getElementById('edit_day14').value = val((p.day14|| '').slice(0,10));
+  document.getElementById('edit_day28').value = val((p.day28|| '').slice(0,10));
+
+  openModal('editPatientModal');
+}
+
+// SAVE EDIT (requires server endpoint)
+async function submitEditPatient(e){
+  e.preventDefault();
+  const id = document.getElementById('edit_patient_id').value;
+
+  const payload = {
+    patient_name: document.getElementById('edit_patient_name').value.trim(),
+    date_of_bite: document.getElementById('edit_date_of_bite').value || null,
+    service_type: document.getElementById('edit_service_type').value.trim() || null,
+    contact_number: document.getElementById('edit_contact_number').value.trim() || null,
+    age: Number(document.getElementById('edit_age').value || 0) || null,
+    gender: document.getElementById('edit_gender').value || null,
+    address: document.getElementById('edit_address').value.trim() || null,
+    bite_location: document.getElementById('edit_bite_location').value.trim() || null,
+    place_of_bite: document.getElementById('edit_place_of_bite').value.trim() || null,
+    source_of_bite: document.getElementById('edit_source_of_bite').value.trim() || null,
+    type_of_bite: document.getElementById('edit_type_of_bite').value.trim() || null,
+    source_status: document.getElementById('edit_source_status').value.trim() || null,
+    exposure: document.getElementById('edit_exposure').value.trim() || null,
+    day0:  document.getElementById('edit_day0').value  || null,
+    day3:  document.getElementById('edit_day3').value  || null,
+    day7:  document.getElementById('edit_day7').value  || null,
+    day14: document.getElementById('edit_day14').value || null,
+    day28: document.getElementById('edit_day28').value || null
+  };
+
+  try{
+    // Palitan mo kung iba ang route/method sa Flask app mo:
+    const res = await fetch(`/update-patient/${id}`, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(payload)
+    });
+    if(!res.ok) throw new Error(`HTTP ${res.status}`);
+    closeModal('editPatientModal');
+    await reloadPatientTableFromAPI();
+    alert('Patient updated successfully.');
+  }catch(err){
+    console.warn('Update endpoint missing or failed:', err);
+    alert('Update endpoint not available. Please implement /update-patient/<id>.');
+  }
+  return false;
+}
+
+// auto-load pag bukas ng page o switching sa View Patient
+document.addEventListener('DOMContentLoaded', reloadPatientTableFromAPI);
+window.reloadPatientTableFromAPI = reloadPatientTableFromAPI; // optional expose
+window.closeModal = closeModal;
+window.submitEditPatient = submitEditPatient;
 /* === EMPLOYEE DASHBOARD SCRIPT (clean patch, real DB data) === */
 
 /* Prevent horizontal scroll bleed */
@@ -161,15 +394,15 @@ async function reloadPatientTableFromAPI() {
         <td>${escapeHtml(p.patient_name)}</td>
         <td>${p.date_of_bite || ''}</td>
         <td>${escapeHtml(p.service_type || '')}</td>
-        <td class="action-buttons">
-          <button class="btn-view" data-patient-id="${p.id}" title="View Details">
-            <img src="/static/images/icons/eye_2x612-removebg-preview.png" class="action-icon" alt="View">
+        <td class="actions-cell">
+          <button class="btn-view" data-patient-id="${p.id}" title="View">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"></path><circle cx="12" cy="12" r="3"></circle></svg>
           </button>
-          <button class="btn-edit" data-patient-id="${p.id}" title="Edit Patient">
-            <img src="/static/images/icons/png-transparent-computer-icons-editing-icon-design-png-clipart-thumbnail-removebg-preview.png" class="action-icon" alt="Edit">
+          <button class="btn-edit" data-patient-id="${p.id}" title="Edit">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 3a2.828 2.828 0 1 1 4 4L7 21H3v-4L17 3z"></path></svg>
           </button>
-          <button class="btn-delete" data-patient-id="${p.id}" title="Delete Patient">
-            <img src="/static/images/icons/images-removebg-preview.png" class="action-icon" alt="Delete">
+          <button class="btn-delete" data-patient-id="${p.id}" title="Delete">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path><path d="M10 11v6"></path><path d="M14 11v6"></path><path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"></path></svg>
           </button>
         </td>
       </tr>
@@ -237,26 +470,47 @@ function updateResultsCount(count, term=''){
 
 /* 4) Row Actions (view/edit/delete) */
 function wirePatientRowActions() {
-  document.querySelectorAll('.btn-view').forEach(b=>{
+  document.querySelectorAll('.btn-view').forEach(b => {
     b.onclick = async () => {
       const id = b.getAttribute('data-patient-id');
-      await viewPatientDetails(id);
+      try {
+        const res = await fetch(`/patient/${id}`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const p = await res.json();
+        openPatientDetailsModal(p);
+      } catch (err) {
+        console.error(err);
+        alert('Error loading patient details.');
+      }
     };
   });
-  document.querySelectorAll('.btn-edit').forEach(b=>{
-    b.onclick = () => alert('Edit endpoint not implemented yet.');
+
+  document.querySelectorAll('.btn-edit').forEach(b => {
+    b.onclick = async () => {
+      const id = b.getAttribute('data-patient-id');
+      try {
+        const res = await fetch(`/patient/${id}`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const p = await res.json();
+        openEditPatientModal(p);
+      } catch (err) {
+        console.error(err);
+        alert('Error loading patient for edit.');
+      }
+    };
   });
-  document.querySelectorAll('.btn-delete').forEach(b=>{
+
+  document.querySelectorAll('.btn-delete').forEach(b => {
     b.onclick = async () => {
       const id = b.getAttribute('data-patient-id');
       if (!confirm('Delete this patient?')) return;
-      try{
-        const res = await fetch(`/delete-patient/${id}`, { method:'DELETE' });
+      try {
+        const res = await fetch(`/delete-patient/${id}`, { method: 'DELETE' });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         await reloadPatientTableFromAPI();
-      }catch(err){
-        alert('Failed to delete patient.');
+      } catch (err) {
         console.error(err);
+        alert('Failed to delete patient.');
       }
     };
   });
