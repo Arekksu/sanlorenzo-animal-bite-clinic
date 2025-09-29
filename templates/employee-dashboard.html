@@ -19,8 +19,14 @@
         <li><button class="menu-btn" onclick="showSection('add-record')">Add Record</button></li>
         <li><button class="menu-btn" onclick="showSection('view-patient')">View Patient</button></li>
         <li><button class="menu-btn" onclick="showSection('view-schedule')">View Schedule</button></li>
-        <li><a href="/backup-csv" class="menu-btn">⬇ Backup Patients (CSV)</a></li>
-        <li><a href="{{ url_for('home') }}" class="menu-btn">Logout</a></li>
+      </ul>
+      <div class="sidebar-bottom">
+        <a href="/backup-csv" class="menu-btn sidebar-bottom-btn">⬇ Backup Patients (CSV)</a>
+        <div class="sidebar-bottom-actions">
+          <a href="{{ url_for('home') }}" class="menu-btn sidebar-bottom-btn">Logout</a>
+          <button class="menu-btn sidebar-bottom-btn" onclick="showSection('settings')">Settings</button>
+        </div>
+      </div>
       </ul>
     </nav>
 
@@ -315,6 +321,20 @@
             </div>
           </div>
 
+          <!-- Appointment Details Modal for Calendar (used by JS) -->
+          <div id="appointmentModal" class="modal" style="display:none">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h2>Appointment Details</h2>
+                <span class="close" onclick="closeAppointmentModal()">&times;</span>
+              </div>
+              <div id="appointmentDetailsContent" class="modal-body"></div>
+            </div>
+          </div>
+
+          <!-- Toast Notification (for appointment actions) -->
+          <div id="copilot-toast" style="display:none"></div>
+
           <!-- Appointment Actions Modal -->
           <div id="appointmentActionsModal" class="modal">
             <div class="modal-content">
@@ -351,107 +371,14 @@
     </div>
 
     <!-- Patient Details Modal -->
-    <div id="patientModal" class="modal">
+    <!-- VIEW PATIENT MODAL (used by JS) -->
+    <div id="patientModal" class="modal" style="display:none">
       <div class="modal-content">
         <div class="modal-header">
           <h2>Patient Details</h2>
-          <span class="close" onclick="closePatientModal()">&times;</span>
+          <span class="close" onclick="closeModal('patientModal')">&times;</span>
         </div>
-        <div class="modal-body">
-          <div class="patient-details-grid">
-            <div class="detail-section">
-              <h3>Personal Information</h3>
-              <div class="detail-row">
-                <label>Patient ID:</label>
-                <span id="modal-id"></span>
-              </div>
-              <div class="detail-row">
-                <label>Name:</label>
-                <span id="modal-name"></span>
-              </div>
-              <div class="detail-row">
-                <label>Age:</label>
-                <span id="modal-age"></span>
-              </div>
-              <div class="detail-row">
-                <label>Gender:</label>
-                <span id="modal-gender"></span>
-              </div>
-              <div class="detail-row">
-                <label>Contact:</label>
-                <span id="modal-contact"></span>
-              </div>
-              <div class="detail-row">
-                <label>Address:</label>
-                <span id="modal-address"></span>
-              </div>
-            </div>
-
-            <div class="detail-section">
-              <h3>Bite & Service Information</h3>
-              <div class="detail-row">
-                <label>Service Type:</label>
-                <span id="modal-service"></span>
-              </div>
-              <div class="detail-row">
-                <label>Date of Bite:</label>
-                <span id="modal-bite-date"></span>
-              </div>
-              <div class="detail-row">
-                <label>Bite Location:</label>
-                <span id="modal-bite-location"></span>
-              </div>
-              <div class="detail-row">
-                <label>Place of Bite:</label>
-                <span id="modal-place-bite"></span>
-              </div>
-              <div class="detail-row">
-                <label>Type of Bite:</label>
-                <span id="modal-type-bite"></span>
-              </div>
-              <div class="detail-row">
-                <label>Source of Bite:</label>
-                <span id="modal-source-bite"></span>
-              </div>
-              <div class="detail-row">
-                <label>Source Status:</label>
-                <span id="modal-source-status"></span>
-              </div>
-              <div class="detail-row">
-                <label>Exposure:</label>
-                <span id="modal-exposure"></span>
-              </div>
-              <div class="detail-row">
-                <label>Vaccinated:</label>
-                <span id="modal-vaccinated"></span>
-              </div>
-            </div>
-
-            <div class="detail-section">
-              <h3>Schedule</h3>
-              <div class="detail-row">
-                <label>Day 0:</label>
-                <span id="modal-day0"></span>
-              </div>
-              <div class="detail-row">
-                <label>Day 3:</label>
-                <span id="modal-day3"></span>
-              </div>
-              <div class="detail-row">
-                <label>Day 7:</label>
-                <span id="modal-day7"></span>
-              </div>
-              <div class="detail-row">
-                <label>Day 14:</label>
-                <span id="modal-day14"></span>
-              </div>
-              <div class="detail-row">
-                <label>Day 28:</label>
-                <span id="modal-day28"></span>
-              </div>
-            </div>
-          </div>
-        </div>
+        <div id="patientModalBody" class="modal-body"></div>
       </div>
     </div>
 

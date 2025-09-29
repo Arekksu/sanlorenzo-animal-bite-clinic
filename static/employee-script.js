@@ -7,12 +7,24 @@ function escapeHtml(s){ const d=document.createElement('div'); d.textContent=s??
 function openModal(id){
   const m=document.getElementById(id); if(!m) return;
   m.style.display='block';
-  function onBg(e){ if(e.target===m){ closeModal(id); m.removeEventListener('click',onBg);} }
-  function onEsc(ev){ if(ev.key==='Escape'){ closeModal(id); document.removeEventListener('keydown',onEsc);} }
-  m.addEventListener('click',onBg);
-  document.addEventListener('keydown',onEsc);
+  // Remove previous listeners to avoid stacking
+  if (m._escListener) document.removeEventListener('keydown', m._escListener);
+  if (m._bgListener) m.removeEventListener('click', m._bgListener);
+  // ESC key
+  m._escListener = function(ev){ if(ev.key==='Escape'){ closeModal(id); document.removeEventListener('keydown',m._escListener); } };
+  document.addEventListener('keydown', m._escListener);
+  // Click outside modal
+  m._bgListener = function(e){ if(e.target===m){ closeModal(id); m.removeEventListener('click',m._bgListener); document.removeEventListener('keydown',m._escListener); } };
+  m.addEventListener('click', m._bgListener);
 }
-function closeModal(id){ const m=document.getElementById(id); if(m) m.style.display='none'; }
+function closeModal(id){
+  const m=document.getElementById(id);
+  if(m) {
+    m.style.display='none';
+    if (m._escListener) document.removeEventListener('keydown', m._escListener);
+    if (m._bgListener) m.removeEventListener('click', m._bgListener);
+  }
+}
 
 // LOAD TABLE FROM API
 async function reloadPatientTableFromAPI(){
@@ -660,19 +672,25 @@ function updateDailySchedule(date){
     list.innerHTML = `<p>No appointments for this date.</p>`;
     return;
   }
-  list.innerHTML = appts.map(a=>`
-    <div class="appointment-item ${a.type}">
-      <div class="appointment-info">
-        <div><strong>${escapeHtml(a.patient)}</strong></div>
-        <div>${escapeHtml(a.service||'')} — <em>${a.type.toUpperCase()}</em></div>
+  list.innerHTML = appts.map(a=>{
+    const status = getAppointmentStatus(a.id);
+    let statusLabel = '';
+    if (status === 'completed') statusLabel = '<span class="appt-status done">Done</span>';
+    else if (status === 'absent') statusLabel = '<span class="appt-status noshow">No Show</span>';
+    return `
+      <div class="appointment-item ${a.type}">
+        <div class="appointment-info">
+          <div><strong>${escapeHtml(a.patient)}</strong> ${statusLabel}</div>
+          <div>${escapeHtml(a.service||'')} — <em>${a.type.toUpperCase()}</em></div>
+        </div>
+        <div class="appointment-actions">
+          <button class="btn-view-appointment" data-appointment='${encodeHtmlAttr(JSON.stringify(a))}'>View</button>
+          <button class="btn-mark-done" data-appointment-id="${a.id}">Done</button>
+          <button class="btn-mark-absent" data-appointment-id="${a.id}">No Show</button>
+        </div>
       </div>
-      <div class="appointment-actions">
-        <button class="btn-view-appointment" data-appointment='${encodeHtmlAttr(JSON.stringify(a))}'>View</button>
-        <button class="btn-mark-done" data-appointment-id="${a.id}">Done</button>
-        <button class="btn-mark-absent" data-appointment-id="${a.id}">No Show</button>
-      </div>
-    </div>
-  `).join('');
+    `;
+  }).join('');
   addAppointmentActionHandlers();
 }
 
@@ -692,12 +710,14 @@ function addAppointmentActionHandlers(){
   document.querySelectorAll('.btn-mark-done').forEach(b=>{
     b.onclick = ()=>{
       setAppointmentStatus(b.dataset.appointmentId,'completed');
+      showToast('Marked as Done!', 'success');
       if (selectedDate) updateDailySchedule(selectedDate);
     };
   });
   document.querySelectorAll('.btn-mark-absent').forEach(b=>{
     b.onclick = ()=>{
       setAppointmentStatus(b.dataset.appointmentId,'absent');
+      showToast('Marked as No Show!', 'warning');
       if (selectedDate) updateDailySchedule(selectedDate);
     };
   });
@@ -711,17 +731,33 @@ function showAppointmentModal(a){
     alert(`${a.patient}\n${a.service}\n${a.type.toUpperCase()} on ${a.date}`);
     return;
   }
+  const status = getAppointmentStatus(a.id);
+  let statusLabel = '';
+  if (status === 'completed') statusLabel = '<span class="appt-status done">Done</span>';
+  else if (status === 'absent') statusLabel = '<span class="appt-status noshow">No Show</span>';
   content.innerHTML = `
     <div class="detail-section">
-      <h3>Appointment</h3>
-      <div class="detail-row"><span class="detail-label">Patient:</span><span class="detail-value">${escapeHtml(a.patient)}</span></div>
+      <h3>Appointment Details</h3>
+      <div class="detail-row"><span class="detail-label">Patient:</span><span class="detail-value">${escapeHtml(a.patient)} ${statusLabel}</span></div>
       <div class="detail-row"><span class="detail-label">Service:</span><span class="detail-value">${escapeHtml(a.service||'')}</span></div>
       <div class="detail-row"><span class="detail-label">Type:</span><span class="detail-value">${a.type.toUpperCase()}</span></div>
       <div class="detail-row"><span class="detail-label">Date:</span><span class="detail-value">${a.date}</span></div>
+      <div class="detail-row"><span class="detail-label">Status:</span><span class="detail-value">${statusLabel||'Scheduled'}</span></div>
+      <div class="detail-row"><span class="detail-label">Notes:</span><span class="detail-value">Please confirm patient attendance and mark status accordingly.</span></div>
     </div>`;
-  modal.style.display = 'block';
+  openModal('appointmentModal');
 }
 function closeAppointmentModal(){ const m=document.getElementById('appointmentModal'); if(m) m.style.display='none'; }
+
+/* ---------- Toast Notification ---------- */
+function showToast(message, type='success') {
+    let toast = document.getElementById('copilot-toast');
+    if (!toast) return;
+    toast.className = 'copilot-toast copilot-toast-' + type;
+    toast.textContent = message;
+    toast.style.display = 'block';
+    setTimeout(() => { toast.style.display = 'none'; }, 1800);
+}
 
 /* ---------- Utils ---------- */
 function escapeHtml(str=''){ return String(str).replace(/[&<>"']/g, s=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s])); }
