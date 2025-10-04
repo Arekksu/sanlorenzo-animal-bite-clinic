@@ -190,6 +190,97 @@
   padding: 2px 8px;
   margin-left: 8px;
 }
+
+/* ===== Schedule dates: nicer layout & inputs ===== */
+#schedule .schedule-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(180px, 1fr));
+  gap: 12px;
+  margin-top: 8px;
+}
+
+@media (max-width: 1100px){ #schedule .schedule-grid { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 720px) { #schedule .schedule-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 520px) { #schedule .schedule-grid { grid-template-columns: 1fr; } }
+
+#schedule .schedule-item {
+  position: relative;
+  padding: 12px;
+  background: #fff;
+  border: 1px solid #e6e6e6;
+  border-radius: 10px;
+  box-shadow: 0 1px 2px rgba(0,0,0,.03);
+  display: grid;
+  row-gap: 6px;
+}
+
+#schedule .schedule-item label {
+  font-weight: 700;
+  color: #222;
+}
+
+/* Base style for date inputs */
+#schedule .schedule-item input[type="date"]{
+  width: 100%;
+  padding: 10px 40px 10px 12px;       /* room for the calendar icon */
+  border: 1px solid #dcdcdc;
+  border-radius: 8px;
+  background: #fafafa;
+  font-size: 14px;
+  transition: border-color .15s ease, box-shadow .15s ease, background .15s ease;
+}
+
+/* Hover + focus states */
+#schedule .schedule-item input[type="date"]:hover{
+  border-color: #c7c7c7;
+  background: #fefefe;
+}
+#schedule .schedule-item input[type="date"]:focus{
+  outline: none;
+  border-color: #8d0e21;                 /* your maroon */
+  box-shadow: 0 0 0 3px rgba(141,14,33,.15);
+  background: #fff;
+}
+
+/* Invalid state (if you add required/min/max later) */
+#schedule .schedule-item input[type="date"]:invalid{
+  border-color: #e11d48;
+}
+
+/* Remove native chrome decoration so our icon looks clean (WebKit) */
+#schedule .schedule-item input::-webkit-inner-spin-button,
+#schedule .schedule-item input::-webkit-calendar-picker-indicator{
+  opacity: 0;           /* hide default icon; still clickable */
+}
+
+/* Add a calendar icon using a pseudo-element (click passes through) */
+#schedule .schedule-item::after{
+  content: "";
+  position: absolute;
+  right: 18px;
+  bottom: 14px;
+  width: 18px;
+  height: 18px;
+  pointer-events: none;
+  background-repeat: no-repeat;
+  background-size: 18px 18px;
+  /* inline SVG calendar icon (neutral gray) */
+  background-image: url("data:image/svg+xml,%3Csvg width='18' height='18' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Crect x='3' y='4' width='18' height='17' rx='2' ry='2' stroke='%239ca3af' stroke-width='2'/%3E%3Cpath d='M16 2v4M8 2v4M3 10h18' stroke='%239ca3af' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E");
+}
+
+/* Tiny note text style (if you add hints) */
+#schedule .schedule-item .hint{
+  color:#6b7280; font-size:12px;
+}
+
+/* Optional: toolbar buttons above schedule (if you add them later) */
+#schedule .schedule-toolbar { display:flex; gap:10px; margin-bottom:12px; flex-wrap:wrap; }
+.btn-ghost {
+  background:#f6f6f6; border:1px solid #e5e5e5; color:#222;
+  padding:10px 14px; border-radius:8px; cursor:pointer;
+}
+.btn-ghost:hover { background:#ededed; }
+
 /* =========================================================
    SAN LORENZO • EMPLOYEE DASHBOARD (CLEAN CSS)
    - Fixed sidebar (250px)
@@ -408,6 +499,8 @@ body {
 .appointment-item.day14 { border-left-color: #20c997; }
 .appointment-item.day28 { border-left-color: #6f42c1; }
 
+
+
 /* =========================================================
    MODAL (if used)
    ========================================================= */
@@ -424,6 +517,17 @@ body {
   border-radius: 12px 12px 0 0; display: flex; align-items: center; justify-content: space-between;
 }
 .modal-body { padding: 22px; max-height: 70vh; overflow-y: auto; }
+
+
+.tab-content { display:none; }
+.tab-content.active { display:block; }
+.tab-btn.active { background:#8d0e21; color:#fff; }
+.hr { border:0; border-top:1px solid #eee; margin:16px 0; }
+.input-file input[type="file"] { display:block; margin-bottom:8px; }
+.btn-secondary { background:#e9e9e9; border:none; padding:10px 14px; border-radius:6px; cursor:pointer; }
+.btn-ghost { background:#f6f6f6; border:none; padding:10px 14px; border-radius:6px; cursor:pointer; }
+.hint { color:#666; font-size:12px; }
+
 
 /* =========================================================
    RESPONSIVE
@@ -444,3 +548,119 @@ body {
   .main-content { margin-left: 0; width: 100%; }
   .sidebar-menu { display: flex; overflow-x: auto; }
 }
+
+/* --- Fix 1: Sidebar footer shouldn't float over content --- */
+.sidebar { display:flex; flex-direction:column; }
+.sidebar-bottom { position: static; margin-top: auto; }
+
+/* --- Fix 2: Let buttons wrap so they don’t cover labels/text --- */
+.action-buttons,
+.appointment-actions,
+.form-actions {
+  display: flex;
+  flex-wrap: wrap;      /* allow wrapping instead of overlap */
+  gap: 10px;
+}
+
+/* --- Fix 3: Make grid items wrap and never collapse text --- */
+.form-grid {
+  align-items: start;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+.form-group { min-width: 0; }         /* prevents overflow pushing siblings */
+.form-group label { white-space: normal; }
+
+/* --- Fix 4: Tables—keep buttons from sitting on top of text --- */
+.patient-table th, .patient-table td { vertical-align: top; }
+.action-buttons button { flex: 0 0 auto; }
+
+/* --- Fix 5: Date inputs—reserve room for the calendar icon --- */
+#schedule .schedule-item input[type="date"] {
+  padding-right: 44px; /* ensures text never sits under the icon */
+}
+
+/* --- Fix 6: Modals—always sit above everything --- */
+.modal { z-index: 2000; }
+#patientModal .modal-content,
+#editPatientModal .modal-content { position: relative; z-index: 2001; }
+
+/* --- Fix 7: Prevent any accidental overlap from long words/URLs --- */
+.content-section, .table-container, .modal-body { word-wrap: break-word; overflow-wrap: anywhere; }
+
+/* --- Fix 8: Narrow screens—give more breathing room --- */
+@media (max-width: 768px) {
+  .form-actions { justify-content: stretch; }
+  .btn-success, .btn-secondary, .btn-ghost { width: 100%; }
+}
+
+/* SETTINGS: make the tab bar never cover the content */
+#settings .form-header{
+  position: relative;
+  z-index: 2;            /* sits above page, but not over its own content */
+  margin-bottom: 12px;   /* space below the tabs */
+}
+#settings .tab-content{
+  position: relative;
+  z-index: 1;
+  padding-top: 16px;     /* keep content clear of the tab edge */
+}
+
+/* SETTINGS: robust two-column grid with safe minimum width */
+#settings .form-grid{
+  display: grid;
+  grid-template-columns: repeat(2, minmax(340px, 1fr));
+  gap: 18px 24px;
+  align-items: start;    /* prevent tall buttons from pulling neighbors up */
+}
+@media (max-width: 900px){
+  #settings .form-grid{ grid-template-columns: 1fr; }
+}
+
+/* SETTINGS: each group’s internals must wrap, never overlap */
+#settings .form-group{ min-width: 0; }
+#settings .form-group label{ white-space: normal; }
+#settings .form-group p.hint{ margin-top: 6px; line-height: 1.2; }
+
+/* SETTINGS: buttons and links behave like blocks on narrow widths */
+#settings .form-group .btn-success,
+#settings .form-group .btn-secondary,
+#settings .form-group .btn-ghost,
+#settings .form-group a.btn-success,
+#settings .form-group a.btn-ghost{
+  display: inline-block;
+  max-width: 100%;
+  white-space: normal;   /* allow wrapping text inside buttons if needed */
+}
+
+/* FILE INPUT line: keep long filenames from shoving UI */
+#settings input[type="file"]{
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* DATE INPUTS: ensure text never hides under the calendar icon */
+#schedule .schedule-item input[type="date"]{ padding-right: 44px; }
+
+/* VIEW PATIENT TABLE: allocate a fixed actions column so buttons don’t cover text */
+.patient-table th:nth-child(5),
+.patient-table td:nth-child(5){
+  width: 220px;
+}
+.action-buttons{
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.patient-table td{ vertical-align: top; }
+
+/* GENERAL: let long strings/URLs break instead of overlapping */
+.content-section, .table-container, .modal-body{
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+/* SIDEBAR FOOTER (keeps it from sitting on top of things) */
+.sidebar{ display:flex; flex-direction:column; }
+.sidebar-bottom{ position: static; margin-top: auto; }

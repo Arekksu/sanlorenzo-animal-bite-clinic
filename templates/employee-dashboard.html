@@ -21,7 +21,7 @@
         <li><button class="menu-btn" onclick="showSection('view-schedule')">View Schedule</button></li>
       </ul>
       <div class="sidebar-bottom">
-        <a href="/backup-csv" class="menu-btn sidebar-bottom-btn">⬇ Backup Patients (CSV)</a>
+   
         <div class="sidebar-bottom-actions">
           <a href="{{ url_for('home') }}" class="menu-btn sidebar-bottom-btn">Logout</a>
           <button class="menu-btn sidebar-bottom-btn" onclick="showSection('settings')">Settings</button>
@@ -257,6 +257,7 @@
 
       <!-- View Schedule -->
       <section id="view-schedule" class="content-section">
+        
         <h2>Schedule Calendar</h2>
         <!-- Calendar Header (ADDED) -->
         <div class="calendar-header">
@@ -367,6 +368,107 @@
             </div>
           </div>
         </section>
+        <!-- Settings -->
+<section id="settings" class="content-section">
+  <h2>Settings</h2>
+
+  <!-- Tabs header -->
+  <div class="form-header">
+    <div class="form-tabs">
+      <button type="button" class="tab-btn active" onclick="showTab('settings-display')">Display</button>
+      <button type="button" class="tab-btn" onclick="showTab('settings-activity')">Activity Log</button>
+      <button type="button" class="tab-btn" onclick="showTab('settings-maintenance')">Maintenance</button>
+    </div>
+  </div>
+
+  <!-- Display -->
+  <div id="settings-display" class="tab-content active">
+    <div class="form-grid">
+      <div class="form-group">
+        <label>Theme</label>
+        <select id="setting-theme">
+          <option value="system">System</option>
+          <option value="light">Light</option>
+          <option value="dark">Dark</option>
+        </select>
+        <p class="hint">Choose how the app appears.</p>
+      </div>
+
+      <div class="form-group">
+        <label>Density</label>
+        <select id="setting-density">
+          <option value="comfortable">Comfortable</option>
+          <option value="compact">Compact</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-actions">
+      <button type="button" class="btn-success" onclick="saveDisplaySettings()">Save Display Settings</button>
+    </div>
+  </div>
+
+  <!-- Activity Log -->
+  <div id="settings-activity" class="tab-content">
+    <h3>Recent Activity</h3>
+    <div class="table-container">
+      <table class="patient-table">
+        <thead>
+          <tr>
+            <th>When</th>
+            <th>User</th>
+            <th>Action</th>
+            <th>Details</th>
+          </tr>
+        </thead>
+        <tbody id="activity-log-body">
+          <!-- Filled by JS (optional). You can also server-render rows here. -->
+          <tr><td colspan="4">No activity yet.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Maintenance -->
+  <div id="settings-maintenance" class="tab-content">
+    <h3>Backup &amp; Recovery</h3>
+
+    <div class="form-grid">
+      <div class="form-group">
+        <label>Backup Patients (CSV)</label>
+        <p class="hint">Exports all patient records as a CSV.</p>
+        <a class="btn-success" href="{{ url_for('backup_csv') }}">⬇ Download Backup (CSV)</a>
+      </div>
+
+      <div class="form-group">
+        <label>Recover from CSV</label>
+        <p class="hint">Upload a CSV exported from this system to restore data.</p>
+        <form method="POST" action="{{ url_for('restore_csv') }}" enctype="multipart/form-data">
+          <input type="file" name="file" accept=".csv" required>
+          <button type="submit" class="btn-success">⬆ Restore</button>
+        </form>
+      </div>
+    </div>
+
+    <hr class="hr">
+
+    <h3>Database Maintenance</h3>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>Vacuum / Optimize (SQLite)</label>
+        <p class="hint">Reclaims space and optimizes the database file.</p>
+        <form method="POST" action="{{ url_for('db_optimize') }}">
+          <button type="submit" class="btn-secondary">Run Optimize</button>
+        </form>
+      </div>
+      <div class="form-group">
+        <label>Export Raw SQLite DB</label>
+        <p class="hint">Download the `.db` file for a full offline backup.</p>
+        <a class="btn-ghost" href="{{ url_for('backup_sqlite') }}">⬇ Download DB file</a>
+      </div>
+    </div>
+  </div>
+</section>
+
       </main>
     </div>
 

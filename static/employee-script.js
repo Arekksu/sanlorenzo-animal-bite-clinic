@@ -722,6 +722,25 @@ function addAppointmentActionHandlers(){
     };
   });
 }
+/* ---------- Settings ---------- */
+function showTab(tabId) {
+  const section = document.querySelector('.content-section.active') || document;
+  section.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  const target = document.getElementById(tabId);
+  if (target) target.classList.add('active');
+  section.querySelectorAll('.form-tabs .tab-btn').forEach(btn => {
+    const on = btn.getAttribute('onclick') || '';
+    btn.classList.toggle('active', on.includes("'" + tabId + "'"));
+  });
+}
+function toast(msg) {
+  let t = document.getElementById('copilot-toast');
+  if (!t) { t = document.createElement('div'); t.id='copilot-toast'; document.body.appendChild(t); }
+  t.textContent = msg;
+  t.style.cssText="position:fixed;right:16px;bottom:16px;padding:10px 14px;background:#1f883d;color:#fff;border-radius:8px;z-index:9999";
+  t.style.display='block';
+  setTimeout(()=> t.style.display='none',2000);
+}
 
 /* ---------- Appointment Modals (guarded kung walang HTML) ---------- */
 function showAppointmentModal(a){
