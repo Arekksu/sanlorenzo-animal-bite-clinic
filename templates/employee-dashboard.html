@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>San Lorenzo Animal Bite Center - Employee Dashboard</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='employee-styles.css') }}">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
   <div class="dashboard-container">
@@ -21,9 +22,11 @@
         <li><button class="menu-btn" onclick="showSection('view-schedule')">View Schedule</button></li>
       </ul>
       <div class="sidebar-bottom">
-   
+        <div class="employee-greeting">
+          <div class="greeting-text">Hi, {{ employee_name }}!</div>
+        </div>
         <div class="sidebar-bottom-actions">
-          <a href="{{ url_for('home') }}" class="menu-btn sidebar-bottom-btn">Logout</a>
+          <a href="{{ url_for('logout') }}" class="menu-btn sidebar-bottom-btn">Logout</a>
           <button class="menu-btn sidebar-bottom-btn" onclick="showSection('settings')">Settings</button>
         </div>
       </div>
@@ -50,6 +53,85 @@
             <div class="stat-icon">📅</div>
             <h3>Patients Today</h3>
             <div class="stat-number">{{ patients_today[0]['count'] if patients_today else 0 }}</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">✅</div>
+            <h3>Completed Treatments</h3>
+            <div class="stat-number" id="completed-count">0</div>
+          </div>
+        </div>
+
+        <!-- Analytics Charts Section -->
+        <div class="analytics-section">
+          <div class="analytics-header">
+            <h3>Treatment Analytics</h3>
+            <div class="analytics-controls">
+              <label for="monthSelector">View Month:</label>
+              <select id="monthSelector" onchange="updateMonthlyReports()">
+                <option value="all">All Time</option>
+                <option value="current">Current Month</option>
+                <option value="2025-01">January 2025</option>
+                <option value="2025-02">February 2025</option>
+                <option value="2025-03">March 2025</option>
+                <option value="2025-04">April 2025</option>
+                <option value="2025-05">May 2025</option>
+                <option value="2025-06">June 2025</option>
+                <option value="2025-07">July 2025</option>
+                <option value="2025-08">August 2025</option>
+                <option value="2025-09">September 2025</option>
+                <option value="2025-10">October 2025</option>
+                <option value="2025-11">November 2025</option>
+                <option value="2025-12">December 2025</option>
+              </select>
+              <button id="generateReport" onclick="generateMonthlyReport()" class="btn-report">📊 Generate Report</button>
+            </div>
+          </div>
+          
+          <!-- Monthly Summary Cards -->
+          <div class="monthly-summary" id="monthlySummary">
+            <div class="summary-card">
+              <h4>New Patients</h4>
+              <div class="summary-number" id="monthlyNewPatients">0</div>
+            </div>
+            <div class="summary-card">
+              <h4>Completed Treatments</h4>
+              <div class="summary-number" id="monthlyCompleted">0</div>
+            </div>
+            <div class="summary-card">
+              <h4>Active Treatments</h4>
+              <div class="summary-number" id="monthlyActive">0</div>
+            </div>
+            <div class="summary-card">
+              <h4>Completion Rate</h4>
+              <div class="summary-number" id="monthlyRate">0%</div>
+            </div>
+          </div>
+
+          <div class="charts-grid">
+            <div class="chart-container">
+              <h4>Treatment Completion Status</h4>
+              <canvas id="completionChart" width="400" height="200"></canvas>
+            </div>
+            <div class="chart-container">
+              <h4>Daily Progress (Selected Month)</h4>
+              <canvas id="dailyProgressChart" width="400" height="200"></canvas>
+            </div>
+            <div class="chart-container">
+              <h4>Treatment Types Distribution</h4>
+              <canvas id="serviceChart" width="400" height="200"></canvas>
+            </div>
+            <div class="chart-container">
+              <h4>Weekly Completion Trends</h4>
+              <canvas id="weeklyTrendChart" width="400" height="200"></canvas>
+            </div>
+          </div>
+          
+          <!-- Monthly Report Section -->
+          <div class="monthly-report" id="monthlyReportSection" style="display:none;">
+            <h4>📈 Monthly Report</h4>
+            <div class="report-content" id="reportContent"></div>
+            <button onclick="printReport()" class="btn-print">🖨️ Print Report</button>
+            <button onclick="exportReport()" class="btn-export">📥 Export PDF</button>
           </div>
         </div>
       </section>

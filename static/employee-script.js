@@ -792,3 +792,487 @@ window.logout = logout;
 window.changeMonth = changeMonth;
 window.clearSearch = clearSearch;
 window.searchPatients = searchPatients;
+
+/* ====================================================================== */
+/*                          ANALYTICS CHARTS                            */
+/* ====================================================================== */
+
+let charts = {}; // Store chart instances for updates
+
+function initializeAnalyticsCharts() {
+  // Calculate treatment completion statistics
+  const completedPatients = calculateCompletedTreatments();
+  const serviceData = calculateServiceDistribution();
+  
+  // Update completed count
+  document.getElementById('completed-count').textContent = completedPatients.completed;
+  
+  // Initialize all charts
+  initializeCompletionChart(completedPatients);
+  initializeDailyProgressChart();
+  initializeServiceChart(serviceData);
+  initializeWeeklyTrendChart();
+  
+  // Update monthly summary for current month
+  updateMonthlyReports();
+}
+
+function initializeCompletionChart(completedPatients) {
+  const completionCtx = document.getElementById('completionChart').getContext('2d');
+  charts.completion = new Chart(completionCtx, {
+    type: 'doughnut',
+    data: {
+      labels: ['Completed', 'In Progress', 'Not Started'],
+      datasets: [{
+        data: [completedPatients.completed, completedPatients.inProgress, completedPatients.notStarted],
+        backgroundColor: ['#28a745', '#ffc107', '#dc3545'],
+        borderWidth: 2,
+        borderColor: '#fff'
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: {
+          position: 'bottom'
+        }
+      }
+    }
+  });
+}
+
+function initializeDailyProgressChart() {
+  const dailyCtx = document.getElementById('dailyProgressChart').getContext('2d');
+  const dailyData = calculateDailyProgress();
+  
+  charts.daily = new Chart(dailyCtx, {
+    type: 'line',
+    data: {
+      labels: dailyData.days,
+      datasets: [{
+        label: 'New Patients',
+        data: dailyData.newPatients,
+        borderColor: '#800020',
+        backgroundColor: 'rgba(128, 0, 32, 0.1)',
+        tension: 0.4,
+        fill: true
+      }, {
+        label: 'Completed Treatments',
+        data: dailyData.completed,
+        borderColor: '#28a745',
+        backgroundColor: 'rgba(40, 167, 69, 0.1)',
+        tension: 0.4,
+        fill: true
+      }]
+    },
+    options: {
+      responsive: true,
+      scales: {
+        y: {
+          beginAtZero: true
+        }
+      }
+    }
+  });
+}
+
+function initializeServiceChart(serviceData) {
+  const serviceCtx = document.getElementById('serviceChart').getContext('2d');
+  charts.service = new Chart(serviceCtx, {
+    type: 'bar',
+    data: {
+      labels: serviceData.services,
+      datasets: [{
+        label: 'Number of Patients',
+        data: serviceData.counts,
+        backgroundColor: [
+          '#800020',
+          '#a8324a',
+          '#c85a7a',
+          '#e882aa',
+          '#ffaadd'
+        ],
+        borderColor: '#fff',
+        borderWidth: 1
+      }]
+    },
+    options: {
+      responsive: true,
+      scales: {
+        y: {
+          beginAtZero: true
+        }
+      }
+    }
+  });
+}
+
+function initializeWeeklyTrendChart() {
+  const weeklyCtx = document.getElementById('weeklyTrendChart').getContext('2d');
+  const weeklyData = calculateWeeklyTrends();
+  
+  charts.weekly = new Chart(weeklyCtx, {
+    type: 'bar',
+    data: {
+      labels: weeklyData.weeks,
+      datasets: [{
+        label: 'Patients Started',
+        data: weeklyData.started,
+        backgroundColor: '#ffc107'
+      }, {
+        label: 'Treatments Completed',
+        data: weeklyData.completed,
+        backgroundColor: '#28a745'
+      }]
+    },
+    options: {
+      responsive: true,
+      scales: {
+        y: {
+          beginAtZero: true
+        }
+      }
+    }
+  });
+}
+
+function updateMonthlyReports() {
+  const selectedMonth = document.getElementById('monthSelector').value;
+  const monthlyData = calculateMonthlyData(selectedMonth);
+  
+  // Update summary cards
+  document.getElementById('monthlyNewPatients').textContent = monthlyData.newPatients;
+  document.getElementById('monthlyCompleted').textContent = monthlyData.completed;
+  document.getElementById('monthlyActive').textContent = monthlyData.active;
+  document.getElementById('monthlyRate').textContent = monthlyData.completionRate + '%';
+  
+  // Update charts with filtered data
+  updateChartsForMonth(selectedMonth);
+}
+
+function calculateMonthlyData(selectedMonth) {
+  let filteredPatients = patientsData;
+  
+  if (selectedMonth !== 'all') {
+    if (selectedMonth === 'current') {
+      const currentMonth = new Date().toISOString().slice(0, 7);
+      filteredPatients = patientsData.filter(p => 
+        (p.day0 && p.day0.startsWith(currentMonth)) ||
+        (p.day28 && p.day28.startsWith(currentMonth))
+      );
+    } else {
+      filteredPatients = patientsData.filter(p => 
+        (p.day0 && p.day0.startsWith(selectedMonth)) ||
+        (p.day28 && p.day28.startsWith(selectedMonth))
+      );
+    }
+  }
+  
+  const newPatients = filteredPatients.filter(p => 
+    selectedMonth === 'all' ? true : 
+    selectedMonth === 'current' ? 
+      (p.day0 && p.day0.startsWith(new Date().toISOString().slice(0, 7))) :
+      (p.day0 && p.day0.startsWith(selectedMonth))
+  ).length;
+  
+  const completed = filteredPatients.filter(p => {
+    const today = new Date().toISOString().split('T')[0];
+    return p.day28 && p.day28 <= today;
+  }).length;
+  
+  const active = filteredPatients.filter(p => {
+    const today = new Date().toISOString().split('T')[0];
+    return p.day0 && p.day0 <= today && (!p.day28 || p.day28 > today);
+  }).length;
+  
+  const completionRate = newPatients > 0 ? Math.round((completed / newPatients) * 100) : 0;
+  
+  return {
+    newPatients,
+    completed,
+    active,
+    completionRate
+  };
+}
+
+function generateMonthlyReport() {
+  const selectedMonth = document.getElementById('monthSelector').value;
+  const monthlyData = calculateMonthlyData(selectedMonth);
+  const reportSection = document.getElementById('monthlyReportSection');
+  const reportContent = document.getElementById('reportContent');
+  
+  const monthName = selectedMonth === 'all' ? 'All Time' : 
+                   selectedMonth === 'current' ? 'Current Month' :
+                   new Date(selectedMonth + '-01').toLocaleDateString('en', {month: 'long', year: 'numeric'});
+  
+  reportContent.innerHTML = `
+    <h3>📊 Monthly Treatment Report - ${monthName}</h3>
+    <div class="report-stats">
+      <p><strong>📈 Performance Summary:</strong></p>
+      <ul>
+        <li>New Patients: <strong>${monthlyData.newPatients}</strong></li>
+        <li>Completed Treatments: <strong>${monthlyData.completed}</strong></li>
+        <li>Active Treatments: <strong>${monthlyData.active}</strong></li>
+        <li>Completion Rate: <strong>${monthlyData.completionRate}%</strong></li>
+      </ul>
+      
+      <p><strong>📊 Key Insights:</strong></p>
+      <ul>
+        <li>${monthlyData.completionRate >= 80 ? '✅ Excellent completion rate!' : 
+             monthlyData.completionRate >= 60 ? '⚠️ Good completion rate, room for improvement' : 
+             '❗ Low completion rate, attention needed'}</li>
+        <li>Average treatment duration: 28 days (Day 0 to Day 28)</li>
+        <li>Total active caseload: ${monthlyData.active} patients</li>
+      </ul>
+      
+      <p><strong>📋 Recommendations:</strong></p>
+      <ul>
+        <li>Monitor patients approaching Day 28 for completion</li>
+        <li>Follow up with patients who missed appointments</li>
+        <li>Ensure adequate vaccine supply for projected demand</li>
+      </ul>
+    </div>
+  `;
+  
+  reportSection.style.display = 'block';
+}
+
+function printReport() {
+  const reportContent = document.getElementById('reportContent').innerHTML;
+  const printWindow = window.open('', '_blank');
+  printWindow.document.write(`
+    <html>
+      <head>
+        <title>Monthly Treatment Report</title>
+        <style>
+          body { font-family: Arial, sans-serif; margin: 20px; }
+          h3 { color: #800020; }
+          ul { margin: 10px 0; }
+          li { margin: 5px 0; }
+          .report-stats { margin: 20px 0; }
+        </style>
+      </head>
+      <body>
+        ${reportContent}
+        <hr>
+        <p><small>Generated on ${new Date().toLocaleDateString()} - San Lorenzo Animal Bite Center</small></p>
+      </body>
+    </html>
+  `);
+  printWindow.document.close();
+  printWindow.print();
+}
+
+function exportReport() {
+  // Simple CSV export of current data
+  const selectedMonth = document.getElementById('monthSelector').value;
+  const monthlyData = calculateMonthlyData(selectedMonth);
+  
+  const csvContent = `data:text/csv;charset=utf-8,
+Month,New Patients,Completed,Active,Completion Rate
+${selectedMonth},${monthlyData.newPatients},${monthlyData.completed},${monthlyData.active},${monthlyData.completionRate}%
+  `;
+  
+  const encodedUri = encodeURI(csvContent);
+  const link = document.createElement("a");
+  link.setAttribute("href", encodedUri);
+  link.setAttribute("download", `monthly_report_${selectedMonth}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
+function calculateDailyProgress() {
+  const currentMonth = new Date().toISOString().slice(0, 7);
+  const daysInMonth = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate();
+  
+  const days = [];
+  const newPatients = [];
+  const completed = [];
+  
+  for (let day = 1; day <= daysInMonth; day++) {
+    const dateStr = `${currentMonth}-${day.toString().padStart(2, '0')}`;
+    days.push(day.toString());
+    
+    newPatients.push(patientsData.filter(p => p.day0 === dateStr).length);
+    completed.push(patientsData.filter(p => p.day28 === dateStr).length);
+  }
+  
+  return { days, newPatients, completed };
+}
+
+function calculateWeeklyTrends() {
+  const weeks = ['Week 1', 'Week 2', 'Week 3', 'Week 4'];
+  const started = [0, 0, 0, 0];
+  const completed = [0, 0, 0, 0];
+  
+  const currentMonth = new Date().toISOString().slice(0, 7);
+  
+  patientsData.forEach(patient => {
+    if (patient.day0 && patient.day0.startsWith(currentMonth)) {
+      const day = parseInt(patient.day0.split('-')[2]);
+      const week = Math.min(Math.floor((day - 1) / 7), 3);
+      started[week]++;
+    }
+    
+    if (patient.day28 && patient.day28.startsWith(currentMonth)) {
+      const day = parseInt(patient.day28.split('-')[2]);
+      const week = Math.min(Math.floor((day - 1) / 7), 3);
+      completed[week]++;
+    }
+  });
+  
+  return { weeks, started, completed };
+}
+
+function updateChartsForMonth(selectedMonth) {
+  // Update charts with filtered data for selected month
+  const completedPatients = calculateCompletedTreatments(selectedMonth);
+  const serviceData = calculateServiceDistribution(selectedMonth);
+  
+  // Update completion chart
+  charts.completion.data.datasets[0].data = [
+    completedPatients.completed, 
+    completedPatients.inProgress, 
+    completedPatients.notStarted
+  ];
+  charts.completion.update();
+  
+  // Update service chart
+  charts.service.data.labels = serviceData.services;
+  charts.service.data.datasets[0].data = serviceData.counts;
+  charts.service.update();
+  
+  // Update daily progress chart
+  const dailyData = calculateDailyProgress();
+  charts.daily.data.labels = dailyData.days;
+  charts.daily.data.datasets[0].data = dailyData.newPatients;
+  charts.daily.data.datasets[1].data = dailyData.completed;
+  charts.daily.update();
+  
+  // Update weekly trends
+  const weeklyData = calculateWeeklyTrends();
+  charts.weekly.data.datasets[0].data = weeklyData.started;
+  charts.weekly.data.datasets[1].data = weeklyData.completed;
+  charts.weekly.update();
+}
+
+function calculateCompletedTreatments(filterMonth = null) {
+  let completed = 0;
+  let inProgress = 0;
+  let notStarted = 0;
+  
+  let filteredPatients = patientsData;
+  if (filterMonth && filterMonth !== 'all') {
+    const monthStr = filterMonth === 'current' ? new Date().toISOString().slice(0, 7) : filterMonth;
+    filteredPatients = patientsData.filter(p => 
+      (p.day0 && p.day0.startsWith(monthStr)) ||
+      (p.day28 && p.day28.startsWith(monthStr))
+    );
+  }
+  
+  filteredPatients.forEach(patient => {
+    const today = new Date().toISOString().split('T')[0];
+    const day28Date = patient.day28;
+    
+    if (day28Date && day28Date <= today) {
+      completed++;
+    } else if (patient.day0 && patient.day0 <= today) {
+      inProgress++;
+    } else {
+      notStarted++;
+    }
+  });
+  
+  return { completed, inProgress, notStarted };
+}
+
+function calculateServiceDistribution(filterMonth = null) {
+  let filteredPatients = patientsData;
+  if (filterMonth && filterMonth !== 'all') {
+    const monthStr = filterMonth === 'current' ? new Date().toISOString().slice(0, 7) : filterMonth;
+    filteredPatients = patientsData.filter(p => 
+      (p.day0 && p.day0.startsWith(monthStr)) ||
+      (p.day28 && p.day28.startsWith(monthStr))
+    );
+  }
+  
+  const serviceCounts = {};
+  
+  filteredPatients.forEach(patient => {
+    const service = patient.service || 'Unknown';
+    serviceCounts[service] = (serviceCounts[service] || 0) + 1;
+  });
+  
+  const services = Object.keys(serviceCounts);
+  const counts = Object.values(serviceCounts);
+  
+  return { services, counts };
+}
+
+// Initialize charts when page loads
+document.addEventListener('DOMContentLoaded', function() {
+  setTimeout(() => {
+    if (typeof Chart !== 'undefined') {
+      initializeAnalyticsCharts();
+    }
+  }, 1000);
+});
+
+// ========= AUDIT TRAIL FUNCTIONALITY =========
+async function loadAuditTrail() {
+  const tbody = document.getElementById('activity-log-body');
+  if (!tbody) return;
+  
+  try {
+    const response = await fetch('/audit-trail');
+    if (!response.ok) throw new Error('Failed to load audit trail');
+    
+    const data = await response.json();
+    const auditLogs = data.audit_logs || [];
+    
+    if (auditLogs.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="4">No activity yet.</td></tr>';
+      return;
+    }
+    
+    tbody.innerHTML = auditLogs.map(log => {
+      const timestamp = new Date(log.timestamp).toLocaleString();
+      const actionClass = log.action === 'LOGIN' ? 'success' : 
+                         log.action === 'LOGOUT' ? 'info' : 
+                         log.action === 'FAILED_LOGIN' ? 'danger' : '';
+      
+      return `
+        <tr>
+          <td>${timestamp}</td>
+          <td>${escapeHtml(log.employee_name)} (${escapeHtml(log.employee_id)})</td>
+          <td><span class="badge badge-${actionClass}">${log.action}</span></td>
+          <td>IP: ${log.ip_address || 'Unknown'}</td>
+        </tr>
+      `;
+    }).join('');
+    
+  } catch (error) {
+    console.error('Error loading audit trail:', error);
+    tbody.innerHTML = '<tr><td colspan="4">Error loading activity log.</td></tr>';
+  }
+}
+
+// Load audit trail when settings activity tab is shown
+function showTab(tabId) {
+  // Hide all tabs
+  document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+  
+  // Show selected tab
+  const tab = document.getElementById(tabId);
+  if (tab) tab.classList.add('active');
+  
+  // Make button active
+  event.target.classList.add('active');
+  
+  // Load audit trail if activity tab is selected
+  if (tabId === 'settings-activity') {
+    loadAuditTrail();
+  }
+}

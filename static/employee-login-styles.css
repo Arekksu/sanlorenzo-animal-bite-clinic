@@ -68,6 +68,17 @@ body {
     margin-bottom: 2rem;
 }
 
+.error-message {
+    background-color: #f8d7da;
+    color: #721c24;
+    padding: 12px;
+    border-radius: 8px;
+    border: 1px solid #f5c6cb;
+    margin-bottom: 1.5rem;
+    font-size: 0.9rem;
+    text-align: center;
+}
+
 .form-group {
     margin-bottom: 1.5rem;
     text-align: left;

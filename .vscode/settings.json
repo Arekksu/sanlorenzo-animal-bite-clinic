@@ -1,5 +1,8 @@
 {
     "emmet.includeLanguages": {
         "jinja-html": "html"
-    }
+    },
+    "python.analysis.extraPaths": [
+        "./venv/Lib/site-packages"
+    ]
 }

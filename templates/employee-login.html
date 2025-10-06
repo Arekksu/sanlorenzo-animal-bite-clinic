@@ -20,6 +20,12 @@
             </div>
             
            <form class="login-form" method="POST" action="{{ url_for('employee_login') }}">
+                
+                {% if error %}
+                <div class="error-message">
+                    {{ error }}
+                </div>
+                {% endif %}
 
                 <div class="form-group">
                     <label for="employeeId">Employee ID:</label>
@@ -37,7 +43,7 @@
                 
                 <div class="login-footer">
                     <p class="demo-info">Demo Credentials:</p>
-                    <p class="demo-credentials">Employee ID: admin | Password: admin123</p>
+                    <p class="demo-credentials">admin/admin123 | doctor1/doc123 | nurse1/nurse123 | staff1/staff123</p>
                 </div>
             </form>
             

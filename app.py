@@ -1,11 +1,8 @@
 from flask import Flask, render_template, request, redirect, url_for, g, send_file, session
 import sqlite3
 from datetime import date
-import psycopg2
-import pandas as pd
+import pandas as pd # type: ignore
 from io import BytesIO
-import csv, io, sqlite3, os
-from flask import send_file, request, redirect, url_for, flash
 
 
 app = Flask(__name__)
@@ -18,6 +15,12 @@ def get_db():
         db = g._database = sqlite3.connect(DATABASE)
         db.row_factory = sqlite3.Row
     return db
+
+def require_login():
+    """Helper function to check if user is logged in"""
+    if 'employee_id' not in session or 'employee_name' not in session:
+        return redirect(url_for('employee_login'))
+    return None
 
 ##backup to csv
 @app.route('/backup-csv')
@@ -51,7 +54,17 @@ def close_connection(exception):
 
 @app.route('/')
 def home():
-    return "Welcome to the Animal Bite Clinic System"
+    return redirect(url_for('employee_login'))
+
+@app.route('/logout')
+def logout():
+    # Log logout for audit trail
+    if 'employee_id' in session and 'employee_name' in session:
+        log_audit_trail(session['employee_id'], session['employee_name'], "LOGOUT", request.remote_addr)
+    
+    # Clear the session for audit trail
+    session.clear()
+    return redirect(url_for('employee_login'))
 
 @app.route('/employee-login', methods=['GET', 'POST'])
 def employee_login():
@@ -59,17 +72,36 @@ def employee_login():
         emp_id = request.form['employeeId']
         password = request.form['password']
 
-        # Demo credentials
-        if emp_id == "admin" and password == "admin123":
-            session['employee_name'] = 'Admin'  # Set the name for the sidebar greeting
+        # Employee credentials dictionary
+        employees = {
+            "admin": {"password": "admin123", "name": "Admin"},
+            "doctor1": {"password": "doc123", "name": "Dr. Smith"},
+            "nurse1": {"password": "nurse123", "name": "Nurse Johnson"},
+            "staff1": {"password": "staff123", "name": "Staff Member"}
+        }
+
+        # Check credentials
+        if emp_id in employees and employees[emp_id]["password"] == password:
+            session['employee_name'] = employees[emp_id]["name"]
+            session['employee_id'] = emp_id
+            
+            # Log successful login for audit trail
+            log_audit_trail(emp_id, employees[emp_id]["name"], "LOGIN", request.remote_addr)
+            
             return redirect(url_for('employee_dashboard'))
         else:
+            # Log failed login attempt
+            log_audit_trail(emp_id, "Unknown", "FAILED_LOGIN", request.remote_addr)
             return render_template('employee-login.html', error="Invalid credentials")
 
     return render_template('employee-login.html')
 
 @app.route('/employee-dashboard', methods=["GET", "POST"])
 def employee_dashboard():
+    # Check if user is logged in
+    if 'employee_id' not in session or 'employee_name' not in session:
+        return redirect(url_for('employee_login'))
+    
     conn = get_db()
 
     # Save patient form
@@ -132,7 +164,8 @@ def employee_dashboard():
     return render_template("employee-dashboard.html", 
                          patients=patients,
                          upcoming_appointments=[{'count': upcoming_appointments['count'] if upcoming_appointments else 0}],
-                         patients_today=[{'count': patients_today['count'] if patients_today else 0}])
+                         patients_today=[{'count': patients_today['count'] if patients_today else 0}],
+                         employee_name=session.get('employee_name', 'User'))
 
 @app.route("/patient/<int:patient_id>")
 def patient_detail(patient_id):
@@ -169,6 +202,10 @@ def delete_patient(patient_id):
 
 @app.route("/api/patients")
 def api_patients():
+    auth_check = require_login()
+    if auth_check:
+        return auth_check
+    
     conn = get_db()
     patients = conn.execute("""
         SELECT id, patient_name, date_of_bite, service_type, age, gender, contact_number,
@@ -183,6 +220,10 @@ def api_patients():
 
 @app.route("/api/patients-schedule")
 def get_patients_schedule():
+    auth_check = require_login()
+    if auth_check:
+        return auth_check
+    
     conn = get_db()
     patients = conn.execute("""
         SELECT id, patient_name, service_type, date_of_bite, 
@@ -207,10 +248,134 @@ def get_patients_schedule():
     
     return patients_list
 
+@app.route('/restore-csv', methods=['POST'])
+def restore_csv():
+    if 'file' not in request.files:
+        return redirect(url_for('employee_dashboard'))
+    
+    file = request.files['file']
+    if file.filename == '':
+        return redirect(url_for('employee_dashboard'))
+    
+    if file and file.filename.endswith('.csv'):
+        try:
+            # Read CSV file
+            df = pd.read_csv(file)
+            
+            # Get database connection
+            conn = get_db()
+            cursor = conn.cursor()
+            
+            # Insert each row from CSV into database
+            for _, row in df.iterrows():
+                cursor.execute("""
+                    INSERT OR REPLACE INTO patients (
+                        id, patient_name, age, gender, contact_number, address,
+                        date_of_bite, bite_location, place_of_bite, source_of_bite,
+                        type_of_bite, source_status, exposure, service_type,
+                        day0, day3, day7, day14, day28
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (
+                    row.get('id'), row.get('patient_name'), row.get('age'), 
+                    row.get('gender'), row.get('contact_number'), row.get('address'),
+                    row.get('date_of_bite'), row.get('bite_location'), row.get('place_of_bite'),
+                    row.get('source_of_bite'), row.get('type_of_bite'), row.get('source_status'),
+                    row.get('exposure'), row.get('service_type'), row.get('day0'),
+                    row.get('day3'), row.get('day7'), row.get('day14'), row.get('day28')
+                ))
+            
+            conn.commit()
+            return redirect(url_for('employee_dashboard'))
+            
+        except Exception as e:
+            print(f"Error restoring CSV: {e}")
+            return redirect(url_for('employee_dashboard'))
+    
+    return redirect(url_for('employee_dashboard'))
+
+@app.route('/db-optimize', methods=['POST'])
+def db_optimize():
+    try:
+        conn = get_db()
+        cursor = conn.cursor()
+        cursor.execute("VACUUM")
+        cursor.execute("ANALYZE")
+        conn.commit()
+        return redirect(url_for('employee_dashboard'))
+    except Exception as e:
+        print(f"Error optimizing database: {e}")
+        return redirect(url_for('employee_dashboard'))
+
+@app.route('/backup-sqlite')
+def backup_sqlite():
+    try:
+        return send_file(
+            DATABASE,
+            mimetype="application/x-sqlite3",
+            as_attachment=True,
+            download_name="database_backup.db"
+        )
+    except Exception as e:
+        print(f"Error backing up database: {e}")
+        return redirect(url_for('employee_dashboard'))
+
 @app.route('/settings')
 def settings():
     return render_template('settings.html')
 
+@app.route('/audit-trail')
+def audit_trail():
+    """Get audit trail data for the dashboard"""
+    auth_check = require_login()
+    if auth_check:
+        return auth_check
+    
+    from flask import jsonify
+    conn = get_db()
+    audit_logs = conn.execute('''
+        SELECT employee_id, employee_name, action, timestamp, ip_address
+        FROM audit_trail
+        ORDER BY timestamp DESC
+        LIMIT 100
+    ''').fetchall()
+    
+    return jsonify({'audit_logs': [dict(log) for log in audit_logs]})
+
+def init_database():
+    """Initialize database tables including audit trail"""
+    conn = sqlite3.connect(DATABASE)
+    cursor = conn.cursor()
+    
+    # Create audit_trail table if it doesn't exist
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS audit_trail (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            employee_id TEXT,
+            employee_name TEXT,
+            action TEXT,
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+            ip_address TEXT
+        )
+    ''')
+    
+    conn.commit()
+    conn.close()
+
+def log_audit_trail(employee_id, employee_name, action, ip_address):
+    """Log employee actions for audit trail"""
+    conn = sqlite3.connect(DATABASE)
+    cursor = conn.cursor()
+    
+    cursor.execute('''
+        INSERT INTO audit_trail (employee_id, employee_name, action, ip_address)
+        VALUES (?, ?, ?, ?)
+    ''', (employee_id, employee_name, action, ip_address))
+    
+    conn.commit()
+    conn.close()
+
 
 if __name__ == "__main__":
+    # Initialize database tables
+    init_database()
     app.run(debug=True, port=5001)
