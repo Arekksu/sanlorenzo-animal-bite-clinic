@@ -3,24 +3,57 @@
 // Utility
 function escapeHtml(s){ const d=document.createElement('div'); d.textContent=s??''; return d.innerHTML; }
 
-// Modal helpers
+// Modal helpers with smooth animations
 function openModal(id){
-  const m=document.getElementById(id); if(!m) return;
+  const m=document.getElementById(id); 
+  if(!m) return;
+  
+  // Set display first
   m.style.display='block';
+  
+  // Force reflow to ensure display change is applied
+  m.offsetHeight;
+  
+  // Add show class for smooth animation
+  setTimeout(() => {
+    m.classList.add('show');
+  }, 10);
+  
   // Remove previous listeners to avoid stacking
   if (m._escListener) document.removeEventListener('keydown', m._escListener);
   if (m._bgListener) m.removeEventListener('click', m._bgListener);
+  
   // ESC key
-  m._escListener = function(ev){ if(ev.key==='Escape'){ closeModal(id); document.removeEventListener('keydown',m._escListener); } };
+  m._escListener = function(ev){ 
+    if(ev.key==='Escape'){ 
+      closeModal(id); 
+      document.removeEventListener('keydown',m._escListener); 
+    } 
+  };
   document.addEventListener('keydown', m._escListener);
+  
   // Click outside modal
-  m._bgListener = function(e){ if(e.target===m){ closeModal(id); m.removeEventListener('click',m._bgListener); document.removeEventListener('keydown',m._escListener); } };
+  m._bgListener = function(e){ 
+    if(e.target===m){ 
+      closeModal(id); 
+      m.removeEventListener('click',m._bgListener); 
+      document.removeEventListener('keydown',m._escListener); 
+    } 
+  };
   m.addEventListener('click', m._bgListener);
 }
+
 function closeModal(id){
   const m=document.getElementById(id);
   if(m) {
-    m.style.display='none';
+    // Remove show class for smooth close animation
+    m.classList.remove('show');
+    
+    // Wait for animation to complete before hiding
+    setTimeout(() => {
+      m.style.display='none';
+    }, 300);
+    
     if (m._escListener) document.removeEventListener('keydown', m._escListener);
     if (m._bgListener) m.removeEventListener('click', m._bgListener);
   }
@@ -331,6 +364,15 @@ function showSection(sectionName) {
 
   currentSection = sectionName;
 
+  if (sectionName === 'dashboard') {
+    // Initialize charts when dashboard is shown
+    setTimeout(() => {
+      if (typeof Chart !== 'undefined') {
+        console.log('Dashboard section activated, initializing charts...');
+        initializeAnalyticsCharts();
+      }
+    }, 100);
+  }
   if (sectionName === 'view-patient') {
     // Pull fresh data from DB then (re)initialize filters/sorts
     reloadPatientTableFromAPI().then(() => initializeViewPatientSection());
@@ -800,18 +842,45 @@ window.searchPatients = searchPatients;
 let charts = {}; // Store chart instances for updates
 
 function initializeAnalyticsCharts() {
+  console.log('Starting chart initialization...');
+  
+  // Check if we're on the dashboard section
+  const dashboardSection = document.getElementById('dashboard');
+  if (!dashboardSection || !dashboardSection.classList.contains('active')) {
+    console.log('Dashboard section not active, skipping chart initialization');
+    return;
+  }
+  
   // Calculate treatment completion statistics
   const completedPatients = calculateCompletedTreatments();
   const serviceData = calculateServiceDistribution();
   
+  console.log('Chart data calculated:', { completedPatients, serviceData });
+  
   // Update completed count
-  document.getElementById('completed-count').textContent = completedPatients.completed;
+  const completedCountEl = document.getElementById('completed-count');
+  if (completedCountEl) {
+    completedCountEl.textContent = completedPatients.completed;
+  }
   
   // Initialize all charts
-  initializeCompletionChart(completedPatients);
-  initializeDailyProgressChart();
-  initializeServiceChart(serviceData);
-  initializeWeeklyTrendChart();
+  try {
+    initializeCompletionChart(completedPatients);
+    initializeDailyProgressChart();
+    initializeServiceChart(serviceData);
+    initializeWeeklyTrendChart();
+    console.log('All charts initialized successfully');
+  } catch (error) {
+    console.error('Error initializing charts:', error);
+  }
+  
+  // Add loaded class to all chart containers for smooth animation
+  setTimeout(() => {
+    document.querySelectorAll('.chart-container').forEach(container => {
+      container.classList.add('loaded');
+    });
+    console.log('Added loaded class to chart containers');
+  }, 100);
   
   // Update monthly summary for current month
   updateMonthlyReports();
@@ -938,7 +1007,8 @@ function initializeWeeklyTrendChart() {
 
 function updateMonthlyReports() {
   const selectedMonth = document.getElementById('monthSelector').value;
-  const monthlyData = calculateMonthlyData(selectedMonth);
+  const periodType = document.getElementById('periodType')?.value || 'month';
+  const monthlyData = calculateMonthlyData(selectedMonth, periodType);
   
   // Update summary cards
   document.getElementById('monthlyNewPatients').textContent = monthlyData.newPatients;
@@ -947,94 +1017,477 @@ function updateMonthlyReports() {
   document.getElementById('monthlyRate').textContent = monthlyData.completionRate + '%';
   
   // Update charts with filtered data
-  updateChartsForMonth(selectedMonth);
+  updateChartsForMonth(selectedMonth, periodType);
 }
 
-function calculateMonthlyData(selectedMonth) {
+function calculateMonthlyData(selectedMonth, periodType = 'month') {
   let filteredPatients = patientsData;
   
   if (selectedMonth !== 'all') {
-    if (selectedMonth === 'current') {
-      const currentMonth = new Date().toISOString().slice(0, 7);
-      filteredPatients = patientsData.filter(p => 
-        (p.day0 && p.day0.startsWith(currentMonth)) ||
-        (p.day28 && p.day28.startsWith(currentMonth))
+    if (periodType === 'year') {
+      const year = selectedMonth === 'year-current' ? new Date().getFullYear().toString() : selectedMonth;
+      filteredPatients = patientsData.filter(p =>
+        (p.day0 && p.day0.startsWith(year)) || (p.day28 && p.day28.startsWith(year))
       );
     } else {
-      filteredPatients = patientsData.filter(p => 
-        (p.day0 && p.day0.startsWith(selectedMonth)) ||
-        (p.day28 && p.day28.startsWith(selectedMonth))
-      );
+      if (selectedMonth === 'current') {
+        const currentMonth = new Date().toISOString().slice(0, 7);
+        filteredPatients = patientsData.filter(p => 
+          (p.day0 && p.day0.startsWith(currentMonth)) ||
+          (p.day28 && p.day28.startsWith(currentMonth))
+        );
+      } else {
+        filteredPatients = patientsData.filter(p => 
+          (p.day0 && p.day0.startsWith(selectedMonth)) ||
+          (p.day28 && p.day28.startsWith(selectedMonth))
+        );
+      }
     }
   }
   
-  const newPatients = filteredPatients.filter(p => 
-    selectedMonth === 'all' ? true : 
-    selectedMonth === 'current' ? 
-      (p.day0 && p.day0.startsWith(new Date().toISOString().slice(0, 7))) :
-      (p.day0 && p.day0.startsWith(selectedMonth))
-  ).length;
+  const newPatients = filteredPatients.filter(p => {
+    if (selectedMonth === 'all') return true;
+    if (periodType === 'year') {
+      const year = selectedMonth === 'year-current' ? new Date().getFullYear().toString() : selectedMonth;
+      return p.day0 && p.day0.startsWith(year);
+    }
+    if (selectedMonth === 'current') return (p.day0 && p.day0.startsWith(new Date().toISOString().slice(0, 7)));
+    return p.day0 && p.day0.startsWith(selectedMonth);
+  }).length;
   
+  const today = new Date().toISOString().split('T')[0];
+  
+  // Calculate completed treatments (patients who have reached or passed day 28)
   const completed = filteredPatients.filter(p => {
-    const today = new Date().toISOString().split('T')[0];
     return p.day28 && p.day28 <= today;
   }).length;
   
+  // Calculate active treatments (patients who started but haven't completed)
   const active = filteredPatients.filter(p => {
-    const today = new Date().toISOString().split('T')[0];
-    return p.day0 && p.day0 <= today && (!p.day28 || p.day28 > today);
+    const started = p.day0 && p.day0 <= today;
+    const notCompleted = !p.day28 || p.day28 > today;
+    return started && notCompleted;
   }).length;
   
+  // Calculate overdue patients (missed appointments)
+  const overdue = filteredPatients.filter(p => {
+    if (!p.day0) return false;
+    const day0Date = new Date(p.day0);
+    const daysSinceStart = Math.floor((new Date() - day0Date) / (1000 * 60 * 60 * 24));
+    
+    // Check if any required doses are overdue (allow 3-day grace period)
+    if (daysSinceStart >= 6 && (!p.day3 || p.day3 < today)) return true;
+    if (daysSinceStart >= 10 && (!p.day7 || p.day7 < today)) return true;
+    if (daysSinceStart >= 17 && (!p.day14 || p.day14 < today)) return true;
+    if (daysSinceStart >= 31 && (!p.day28 || p.day28 < today)) return true;
+    
+    return false;
+  }).length;
+  
+  // Calculate adherence rate (patients who received all doses on time)
+  const adherent = filteredPatients.filter(p => {
+    if (!p.day0) return false;
+    
+    const day0Date = new Date(p.day0);
+    const daysSinceStart = Math.floor((new Date() - day0Date) / (1000 * 60 * 60 * 24));
+    
+    let adherenceScore = 1; // Day 0 is always given
+    let totalDosesRequired = 1;
+    
+    if (daysSinceStart >= 3) {
+      totalDosesRequired++;
+      if (p.day3) adherenceScore++;
+    }
+    if (daysSinceStart >= 7) {
+      totalDosesRequired++;
+      if (p.day7) adherenceScore++;
+    }
+    if (daysSinceStart >= 14) {
+      totalDosesRequired++;
+      if (p.day14) adherenceScore++;
+    }
+    if (daysSinceStart >= 28) {
+      totalDosesRequired++;
+      if (p.day28) adherenceScore++;
+    }
+    
+    return adherenceScore === totalDosesRequired;
+  }).length;
+  
+  // Calculate demographics and risk factors
+  const demographics = analyzeDemographics(filteredPatients);
+  const riskFactors = analyzeRiskFactors(filteredPatients);
+  const treatmentTypes = analyzeTreatmentTypes(filteredPatients);
+  
   const completionRate = newPatients > 0 ? Math.round((completed / newPatients) * 100) : 0;
+  const adherenceRate = newPatients > 0 ? Math.round((adherent / newPatients) * 100) : 0;
+  const overdueRate = newPatients > 0 ? Math.round((overdue / newPatients) * 100) : 0;
   
   return {
     newPatients,
     completed,
     active,
-    completionRate
+    overdue,
+    adherent,
+    completionRate,
+    adherenceRate,
+    overdueRate,
+    demographics,
+    riskFactors,
+    treatmentTypes
   };
+}
+
+function analyzeDemographics(patients) {
+  const ageGroups = {
+    children: patients.filter(p => p.age < 18).length,
+    adults: patients.filter(p => p.age >= 18 && p.age < 65).length,
+    elderly: patients.filter(p => p.age >= 65).length
+  };
+  
+  const genderDistribution = {
+    male: patients.filter(p => p.gender === 'Male').length,
+    female: patients.filter(p => p.gender === 'Female').length,
+    other: patients.filter(p => p.gender === 'Other').length
+  };
+  
+  return { ageGroups, genderDistribution };
+}
+
+function analyzeRiskFactors(patients) {
+  const biteLocations = {
+    high_risk: 0,
+    medium_risk: 0,
+    low_risk: 0
+  };
+  
+  const animalSources = {};
+  const exposureTypes = {};
+  
+  patients.forEach(p => {
+    // Bite location analysis
+    if (p.bite_location) {
+      const location = p.bite_location.toLowerCase();
+      if (location.includes('head') || location.includes('face') || location.includes('neck') || location.includes('eye')) {
+        biteLocations.high_risk++;
+      } else if (location.includes('hand') || location.includes('finger') || location.includes('arm') || location.includes('wrist')) {
+        biteLocations.medium_risk++;
+      } else {
+        biteLocations.low_risk++;
+      }
+    }
+    
+    // Animal source analysis
+    if (p.source_of_bite) {
+      animalSources[p.source_of_bite] = (animalSources[p.source_of_bite] || 0) + 1;
+    }
+    
+    // Exposure type analysis
+    if (p.exposure) {
+      exposureTypes[p.exposure] = (exposureTypes[p.exposure] || 0) + 1;
+    }
+  });
+  
+  return { biteLocations, animalSources, exposureTypes };
+}
+
+function analyzeTreatmentTypes(patients) {
+  const serviceTypes = {};
+  const vaccinationStatus = {};
+  
+  patients.forEach(p => {
+    if (p.service_type) {
+      serviceTypes[p.service_type] = (serviceTypes[p.service_type] || 0) + 1;
+    }
+    
+    if (p.vaccinated) {
+      vaccinationStatus[p.vaccinated] = (vaccinationStatus[p.vaccinated] || 0) + 1;
+    }
+  });
+  
+  return { serviceTypes, vaccinationStatus };
 }
 
 function generateMonthlyReport() {
   const selectedMonth = document.getElementById('monthSelector').value;
-  const monthlyData = calculateMonthlyData(selectedMonth);
+  const periodType = document.getElementById('periodType')?.value || 'month';
+  const monthlyData = calculateMonthlyData(selectedMonth, periodType);
   const reportSection = document.getElementById('monthlyReportSection');
   const reportContent = document.getElementById('reportContent');
   
-  const monthName = selectedMonth === 'all' ? 'All Time' : 
-                   selectedMonth === 'current' ? 'Current Month' :
-                   new Date(selectedMonth + '-01').toLocaleDateString('en', {month: 'long', year: 'numeric'});
+  let rangeLabel = 'All Time';
+  if (selectedMonth !== 'all') {
+    if (periodType === 'year') {
+      const year = selectedMonth === 'year-current' ? new Date().getFullYear().toString() : selectedMonth;
+      rangeLabel = `Year ${year}`;
+    } else if (selectedMonth === 'current') {
+      rangeLabel = 'Current Month';
+    } else {
+      rangeLabel = new Date(selectedMonth + '-01').toLocaleDateString('en', {month: 'long', year: 'numeric'});
+    }
+  }
+  
+  const performanceInsightsList = generatePerformanceInsightsList(monthlyData);
+  const recommendationsList = buildRecommendations(monthlyData);
   
   reportContent.innerHTML = `
-    <h3>📊 Monthly Treatment Report - ${monthName}</h3>
-    <div class="report-stats">
-      <p><strong>📈 Performance Summary:</strong></p>
+    <style>
+      /* Text-first report styles */
+      .text-report { font-family: system-ui, Arial, sans-serif; color:#222; line-height:1.6; }
+      .text-report h3 { font-size: 1.5rem; margin: 0 0 .25rem; color:#800020; }
+      .text-report .meta { color:#555; font-size:.95rem; margin-bottom: .75rem; }
+      .text-report hr { border:0; border-top:1px solid #ddd; margin: .75rem 0 1rem; }
+      .text-report h4 { font-size: 1.05rem; margin: 1rem 0 .25rem; color:#333; }
+      .text-report p { margin:.25rem 0; }
+      .text-report ul, .text-report ol { margin:.5rem 0 .75rem 1.25rem; }
+      .text-report .kpi { font-weight:600; }
+      .text-report .muted { color:#666; }
+    </style>
+    <div class="text-report">
+      <h3>Treatment Report</h3>
+      <div class="meta">San Lorenzo Animal Bite Center — ${rangeLabel} · Generated ${new Date().toLocaleDateString('en-US', {year:'numeric',month:'long',day:'numeric',hour:'2-digit',minute:'2-digit'})}</div>
+      <hr>
+      <h4>Summary</h4>
+      <p>New Patients: <span class="kpi">${monthlyData.newPatients}</span>; Completed: <span class="kpi">${monthlyData.completed}</span>; Active: <span class="kpi">${monthlyData.active}</span>; Overdue: <span class="kpi">${monthlyData.overdue}</span></p>
+      <h4>KPIs</h4>
       <ul>
-        <li>New Patients: <strong>${monthlyData.newPatients}</strong></li>
-        <li>Completed Treatments: <strong>${monthlyData.completed}</strong></li>
-        <li>Active Treatments: <strong>${monthlyData.active}</strong></li>
-        <li>Completion Rate: <strong>${monthlyData.completionRate}%</strong></li>
+        <li>Completion: <span class="kpi">${monthlyData.completionRate}%</span></li>
+        <li>Adherence: <span class="kpi">${monthlyData.adherenceRate}%</span></li>
+        <li>On‑Time: <span class="kpi">${100 - monthlyData.overdueRate}%</span></li>
       </ul>
-      
-      <p><strong>📊 Key Insights:</strong></p>
+      <h4>Insights</h4>
       <ul>
-        <li>${monthlyData.completionRate >= 80 ? '✅ Excellent completion rate!' : 
-             monthlyData.completionRate >= 60 ? '⚠️ Good completion rate, room for improvement' : 
-             '❗ Low completion rate, attention needed'}</li>
-        <li>Average treatment duration: 28 days (Day 0 to Day 28)</li>
-        <li>Total active caseload: ${monthlyData.active} patients</li>
+        ${performanceInsightsList.map(t => `<li>${t}</li>`).join('')}
       </ul>
-      
-      <p><strong>📋 Recommendations:</strong></p>
-      <ul>
-        <li>Monitor patients approaching Day 28 for completion</li>
-        <li>Follow up with patients who missed appointments</li>
-        <li>Ensure adequate vaccine supply for projected demand</li>
-      </ul>
+      <h4>Recommendations</h4>
+      <ol>
+        ${recommendationsList.map(r => `<li><strong>${r.category} (${r.priority.toUpperCase()}):</strong> ${r.text} <span class="muted">— ${r.action}</span></li>`).join('')}
+      </ol>
     </div>
   `;
   
   reportSection.style.display = 'block';
+}
+
+function getPerformanceClass(rate) {
+  if (rate >= 90) return 'excellent';
+  if (rate >= 75) return 'good';
+  if (rate >= 60) return 'fair';
+  return 'poor';
+}
+
+function generatePerformanceInsights(data) {
+  const insights = [];
+  
+  // Completion rate insights
+  if (data.completionRate >= 95) {
+    insights.push("🏆 <strong>Exceptional Performance:</strong> Treatment completion rate exceeds WHO recommendations.");
+  } else if (data.completionRate >= 85) {
+    insights.push("✅ <strong>Good Performance:</strong> Treatment completion rate meets WHO standards.");
+  } else if (data.completionRate >= 70) {
+    insights.push("⚠️ <strong>Performance Alert:</strong> Completion rate below optimal - implement follow-up protocols.");
+  } else {
+    insights.push("🚨 <strong>Critical Alert:</strong> Completion rate critically low - immediate intervention required.");
+  }
+  
+  // Adherence insights
+  if (data.adherenceRate >= 95) {
+    insights.push("🎯 <strong>Excellent Adherence:</strong> Patients demonstrating superior treatment compliance.");
+  } else if (data.adherenceRate < 80) {
+    insights.push("📞 <strong>Adherence Concern:</strong> Consider enhanced patient education and reminder systems.");
+  }
+  
+  // Overdue analysis
+  if (data.overdueRate > 10) {
+    insights.push("⏰ <strong>Scheduling Alert:</strong> High overdue rate indicates need for improved appointment management.");
+  }
+  
+  // Volume analysis
+  if (data.newPatients > 20) {
+    insights.push("📈 <strong>High Volume Period:</strong> Increased caseload - ensure adequate staffing and vaccine supply.");
+  }
+  
+  return insights.map(insight => `<p>${insight}</p>`).join('');
+}
+
+// New: list-based insights (plain text strings)
+function generatePerformanceInsightsList(data) {
+  const out = [];
+  if (data.completionRate >= 95) out.push('Exceptional completion rate exceeds recommended standards.');
+  else if (data.completionRate >= 85) out.push('Completion rate meets recommended standards.');
+  else if (data.completionRate >= 70) out.push('Completion rate below optimal — strengthen follow-up protocols.');
+  else out.push('Completion rate critically low — immediate intervention required.');
+
+  if (data.adherenceRate >= 95) out.push('Excellent patient adherence observed.');
+  else if (data.adherenceRate < 80) out.push('Adherence concern — boost education and reminders.');
+
+  if (data.overdueRate > 10) out.push('High overdue rate — improve scheduling and outreach.');
+  if (data.newPatients > 20) out.push('High volume period — check staffing and vaccine supply.');
+  return out;
+}
+
+function generateRiskAssessment(data) {
+  if (!data.riskFactors) return '';
+  
+  const highRiskBites = data.riskFactors.biteLocations.high_risk || 0;
+  const totalBites = Object.values(data.riskFactors.biteLocations).reduce((a, b) => a + b, 0);
+  const highRiskPercentage = totalBites > 0 ? Math.round((highRiskBites / totalBites) * 100) : 0;
+  
+  return `
+    <div class="risk-section">
+      <h4>⚠️ Risk Assessment</h4>
+      <div class="risk-analysis">
+        <div class="risk-item ${highRiskPercentage > 30 ? 'high-risk' : highRiskPercentage > 15 ? 'medium-risk' : 'low-risk'}">
+          <strong>High-Risk Bite Locations:</strong> ${highRiskBites} cases (${highRiskPercentage}%)
+          <small>Head, face, neck, and eye area bites requiring immediate attention</small>
+        </div>
+        <div class="risk-breakdown">
+          <strong>Animal Source Distribution:</strong>
+          ${Object.entries(data.riskFactors.animalSources).map(([animal, count]) => 
+            `<span class="risk-tag">${animal}: ${count}</span>`
+          ).join(' ')}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function generateRecommendations(data) {
+  const recommendations = [];
+  
+  // Performance-based recommendations
+  if (data.completionRate < 85) {
+    recommendations.push({
+      priority: 'high',
+      category: 'Treatment Completion',
+      text: 'Implement automated SMS/call reminders for Day 14 and Day 28 appointments to improve completion rates.',
+      action: 'Deploy patient reminder system within 2 weeks'
+    });
+  }
+  
+  if (data.adherenceRate < 90) {
+    recommendations.push({
+      priority: 'medium',
+      category: 'Patient Education',
+      text: 'Enhance patient counseling on importance of completing full PEP series. Provide multilingual educational materials.',
+      action: 'Update patient education protocols'
+    });
+  }
+  
+  if (data.overdueRate > 5) {
+    recommendations.push({
+      priority: 'high',
+      category: 'Appointment Management',
+      text: 'Review appointment scheduling system and implement flexible scheduling options for working patients.',
+      action: 'Evaluate extended clinic hours or weekend availability'
+    });
+  }
+  
+  // Volume-based recommendations
+  if (data.newPatients > 15) {
+    recommendations.push({
+      priority: 'medium',
+      category: 'Resource Planning',
+      text: 'Monitor vaccine inventory levels and ensure adequate stock for projected 4-week treatment cycles.',
+      action: 'Review inventory management with pharmacy'
+    });
+  }
+  
+  // Risk-based recommendations
+  const highRiskBites = data.riskFactors?.biteLocations?.high_risk || 0;
+  if (highRiskBites > 3) {
+    recommendations.push({
+      priority: 'high',
+      category: 'Clinical Protocol',
+      text: 'High incidence of facial/head bites detected. Ensure immediate assessment and consider HRIG administration per WHO guidelines.',
+      action: 'Review high-risk case protocols with medical staff'
+    });
+  }
+  
+  // Standard recommendations
+  recommendations.push({
+    priority: 'standard',
+    category: 'Quality Assurance',
+    text: 'Conduct monthly case reviews to identify patterns in bite incidents and improve community prevention strategies.',
+    action: 'Schedule next quality review meeting'
+  });
+  
+  recommendations.push({
+    priority: 'standard',
+    category: 'Data Management',
+    text: 'Maintain accurate documentation for all PEP treatments to support epidemiological surveillance and reporting.',
+    action: 'Verify data completeness in patient records'
+  });
+  
+  return recommendations.map(rec => `
+    <div class="recommendation-item ${rec.priority}">
+      <div class="rec-header">
+        <span class="rec-priority">${rec.priority.toUpperCase()}</span>
+        <span class="rec-category">${rec.category}</span>
+      </div>
+      <p class="rec-text">${rec.text}</p>
+      <p class="rec-action"><strong>Action:</strong> ${rec.action}</p>
+    </div>
+  `).join('');
+}
+
+// New: return raw recommendation items for text-only rendering
+function buildRecommendations(data) {
+  const recommendations = [];
+  if (data.completionRate < 85) {
+    recommendations.push({
+      priority: 'high',
+      category: 'Treatment Completion',
+      text: 'Implement automated SMS/call reminders for Day 14 and Day 28 appointments to improve completion rates.',
+      action: 'Deploy patient reminder system within 2 weeks'
+    });
+  }
+  if (data.adherenceRate < 90) {
+    recommendations.push({
+      priority: 'medium',
+      category: 'Patient Education',
+      text: 'Enhance counseling on completing full PEP series; provide multilingual materials.',
+      action: 'Update patient education protocols'
+    });
+  }
+  if (data.overdueRate > 5) {
+    recommendations.push({
+      priority: 'high',
+      category: 'Appointment Management',
+      text: 'Improve scheduling system; add flexible options for working patients.',
+      action: 'Evaluate extended hours or weekend availability'
+    });
+  }
+  if (data.newPatients > 15) {
+    recommendations.push({
+      priority: 'medium',
+      category: 'Resource Planning',
+      text: 'Monitor inventory and ensure adequate stock for 4‑week cycles.',
+      action: 'Review inventory management with pharmacy'
+    });
+  }
+  const highRiskBites = data.riskFactors?.biteLocations?.high_risk || 0;
+  if (highRiskBites > 3) {
+    recommendations.push({
+      priority: 'high',
+      category: 'Clinical Protocol',
+      text: 'High incidence of facial/head bites — ensure immediate assessment and HRIG per guidelines.',
+      action: 'Review high‑risk protocols with clinical staff'
+    });
+  }
+  recommendations.push({
+    priority: 'standard',
+    category: 'Quality Assurance',
+    text: 'Conduct monthly case reviews to identify patterns and improve prevention strategies.',
+    action: 'Schedule next quality review meeting'
+  });
+  recommendations.push({
+    priority: 'standard',
+    category: 'Data Management',
+    text: 'Maintain accurate documentation for all PEP treatments to support surveillance.',
+    action: 'Verify data completeness in patient records'
+  });
+  return recommendations;
 }
 
 function printReport() {
@@ -1066,12 +1519,20 @@ function printReport() {
 function exportReport() {
   // Simple CSV export of current data
   const selectedMonth = document.getElementById('monthSelector').value;
-  const monthlyData = calculateMonthlyData(selectedMonth);
+  const periodType = document.getElementById('periodType')?.value || 'month';
+  const monthlyData = calculateMonthlyData(selectedMonth, periodType);
   
-  const csvContent = `data:text/csv;charset=utf-8,
-Month,New Patients,Completed,Active,Completion Rate
-${selectedMonth},${monthlyData.newPatients},${monthlyData.completed},${monthlyData.active},${monthlyData.completionRate}%
-  `;
+  const label = (function(){
+    if (selectedMonth === 'all') return 'All Time';
+    if (periodType === 'year') {
+      const year = selectedMonth === 'year-current' ? new Date().getFullYear().toString() : selectedMonth;
+      return `Year ${year}`;
+    }
+    if (selectedMonth === 'current') return 'Current Month';
+    return new Date(selectedMonth + '-01').toLocaleDateString('en', {month: 'long', year: 'numeric'});
+  })();
+
+  const csvContent = `data:text/csv;charset=utf-8,\nPeriod,New Patients,Completed,Active,Overdue,Completion Rate,Adherence Rate,On-Time Rate\n${label},${monthlyData.newPatients},${monthlyData.completed},${monthlyData.active},${monthlyData.overdue},${monthlyData.completionRate}%,${monthlyData.adherenceRate}%,${100 - monthlyData.overdueRate}%\n`;
   
   const encodedUri = encodeURI(csvContent);
   const link = document.createElement("a");
@@ -1125,10 +1586,10 @@ function calculateWeeklyTrends() {
   return { weeks, started, completed };
 }
 
-function updateChartsForMonth(selectedMonth) {
+function updateChartsForMonth(selectedMonth, periodType = 'month') {
   // Update charts with filtered data for selected month
-  const completedPatients = calculateCompletedTreatments(selectedMonth);
-  const serviceData = calculateServiceDistribution(selectedMonth);
+  const completedPatients = calculateCompletedTreatments(selectedMonth, periodType);
+  const serviceData = calculateServiceDistribution(selectedMonth, periodType);
   
   // Update completion chart
   charts.completion.data.datasets[0].data = [
@@ -1157,18 +1618,23 @@ function updateChartsForMonth(selectedMonth) {
   charts.weekly.update();
 }
 
-function calculateCompletedTreatments(filterMonth = null) {
+function calculateCompletedTreatments(filterMonth = null, periodType = 'month') {
   let completed = 0;
   let inProgress = 0;
   let notStarted = 0;
   
   let filteredPatients = patientsData;
   if (filterMonth && filterMonth !== 'all') {
-    const monthStr = filterMonth === 'current' ? new Date().toISOString().slice(0, 7) : filterMonth;
-    filteredPatients = patientsData.filter(p => 
-      (p.day0 && p.day0.startsWith(monthStr)) ||
-      (p.day28 && p.day28.startsWith(monthStr))
-    );
+    if (periodType === 'year') {
+      const yearStr = filterMonth === 'year-current' ? new Date().getFullYear().toString() : filterMonth;
+      filteredPatients = patientsData.filter(p => (p.day0 && p.day0.startsWith(yearStr)) || (p.day28 && p.day28.startsWith(yearStr)));
+    } else {
+      const monthStr = filterMonth === 'current' ? new Date().toISOString().slice(0, 7) : filterMonth;
+      filteredPatients = patientsData.filter(p => 
+        (p.day0 && p.day0.startsWith(monthStr)) ||
+        (p.day28 && p.day28.startsWith(monthStr))
+      );
+    }
   }
   
   filteredPatients.forEach(patient => {
@@ -1187,14 +1653,19 @@ function calculateCompletedTreatments(filterMonth = null) {
   return { completed, inProgress, notStarted };
 }
 
-function calculateServiceDistribution(filterMonth = null) {
+function calculateServiceDistribution(filterMonth = null, periodType = 'month') {
   let filteredPatients = patientsData;
   if (filterMonth && filterMonth !== 'all') {
-    const monthStr = filterMonth === 'current' ? new Date().toISOString().slice(0, 7) : filterMonth;
-    filteredPatients = patientsData.filter(p => 
-      (p.day0 && p.day0.startsWith(monthStr)) ||
-      (p.day28 && p.day28.startsWith(monthStr))
-    );
+    if (periodType === 'year') {
+      const yearStr = filterMonth === 'year-current' ? new Date().getFullYear().toString() : filterMonth;
+      filteredPatients = patientsData.filter(p => (p.day0 && p.day0.startsWith(yearStr)) || (p.day28 && p.day28.startsWith(yearStr)));
+    } else {
+      const monthStr = filterMonth === 'current' ? new Date().toISOString().slice(0, 7) : filterMonth;
+      filteredPatients = patientsData.filter(p => 
+        (p.day0 && p.day0.startsWith(monthStr)) ||
+        (p.day28 && p.day28.startsWith(monthStr))
+      );
+    }
   }
   
   const serviceCounts = {};
@@ -1212,9 +1683,13 @@ function calculateServiceDistribution(filterMonth = null) {
 
 // Initialize charts when page loads
 document.addEventListener('DOMContentLoaded', function() {
+  console.log('DOM loaded, Chart.js available:', typeof Chart !== 'undefined');
   setTimeout(() => {
     if (typeof Chart !== 'undefined') {
+      console.log('Initializing analytics charts...');
       initializeAnalyticsCharts();
+    } else {
+      console.error('Chart.js not available');
     }
   }, 1000);
 });
@@ -1275,4 +1750,67 @@ function showTab(tabId) {
   if (tabId === 'settings-activity') {
     loadAuditTrail();
   }
+  
+  // Initialize schedule auto-calculation if schedule tab is selected
+  if (tabId === 'schedule') {
+    initializeScheduleCalculation();
+  }
+}
+
+// Auto-calculate vaccination schedule dates
+function initializeScheduleCalculation() {
+  const day0Input = document.querySelector('input[name="day0"]');
+  if (!day0Input) return;
+  
+  day0Input.addEventListener('change', function() {
+    const baseDate = new Date(this.value);
+    if (!baseDate || isNaN(baseDate.getTime())) return;
+    
+    // Calculate other dates
+    const dates = {
+      day3: new Date(baseDate.getTime() + (3 * 24 * 60 * 60 * 1000)),
+      day7: new Date(baseDate.getTime() + (7 * 24 * 60 * 60 * 1000)),
+      day14: new Date(baseDate.getTime() + (14 * 24 * 60 * 60 * 1000)),
+      day28: new Date(baseDate.getTime() + (28 * 24 * 60 * 60 * 1000))
+    };
+    
+    // Format and set the dates
+    Object.keys(dates).forEach(day => {
+      const input = document.querySelector(`input[name="${day}"]`);
+      if (input) {
+        input.value = dates[day].toISOString().split('T')[0];
+        // Add a subtle animation to show the date was auto-filled
+        input.style.background = '#e8f5e8';
+        setTimeout(() => {
+          input.style.background = '#fafafa';
+        }, 1000);
+      }
+    });
+    
+    // Show a toast notification
+    showToast('Vaccination schedule auto-calculated based on Day 0 date', 'success');
+  });
+}
+
+// Toast notification function
+function showToast(message, type = 'info') {
+  const toast = document.createElement('div');
+  toast.className = `toast toast-${type}`;
+  toast.innerHTML = `
+    <div class="toast-content">
+      <span class="toast-icon">${type === 'success' ? '✓' : 'ℹ'}</span>
+      <span class="toast-message">${message}</span>
+    </div>
+  `;
+  
+  document.body.appendChild(toast);
+  
+  // Trigger show animation
+  setTimeout(() => toast.classList.add('show'), 10);
+  
+  // Remove after 4 seconds
+  setTimeout(() => {
+    toast.classList.remove('show');
+    setTimeout(() => document.body.removeChild(toast), 400);
+  }, 4000);
 }
