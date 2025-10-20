@@ -1,3 +1,22 @@
+// Vaccination radio button border color logic
+document.addEventListener('DOMContentLoaded', function() {
+  const radios = document.querySelectorAll('.vaccination-options input[type="radio"]');
+  radios.forEach(radio => {
+    radio.addEventListener('change', function() {
+      radios.forEach(r => {
+        if (r.checked) {
+          r.nextElementSibling.classList.add('selected-radio');
+        } else {
+          r.nextElementSibling.classList.remove('selected-radio');
+        }
+      });
+    });
+    // Initial state
+    if (radio.checked) {
+      radio.nextElementSibling.classList.add('selected-radio');
+    }
+  });
+});
 /* ========= VIEW PATIENT: DATA + ACTIONS ========= */
 
 // Utility
@@ -301,6 +320,23 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Calendar data (real DB)
   await fetchPatientsForCalendar();
   updateCalendar();
+
+  // Fix: Ensure required fields are focusable on submit
+  const addRecordForm = document.querySelector('#add-record form');
+  if (addRecordForm) {
+    addRecordForm.addEventListener('submit', function(e) {
+      // Always show Personal Info tab before submit
+      showTab('personal-info');
+      setTimeout(() => {
+        // If invalid, scroll to first invalid field
+        const firstInvalid = addRecordForm.querySelector(':invalid');
+        if (firstInvalid) {
+          firstInvalid.focus();
+          firstInvalid.scrollIntoView({behavior:'smooth',block:'center'});
+        }
+      }, 10);
+    });
+  }
 });
 
 /* ---------- HEADER DATE / USER ---------- */
