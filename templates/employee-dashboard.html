@@ -66,10 +66,17 @@
           <div class="analytics-header">
             <h3>Treatment Analytics</h3>
             <div class="analytics-controls">
-              <label for="monthSelector">View Month:</label>
+              <label for="periodType">Period:</label>
+              <select id="periodType" onchange="updateMonthlyReports()">
+                <option value="month" selected>Monthly</option>
+                <option value="year">Yearly</option>
+              </select>
+              <label for="monthSelector">View:</label>
               <select id="monthSelector" onchange="updateMonthlyReports()">
                 <option value="all">All Time</option>
                 <option value="current">Current Month</option>
+                <option value="year-current">Current Year</option>
+                <option value="2025">Year 2025</option>
                 <option value="2025-01">January 2025</option>
                 <option value="2025-02">February 2025</option>
                 <option value="2025-03">March 2025</option>
@@ -128,7 +135,7 @@
           
           <!-- Monthly Report Section -->
           <div class="monthly-report" id="monthlyReportSection" style="display:none;">
-            <h4>📈 Monthly Report</h4>
+            <h4>📈 Report</h4>
             <div class="report-content" id="reportContent"></div>
             <button onclick="printReport()" class="btn-print">🖨️ Print Report</button>
             <button onclick="exportReport()" class="btn-export">📥 Export PDF</button>
@@ -169,29 +176,34 @@
           <!-- Personal Info -->
           <div id="personal-info" class="tab-content active">
             <div class="form-grid">
+              <div class="form-section-header">
+                <h4>Personal Information</h4>
+              </div>
+              
               <div class="form-group">
                 <label>Patient Name:</label>
-                <input type="text" name="patient_name" required>
+                <input type="text" name="patient_name" placeholder="Enter patient's full name" required>
               </div>
               <div class="form-group">
                 <label>Age:</label>
-                <input type="number" name="age" required>
+                <input type="number" name="age" min="0" max="150" placeholder="Enter age" required>
               </div>
               <div class="form-group">
                 <label>Gender:</label>
                 <select name="gender" required>
-                  <option value="">Select</option>
+                  <option value="">Select gender</option>
                   <option value="Male">Male</option>
                   <option value="Female">Female</option>
+                  <option value="Other">Other</option>
                 </select>
               </div>
               <div class="form-group">
                 <label>Contact Number:</label>
-                <input type="tel" name="contact_number" required>
+                <input type="tel" name="contact_number" placeholder="09XX-XXX-XXXX" required>
               </div>
               <div class="form-group full-width">
-                <label>Address:</label>
-                <textarea name="address" rows="3" required></textarea>
+                <label>Complete Address:</label>
+                <textarea name="address" rows="3" placeholder="Enter complete address including barangay, city/municipality, province" required></textarea>
               </div>
             </div>
           </div>
@@ -199,92 +211,197 @@
           <!-- Vaccine & Bite Info -->
           <div id="vaccine-bite-info" class="tab-content">
             <div class="form-grid">
+              <div class="form-section-header">
+                <h4>Service Information</h4>
+              </div>
+              
               <div class="form-group">
                 <label>Service Type:</label>
                 <select name="service_type" required>
+                  <option value="">Select service type</option>
                   <option value="Booster">Booster</option>
                   <option value="Pre-Exposure Prophylaxis">Pre-Exposure Prophylaxis</option>
                   <option value="Post-Exposure Prophylaxis">Post-Exposure Prophylaxis</option>
                 </select>
               </div>
+              
+              <div class="form-section-header">
+                <h4>Bite Incident Details</h4>
+              </div>
+              
               <div class="form-group">
                 <label>Date of Bite:</label>
-                <input type="date" name="date_of_bite">
+                <input type="date" name="date_of_bite" title="When did the bite incident occur?">
               </div>
               <div class="form-group">
-                <label>Bite Location:</label>
-                <input type="text" name="bite_location">
+                <label>Bite Location on Body:</label>
+                <input type="text" name="bite_location" placeholder="e.g., left hand, right leg, face" title="Where on the body was the bite located?">
               </div>
               <div class="form-group">
-                <label>Place of Bite:</label>
-                <input type="text" name="place_of_bite">
+                <label>Place of Bite Incident:</label>
+                <input type="text" name="place_of_bite" placeholder="e.g., at home, in the street, at park" title="Where did the bite incident happen?">
               </div>
               <div class="form-group">
                 <label>Type of Bite:</label>
                 <select name="type_of_bite">
-                  <option value="One Bite">One Bite</option>
+                  <option value="">Select bite type</option>
+                  <option value="One Bite">Single Bite</option>
                   <option value="Multiple Bites">Multiple Bites</option>
-                  <option value="Scratch">Scratch</option>
+                  <option value="Scratch">Scratch/Laceration</option>
+                  <option value="Lick on open wound">Lick on Open Wound</option>
                 </select>
               </div>
+              
+              <div class="form-section-header">
+                <h4>Animal Information</h4>
+              </div>
+              
               <div class="form-group">
                 <label>Source of Bite:</label>
                 <select name="source_of_bite">
-                  <option value="Cat">Cat</option>
+                  <option value="">Select animal type</option>
                   <option value="Dog">Dog</option>
-                  <option value="Other">Other</option>
+                  <option value="Cat">Cat</option>
+                  <option value="Bat">Bat</option>
+                  <option value="Monkey">Monkey</option>
+                  <option value="Other">Other Animal</option>
                 </select>
               </div>
               <div class="form-group">
-                <label>Other Source:</label>
-                <input type="text" name="other_source_of_bite">
+                <label>Other Animal Specify:</label>
+                <input type="text" name="other_source_of_bite" placeholder="Specify if 'Other' selected above">
               </div>
               <div class="form-group">
-                <label>Source Status:</label>
+                <label>Animal Status:</label>
                 <select name="source_status">
-                  <option value="Alive">Alive</option>
-                  <option value="Dead">Dead</option>
+                  <option value="">Select status</option>
+                  <option value="Alive">Alive & Observable</option>
+                  <option value="Dead">Dead/Killed</option>
+                  <option value="Unknown">Unknown/Lost</option>
                 </select>
               </div>
               <div class="form-group">
-                <label>Exposure:</label>
+                <label>Animal Ownership:</label>
                 <select name="exposure">
-                  <option value="Neighbor">Neighbor</option>
-                  <option value="Stranger">Stranger</option>
-                  <option value="Family">Family</option>
-                  <option value="Other">Other</option>
+                  <option value="">Select ownership type</option>
+                  <option value="Owned">Owned Pet</option>
+                  <option value="Neighbor">Neighbor's Pet</option>
+                  <option value="Stray">Stray Animal</option>
+                  <option value="Wild">Wild Animal</option>
+                  <option value="Unknown">Unknown Ownership</option>
                 </select>
               </div>
+              
+              <div class="form-section-header">
+                <h4>Vaccination History</h4>
+              </div>
               <div class="form-group">
-                <label>Vaccinated:</label>
-                <label><input type="radio" name="vaccinated" value="Yes" checked> Yes</label>
-                <label><input type="radio" name="vaccinated" value="No"> No</label>
+                <label>Previous Rabies Vaccination Status:</label>
+                <div class="vaccination-options">
+                  <div class="radio-group">
+                    <input type="radio" id="vacc-yes" name="vaccinated" value="Yes" checked>
+                    <label for="vacc-yes" class="radio-label">
+                      <span class="radio-button"></span>
+                      <span class="radio-text">
+                        <strong>Previously Vaccinated</strong>
+                        <small>Patient has received anti-rabies vaccine within the last 2 years</small>
+                      </span>
+                    </label>
+                  </div>
+                  <div class="radio-group">
+                    <input type="radio" id="vacc-no" name="vaccinated" value="No">
+                    <label for="vacc-no" class="radio-label">
+                      <span class="radio-button"></span>
+                      <span class="radio-text">
+                        <strong>Not Previously Vaccinated</strong>
+                        <small>Patient has no prior anti-rabies vaccination or unsure</small>
+                      </span>
+                    </label>
+                  </div>
+                  <div class="radio-group">
+                    <input type="radio" id="vacc-unknown" name="vaccinated" value="Unknown">
+                    <label for="vacc-unknown" class="radio-label">
+                      <span class="radio-button"></span>
+                      <span class="radio-text">
+                        <strong>Unknown Status</strong>
+                        <small>Unable to determine vaccination history</small>
+                      </span>
+                    </label>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
 
             <!-- Schedule -->
             <div id="schedule" class="tab-content schedule-section">
+              <div class="schedule-header">
+                <h3>Anti-Rabies Vaccination Schedule</h3>
+              </div>
+              
               <div class="schedule-grid">
-                <div class="schedule-item">
-                  <label>Day 0:</label>
-                  <input type="date" name="day0" />
+                <div class="schedule-item priority-high">
+                  <div class="schedule-day">
+                    <span class="day-number">Day 0</span>
+                    <span class="day-description">Initial dose (exposure day)</span>
+                  </div>
+                  <input type="date" name="day0" class="schedule-input" required />
+                  <div class="schedule-status">
+                    <span class="status-badge critical">Critical</span>
+                  </div>
                 </div>
-                <div class="schedule-item">
-                  <label>Day 3:</label>
-                  <input type="date" name="day3" />
+                
+                <div class="schedule-item priority-high">
+                  <div class="schedule-day">
+                    <span class="day-number">Day 3</span>
+                    <span class="day-description">Second dose</span>
+                  </div>
+                  <input type="date" name="day3" class="schedule-input" />
+                  <div class="schedule-status">
+                    <span class="status-badge important">Important</span>
+                  </div>
                 </div>
-                <div class="schedule-item">
-                  <label>Day 7:</label>
-                  <input type="date" name="day7" />
+                
+                <div class="schedule-item priority-medium">
+                  <div class="schedule-day">
+                    <span class="day-number">Day 7</span>
+                    <span class="day-description">Third dose</span>
+                  </div>
+                  <input type="date" name="day7" class="schedule-input" />
+                  <div class="schedule-status">
+                    <span class="status-badge moderate">Moderate</span>
+                  </div>
                 </div>
-                <div class="schedule-item">
-                  <label>Day 14:</label>
-                  <input type="date" name="day14" />
+                
+                <div class="schedule-item priority-medium">
+                  <div class="schedule-day">
+                    <span class="day-number">Day 14</span>
+                    <span class="day-description">Fourth dose</span>
+                  </div>
+                  <input type="date" name="day14" class="schedule-input" />
+                  <div class="schedule-status">
+                    <span class="status-badge moderate">Moderate</span>
+                  </div>
                 </div>
-                <div class="schedule-item">
-                  <label>Day 28:</label>
-                  <input type="date" name="day28" />
+                
+                <div class="schedule-item priority-low">
+                  <div class="schedule-day">
+                    <span class="day-number">Day 28</span>
+                    <span class="day-description">Final dose</span>
+                  </div>
+                  <input type="date" name="day28" class="schedule-input" />
+                  <div class="schedule-status">
+                    <span class="status-badge low">Completion</span>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="schedule-notes">
+                <div class="note-item">
+                  <strong>Note:</strong> Dates will be auto-calculated when Day 0 is selected
+                </div>
+                <div class="note-item">
+                  <strong>Important:</strong> Strict adherence to schedule is crucial for effectiveness
                 </div>
               </div>
             </div>
@@ -299,6 +416,13 @@
       <!-- View Patient -->
       <section id="view-patient" class="content-section">
         <h2>Patient Records</h2>
+        <!-- Search Toolbar -->
+        <div class="table-actions" style="display:flex;align-items:center;gap:12px;margin:8px 0 12px;">
+          <input id="patient-search" type="text" placeholder="Search by ID, name, date, or service" oninput="searchPatients()" style="flex:1;max-width:420px;padding:8px 10px;border:1px solid #ccc;border-radius:6px;" />
+          <button class="btn-secondary" type="button" onclick="searchPatients()">Search</button>
+          <button class="btn-ghost" type="button" onclick="clearSearch()">Clear</button>
+          <span id="results-count" style="margin-left:auto;color:#555;font-size:.95rem;">&nbsp;</span>
+        </div>
         <div class="table-container">
           <table class="patient-table">
             <thead>
