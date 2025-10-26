@@ -923,59 +923,67 @@ function initializeAnalyticsCharts() {
 }
 
 function initializeCompletionChart(completedPatients) {
+  // Replace doughnut with a horizontal bar chart (counts) for clearer employee-facing view
   const completionCtx = document.getElementById('completionChart').getContext('2d');
+  const labels = ['Completed', 'In Progress', 'Not Started'];
+  const counts = [completedPatients.completed, completedPatients.inProgress, completedPatients.notStarted];
+  if (charts.completion) { charts.completion.destroy(); }
   charts.completion = new Chart(completionCtx, {
-    type: 'doughnut',
+    type: 'bar',
     data: {
-      labels: ['Completed', 'In Progress', 'Not Started'],
+      labels: labels,
       datasets: [{
-        data: [completedPatients.completed, completedPatients.inProgress, completedPatients.notStarted],
+        label: 'Patients',
+        data: counts,
         backgroundColor: ['#28a745', '#ffc107', '#dc3545'],
-        borderWidth: 2,
-        borderColor: '#fff'
+        borderRadius: 6
       }]
     },
     options: {
+      indexAxis: 'y',
       responsive: true,
       plugins: {
-        legend: {
-          position: 'bottom'
-        }
+        legend: { display: false },
+        tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: ${ctx.parsed.x ?? ctx.parsed}` } }
+      },
+      scales: {
+        x: { beginAtZero: true, ticks: { precision:0 }, grid: { color: 'rgba(0,0,0,0.04)' } },
+        y: { grid: { display: false }, ticks: { font: { size: 12 } } }
       }
     }
   });
 }
 
 function initializeDailyProgressChart() {
+  // Use a grouped bar chart for daily progress — easier for employees to read exact counts per day
   const dailyCtx = document.getElementById('dailyProgressChart').getContext('2d');
   const dailyData = calculateDailyProgress();
-  
+  if (charts.daily) { charts.daily.destroy(); }
   charts.daily = new Chart(dailyCtx, {
-    type: 'line',
+    type: 'bar',
     data: {
       labels: dailyData.days,
       datasets: [{
         label: 'New Patients',
         data: dailyData.newPatients,
-        borderColor: '#800020',
-        backgroundColor: 'rgba(128, 0, 32, 0.1)',
-        tension: 0.4,
-        fill: true
+        backgroundColor: '#b02a37',
+        barPercentage: 0.7,
+        categoryPercentage: 0.8
       }, {
         label: 'Completed Treatments',
         data: dailyData.completed,
-        borderColor: '#28a745',
-        backgroundColor: 'rgba(40, 167, 69, 0.1)',
-        tension: 0.4,
-        fill: true
+        backgroundColor: '#2f9e44',
+        barPercentage: 0.7,
+        categoryPercentage: 0.8
       }]
     },
     options: {
       responsive: true,
+      plugins: { legend: { position: 'bottom' }, tooltip: { mode: 'index', intersect: false } },
+      interaction: { mode: 'index', axis: 'x', intersect: false },
       scales: {
-        y: {
-          beginAtZero: true
-        }
+        x: { grid: { display: false }, ticks: { maxRotation: 0, autoSkip: true } },
+        y: { beginAtZero: true, ticks: { precision: 0 }, grid: { color: 'rgba(0,0,0,0.04)' } }
       }
     }
   });
@@ -983,30 +991,26 @@ function initializeDailyProgressChart() {
 
 function initializeServiceChart(serviceData) {
   const serviceCtx = document.getElementById('serviceChart').getContext('2d');
+  // Simpler horizontal bar chart with clear labels for employees
   charts.service = new Chart(serviceCtx, {
     type: 'bar',
     data: {
       labels: serviceData.services,
       datasets: [{
-        label: 'Number of Patients',
+        label: 'Patients',
         data: serviceData.counts,
-        backgroundColor: [
-          '#800020',
-          '#a8324a',
-          '#c85a7a',
-          '#e882aa',
-          '#ffaadd'
-        ],
-        borderColor: '#fff',
-        borderWidth: 1
+        backgroundColor: '#6f2d3f',
+        borderRadius: 6,
+        barThickness: 18
       }]
     },
     options: {
+      indexAxis: 'y', // horizontal bars
       responsive: true,
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: ${ctx.parsed.x || ctx.parsed}` } } },
       scales: {
-        y: {
-          beginAtZero: true
-        }
+        x: { beginAtZero: true, ticks: { precision:0 }, grid: { color: 'rgba(0,0,0,0.04)' } },
+        y: { ticks: { font: { size: 12 } }, grid: { display: false } }
       }
     }
   });
@@ -1015,27 +1019,36 @@ function initializeServiceChart(serviceData) {
 function initializeWeeklyTrendChart() {
   const weeklyCtx = document.getElementById('weeklyTrendChart').getContext('2d');
   const weeklyData = calculateWeeklyTrends();
-  
+  // Use a simple line chart for weekly trends so employees can see progress over weeks
   charts.weekly = new Chart(weeklyCtx, {
-    type: 'bar',
+    type: 'line',
     data: {
       labels: weeklyData.weeks,
       datasets: [{
         label: 'Patients Started',
         data: weeklyData.started,
-        backgroundColor: '#ffc107'
+        borderColor: '#f59f00',
+        backgroundColor: 'rgba(245,159,0,0.08)',
+        tension: 0.2,
+        pointRadius: 4,
+        fill: true
       }, {
         label: 'Treatments Completed',
         data: weeklyData.completed,
-        backgroundColor: '#28a745'
+        borderColor: '#198754',
+        backgroundColor: 'rgba(25,135,84,0.08)',
+        tension: 0.2,
+        pointRadius: 4,
+        fill: true
       }]
     },
     options: {
       responsive: true,
+      plugins: { legend: { position: 'bottom' }, tooltip: { mode: 'index', intersect: false } },
+      interaction: { mode: 'nearest', axis: 'x', intersect: false },
       scales: {
-        y: {
-          beginAtZero: true
-        }
+        x: { grid: { display: false } },
+        y: { beginAtZero: true, ticks: { precision:0 }, grid: { color: 'rgba(0,0,0,0.04)' } }
       }
     }
   });
@@ -1263,9 +1276,37 @@ function generateMonthlyReport() {
     }
   }
   
+  // If the current user is not admin, generate a concise totals-only report for employees
+  const role = window.currentUserRole || 'employee';
+  if (role !== 'admin') {
+    reportContent.innerHTML = `
+      <style>
+        .simple-report { font-family: system-ui, Arial, sans-serif; color:#222; }
+        .simple-report h3{ color:#800020; margin-bottom:.25rem }
+        .simple-report .meta{ color:#555; font-size:.95rem; margin-bottom:.75rem }
+        .simple-report .kpi-grid{ display:flex; gap:18px; flex-wrap:wrap }
+        .simple-report .kpi{ background:#fff; border:1px solid #eee; padding:12px 16px; border-radius:8px; min-width:160px }
+        .simple-report .kpi strong{ display:block; font-size:1.25rem; color:#111 }
+      </style>
+      <div class="simple-report">
+        <h3>Treatment Totals</h3>
+        <div class="meta">San Lorenzo Animal Bite Center — ${rangeLabel} · Generated ${new Date().toLocaleDateString('en-US', {year:'numeric',month:'long',day:'numeric',hour:'2-digit',minute:'2-digit'})}</div>
+        <div class="kpi-grid">
+          <div class="kpi"><div>New Patients</div><strong>${monthlyData.newPatients}</strong></div>
+          <div class="kpi"><div>Completed Treatments</div><strong>${monthlyData.completed}</strong></div>
+          <div class="kpi"><div>Active Treatments</div><strong>${monthlyData.active}</strong></div>
+          <div class="kpi"><div>Overdue</div><strong>${monthlyData.overdue}</strong></div>
+          <div class="kpi"><div>Completion Rate</div><strong>${monthlyData.completionRate}%</strong></div>
+        </div>
+      </div>
+    `;
+    reportSection.style.display = 'block';
+    return;
+  }
+
+  // Admins: original detailed report (insights + recommendations)
   const performanceInsightsList = generatePerformanceInsightsList(monthlyData);
   const recommendationsList = buildRecommendations(monthlyData);
-  
   reportContent.innerHTML = `
     <style>
       /* Text-first report styles */
@@ -1301,7 +1342,6 @@ function generateMonthlyReport() {
       </ol>
     </div>
   `;
-  
   reportSection.style.display = 'block';
 }
 
@@ -1553,30 +1593,62 @@ function printReport() {
 }
 
 function exportReport() {
-  // Simple CSV export of current data
-  const selectedMonth = document.getElementById('monthSelector').value;
-  const periodType = document.getElementById('periodType')?.value || 'month';
-  const monthlyData = calculateMonthlyData(selectedMonth, periodType);
-  
-  const label = (function(){
-    if (selectedMonth === 'all') return 'All Time';
-    if (periodType === 'year') {
-      const year = selectedMonth === 'year-current' ? new Date().getFullYear().toString() : selectedMonth;
-      return `Year ${year}`;
-    }
-    if (selectedMonth === 'current') return 'Current Month';
-    return new Date(selectedMonth + '-01').toLocaleDateString('en', {month: 'long', year: 'numeric'});
-  })();
+  // Export the currently displayed report to PDF using html2pdf (client-side)
+  try {
+    // Ensure report HTML is up-to-date
+    generateMonthlyReport();
 
-  const csvContent = `data:text/csv;charset=utf-8,\nPeriod,New Patients,Completed,Active,Overdue,Completion Rate,Adherence Rate,On-Time Rate\n${label},${monthlyData.newPatients},${monthlyData.completed},${monthlyData.active},${monthlyData.overdue},${monthlyData.completionRate}%,${monthlyData.adherenceRate}%,${100 - monthlyData.overdueRate}%\n`;
-  
-  const encodedUri = encodeURI(csvContent);
-  const link = document.createElement("a");
-  link.setAttribute("href", encodedUri);
-  link.setAttribute("download", `monthly_report_${selectedMonth}.csv`);
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
+    const reportSection = document.getElementById('monthlyReportSection');
+    if (!reportSection) {
+      alert('No report available to export.');
+      return;
+    }
+
+    const selectedMonth = document.getElementById('monthSelector')?.value || 'all';
+    const filename = `monthly_report_${selectedMonth}.pdf`;
+
+    if (typeof html2pdf === 'undefined') {
+      alert('PDF export library not loaded. Please ensure html2pdf is included in the dashboard page.');
+      return;
+    }
+
+    // Clone the report to avoid layout changes and ensure a clean print area
+    const clone = reportSection.cloneNode(true);
+    clone.style.display = 'block';
+    clone.style.padding = '12px';
+    clone.style.background = '#ffffff';
+    clone.style.color = '#222';
+    clone.style.maxWidth = '800px';
+    clone.style.margin = '0 auto';
+
+    const wrapper = document.createElement('div');
+    wrapper.appendChild(clone);
+    wrapper.style.background = '#ffffff';
+    wrapper.style.padding = '8px';
+
+    document.body.appendChild(wrapper);
+
+    const opt = {
+      margin:       10,
+      filename:     filename,
+      image:        { type: 'jpeg', quality: 0.98 },
+      html2canvas:  { scale: 2, useCORS: true },
+      jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    };
+
+    // Use html2pdf to generate and save the PDF, then remove the temporary wrapper
+    html2pdf().set(opt).from(wrapper).save().then(() => {
+      setTimeout(() => { try { document.body.removeChild(wrapper); } catch (e) {} }, 200);
+    }).catch(err => {
+      console.error('html2pdf error:', err);
+      alert('Failed to export PDF. See console for details.');
+      try { document.body.removeChild(wrapper); } catch (e) {}
+    });
+
+  } catch (err) {
+    console.error('exportReport failed:', err);
+    alert('An error occurred while exporting the report.');
+  }
 }
 
 function calculateDailyProgress() {

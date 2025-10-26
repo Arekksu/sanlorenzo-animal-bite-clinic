@@ -3,6 +3,7 @@ import sqlite3
 from datetime import date
 import pandas as pd # type: ignore
 from io import BytesIO
+import json
 
 
 app = Flask(__name__)
@@ -22,8 +23,25 @@ def require_login():
         return redirect(url_for('employee_login'))
     return None
 
+
+def role_required(role):
+    """Decorator to require a specific role (e.g., 'admin') for a route."""
+    def decorator(f):
+        from functools import wraps
+        @wraps(f)
+        def wrapped(*args, **kwargs):
+            if 'role' not in session:
+                return redirect(url_for('employee_login'))
+            if session.get('role') != role:
+                # not authorized for this role
+                return redirect(url_for('employee_dashboard'))
+            return f(*args, **kwargs)
+        return wrapped
+    return decorator
+
 ##backup to csv
 @app.route('/backup-csv')
+@role_required('admin')
 def backup_csv():
     conn = get_db()  # however you open your SQLite connection
     cursor = conn.cursor()
@@ -84,15 +102,39 @@ def employee_login():
         if emp_id in employees and employees[emp_id]["password"] == password:
             session['employee_name'] = employees[emp_id]["name"]
             session['employee_id'] = emp_id
-            
+            # assign role: admin if emp_id is 'admin', else employee
+            session['role'] = 'admin' if emp_id == 'admin' else 'employee'
+
             # Log successful login for audit trail
             log_audit_trail(emp_id, employees[emp_id]["name"], "LOGIN", request.remote_addr)
-            
-            return redirect(url_for('employee_dashboard'))
+
+            # Instead of immediate redirect, show success notification and client will redirect
+            redirect_url = url_for('admin_dashboard') if session['role'] == 'admin' else url_for('employee_dashboard')
+            return render_template('employee-login.html', success=True, redirect_url=redirect_url)
         else:
             # Log failed login attempt
             log_audit_trail(emp_id, "Unknown", "FAILED_LOGIN", request.remote_addr)
             return render_template('employee-login.html', error="Invalid credentials")
+
+    return render_template('employee-login.html')
+
+
+@app.route('/admin-login', methods=['GET', 'POST'])
+def admin_login():
+    # Simple admin login route (can be expanded to real auth)
+    if request.method == 'POST':
+        emp_id = request.form['employeeId']
+        password = request.form['password']
+        # Only allow admin here
+        if emp_id == 'admin' and password == 'admin123':
+            session['employee_name'] = 'Admin'
+            session['employee_id'] = 'admin'
+            session['role'] = 'admin'
+            log_audit_trail('admin', 'Admin', 'ADMIN_LOGIN', request.remote_addr)
+            return redirect(url_for('admin_dashboard'))
+        else:
+            log_audit_trail(emp_id or 'unknown', 'Unknown', 'FAILED_ADMIN_LOGIN', request.remote_addr)
+            return render_template('employee-login.html', error='Invalid admin credentials')
 
     return render_template('employee-login.html')
 
@@ -145,6 +187,8 @@ def employee_dashboard():
            day0, day3, day7, day14, day28
     FROM patients
         """).fetchall()
+    # Convert sqlite Row objects to list of dicts so templates and JS can consume JSON safely
+    patients_list = [dict(row) for row in patients]
 
     # Calculate dashboard statistics
     today = date.today().isoformat()
@@ -162,10 +206,31 @@ def employee_dashboard():
     """, (today, today, today, today, today)).fetchone()
 
     return render_template("employee-dashboard.html", 
-                         patients=patients,
+                         patients=patients_list,
+                         patients_json=json.dumps(patients_list),
                          upcoming_appointments=[{'count': upcoming_appointments['count'] if upcoming_appointments else 0}],
                          patients_today=[{'count': patients_today['count'] if patients_today else 0}],
-                         employee_name=session.get('employee_name', 'User'))
+                         employee_name=session.get('employee_name', 'User'),
+                         role=session.get('role', 'employee'))
+
+
+@app.route('/admin-dashboard')
+@role_required('admin')
+def admin_dashboard():
+    # Provide the same data as employee_dashboard but render as admin
+    conn = get_db()
+    patients = conn.execute("SELECT id, patient_name, date_of_bite, service_type, age, gender, contact_number, day0, day3, day7, day14, day28 FROM patients").fetchall()
+    patients_list = [dict(row) for row in patients]
+    today = date.today().isoformat()
+    upcoming_appointments = conn.execute("SELECT COUNT(*) as count FROM patients WHERE day3 >= ? OR day7 >= ? OR day14 >= ? OR day28 >= ?", (today, today, today, today)).fetchone()
+    patients_today = conn.execute("SELECT COUNT(*) as count FROM patients WHERE day0 = ? OR day3 = ? OR day7 = ? OR day14 = ? OR day28 = ?", (today, today, today, today, today)).fetchone()
+    return render_template('admin-dashboard.html',
+                           patients=patients_list,
+                           patients_json=json.dumps(patients_list),
+                           upcoming_appointments=[{'count': upcoming_appointments['count'] if upcoming_appointments else 0}],
+                           patients_today=[{'count': patients_today['count'] if patients_today else 0}],
+                           employee_name=session.get('employee_name', 'Admin'),
+                           role='admin')
 
 @app.route("/patient/<int:patient_id>")
 def patient_detail(patient_id):
@@ -249,6 +314,7 @@ def get_patients_schedule():
     return patients_list
 
 @app.route('/restore-csv', methods=['POST'])
+@role_required('admin')
 def restore_csv():
     if 'file' not in request.files:
         return redirect(url_for('employee_dashboard'))
@@ -294,6 +360,7 @@ def restore_csv():
     return redirect(url_for('employee_dashboard'))
 
 @app.route('/db-optimize', methods=['POST'])
+@role_required('admin')
 def db_optimize():
     try:
         conn = get_db()
@@ -307,6 +374,7 @@ def db_optimize():
         return redirect(url_for('employee_dashboard'))
 
 @app.route('/backup-sqlite')
+@role_required('admin')
 def backup_sqlite():
     try:
         return send_file(
@@ -319,11 +387,38 @@ def backup_sqlite():
         print(f"Error backing up database: {e}")
         return redirect(url_for('employee_dashboard'))
 
-@app.route('/settings')
+@app.route('/settings', methods=['GET', 'POST'])
 def settings():
-    return render_template('settings.html')
+    # Allow employees to update their display name and (client-side) password change request.
+    if request.method == 'POST':
+        # Read submitted fields
+        username = request.form.get('username')
+        display_name = request.form.get('display_name')
+        # Password fields (note: passwords are not persisted in this simple demo)
+        current_password = request.form.get('current_password')
+        new_password = request.form.get('new_password')
+        confirm_password = request.form.get('confirm_password')
+
+        # Update session values so the UI reflects the change immediately.
+        if username:
+            session['employee_id'] = username
+        if display_name:
+            session['employee_name'] = display_name
+
+        # Log the account update in the audit trail
+        try:
+            log_audit_trail(session.get('employee_id', 'unknown'), session.get('employee_name', 'unknown'), 'UPDATE_ACCOUNT', request.remote_addr)
+        except Exception:
+            pass
+
+        # Note: password change handling would require a persistent user store. Here we accept the form and
+        # acknowledge it by returning the settings page with updated session values.
+        return redirect(url_for('settings'))
+
+    return render_template('settings.html', role=session.get('role', 'employee'), employee_name=session.get('employee_name'))
 
 @app.route('/audit-trail')
+@role_required('admin')
 def audit_trail():
     """Get audit trail data for the dashboard"""
     auth_check = require_login()

@@ -1,8 +1,18 @@
 {
+    // Editor settings for this workspace
     "emmet.includeLanguages": {
         "jinja-html": "html"
     },
+
+    // Use the project's virtualenv Python interpreter so Pylance finds installed packages
+    "python.defaultInterpreterPath": "C:\\Users\\Teban's Laptop\\Documents\\GitHub\\sanlorenzo-animal-bite-clinic\\vnev\\Scripts\\python.exe",
+
+    // Help Pylance find packages installed in the venv (keep both venv/vnev paths if either exists)
     "python.analysis.extraPaths": [
+        "./vnev/Lib/site-packages",
         "./venv/Lib/site-packages"
-    ]
+    ],
+
+    // When opening terminals, automatically activate the environment
+    "python.terminal.activateEnvironment": true
 }

@@ -6,6 +6,28 @@
   <title>San Lorenzo Animal Bite Center - Employee Dashboard</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='employee-styles.css') }}">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- html2pdf for client-side PDF export -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.9.2/html2pdf.bundle.min.js"></script>
+  <style>
+    /* Print-friendly rules for report export */
+    @media print {
+      body * { visibility: hidden; }
+      .report-printable, .report-printable * { visibility: visible; }
+      .report-printable { position: absolute; left: 0; top: 0; width: 100%; }
+      nav.sidebar, .menu-btn, .sidebar-bottom, .sidebar-menu { display: none !important; }
+    }
+
+    /* Compact report card/table styling (inline so PDF has styles) */
+    .report-hr { border-top: 1px solid #e6e6e6; margin: 12px 0; }
+    .report-kpi { display:flex; gap:12px; flex-wrap:wrap; }
+    .report-kpi .kpi { background:#fff; border:1px solid #eee; padding:12px; border-radius:8px; min-width:140px; box-shadow:0 1px 2px rgba(0,0,0,0.03); }
+    .report-kpi .kpi h4 { margin:0 0 6px; font-size:0.95rem; color:#333; }
+    .report-kpi .kpi .num { font-size:1.45rem; font-weight:700; color:#a6122a; }
+    .patients-report-table { width:100%; border-collapse:collapse; margin-top:8px; }
+    .patients-report-table th, .patients-report-table td { border:1px solid #f0f0f0; padding:8px; text-align:left; font-size:0.95rem; }
+    .patients-report-table th { background:#fafafa; }
+    .overdue { background:#fff0f0; }
+  </style>
 </head>
 <body>
   <div class="dashboard-container">
@@ -134,11 +156,20 @@
           </div>
           
           <!-- Monthly Report Section -->
-          <div class="monthly-report" id="monthlyReportSection" style="display:none;">
+            <div class="monthly-report" id="monthlyReportSection" style="display:none;">
             <h4>📈 Report</h4>
-            <div class="report-content" id="reportContent"></div>
-            <button onclick="printReport()" class="btn-print">🖨️ Print Report</button>
-            <button onclick="exportReport()" class="btn-export">📥 Export PDF</button>
+              <div style="display:flex;gap:12px;align-items:center;margin-bottom:12px;flex-wrap:wrap;">
+                <div style="margin-left:auto;display:flex;gap:8px;">
+                  <!-- Only PDF/Print options as requested -> no CSV export -->
+                  <button onclick="generateMonthlyReport(); exportReport()" class="btn-report">📥 Export Full PDF</button>
+                </div>
+              </div>
+              <!-- reportContent will be populated with a compact KPI summary and a patients list -->
+              <div class="report-content report-printable" id="reportContent"></div>
+              <div style="display:flex;gap:8px;margin-top:12px;">
+                <button onclick="printReport()" class="btn-print">🖨️ Print Report</button>
+                <button onclick="exportReport()" class="btn-export">📥 Export PDF</button>
+              </div>
           </div>
         </div>
       </section>
@@ -570,14 +601,17 @@
   <!-- Tabs header -->
   <div class="form-header">
     <div class="form-tabs">
-      <button type="button" class="tab-btn active" onclick="showTab('settings-display')">Display</button>
+      <button type="button" class="tab-btn active" onclick="showTab('settings-display')">Account</button>
+      {%- if role == 'admin' %}
       <button type="button" class="tab-btn" onclick="showTab('settings-activity')">Activity Log</button>
       <button type="button" class="tab-btn" onclick="showTab('settings-maintenance')">Maintenance</button>
+      {%- endif %}
     </div>
   </div>
 
   <!-- Display -->
   <div id="settings-display" class="tab-content active">
+    {%- if role == 'admin' %}
     <div class="form-grid">
       <div class="form-group">
         <label>Theme</label>
@@ -600,9 +634,40 @@
     <div class="form-actions">
       <button type="button" class="btn-success" onclick="saveDisplaySettings()">Save Display Settings</button>
     </div>
+    {%- else %}
+    <!-- Employee account settings: username, display name, change password -->
+    <form method="POST" action="{{ url_for('settings') }}" class="account-form">
+      <div class="form-grid">
+        <div class="form-group">
+          <label for="username">Username</label>
+          <input id="username" name="username" type="text" value="{{ session.get('employee_id', '') }}" required />
+        </div>
+        <div class="form-group">
+          <label for="display_name">Display Name</label>
+          <input id="display_name" name="display_name" type="text" value="{{ session.get('employee_name', '') }}" required />
+        </div>
+        <div class="form-group full-width">
+          <label for="current_password">Current Password</label>
+          <input id="current_password" name="current_password" type="password" placeholder="Enter current password if changing" />
+        </div>
+        <div class="form-group">
+          <label for="new_password">New Password</label>
+          <input id="new_password" name="new_password" type="password" />
+        </div>
+        <div class="form-group">
+          <label for="confirm_password">Confirm New Password</label>
+          <input id="confirm_password" name="confirm_password" type="password" />
+        </div>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn-success">Save Account</button>
+      </div>
+    </form>
+    {%- endif %}
   </div>
 
   <!-- Activity Log -->
+  {% if session.get('role') == 'admin' %}
   <div id="settings-activity" class="tab-content">
     <h3>Recent Activity</h3>
     <div class="table-container">
@@ -621,6 +686,7 @@
         </tbody>
       </table>
     </div>
+  </div>
   </div>
 
   <!-- Maintenance -->
@@ -662,6 +728,7 @@
       </div>
     </div>
   </div>
+  {% endif %}
 </section>
 
       </main>
@@ -791,6 +858,138 @@
       </div>
     </div>
 
+  <script>
+    // Expose current user role to client scripts so UI/behavior can adapt
+    window.currentUserRole = "{{ role|default('employee') }}";
+  </script>
+  <!-- Patients JSON payload for client JS (safe insertion) -->
+  <script id="patients-data" type="application/json">{{ patients_json|safe }}</script>
+  <script>
+    // Build a simple, printable report containing KPIs and a patients list.
+    // Patients data is injected from server-side context.
+    try {
+      // Read patients JSON from a script[type="application/json"] element to avoid JS parsing issues.
+      let patients = [];
+      const patientsScript = document.getElementById('patients-data');
+      if (patientsScript && patientsScript.textContent) {
+        try { patients = JSON.parse(patientsScript.textContent); } catch(e) { patients = []; console.error('Invalid patients JSON', e); }
+      }
+
+      function generateMonthlyReport() {
+  // Simple aggregates - include all patients in the report list
+  const patientWithService = patients || [];
+  const newPatients = patientWithService.length;
+        console.log('generateMonthlyReport: parsed patients count =', patientWithService.length);
+        if (patientWithService.length > 0) console.log('sample patient', patientWithService[0]);
+        // best-effort completed count if data provided
+        const completed = patients.filter(p => p && (p.status === 'Completed' || p.treatment_completed)).length || 0;
+        const active = patients.filter(p => p && (p.status === 'In Progress' || p.status === 'Active')).length || 0;
+        const completionRate = newPatients > 0 ? Math.round((completed / newPatients) * 100) : 0;
+
+        // Update small dashboard numbers if present
+        const elCompleted = document.getElementById('completed-count');
+        if (elCompleted) elCompleted.textContent = completed;
+
+        // Build report HTML
+        const now = new Date();
+        const headerHtml = `
+          <div style="display:flex;align-items:center;justify-content:space-between;">
+            <div>
+              <h2 style="margin:0;color:#a6122a;">San Lorenzo Animal Bite Center</h2>
+              <div style="color:#666;font-size:0.95rem;margin-top:6px;">Treatment Totals — Generated ${now.toLocaleString()}</div>
+            </div>
+            <div style="text-align:right;color:#666;font-size:0.95rem;">Report Period: ${document.getElementById('monthSelector') ? document.getElementById('monthSelector').value : 'All Time'}</div>
+          </div>
+          <div class="report-hr"></div>
+        `;
+
+        const kpiHtml = `
+          <div class="report-kpi">
+            <div class="kpi"><h4>New Patients</h4><div class="num">${newPatients}</div></div>
+            <div class="kpi"><h4>Completed Treatments</h4><div class="num">${completed}</div></div>
+            <div class="kpi"><h4>Active Treatments</h4><div class="num">${active}</div></div>
+            <div class="kpi"><h4>Completion Rate</h4><div class="num">${completionRate}%</div></div>
+          </div>
+          <div class="report-hr"></div>
+        `;
+
+        let tableRows = '';
+        if (patientWithService.length === 0) {
+          tableRows = '<tr><td colspan="5">No patients match the selected criteria.</td></tr>';
+        } else {
+          patientWithService.forEach(p => {
+            const d = p.date_of_bite || p.date || '';
+            const svc = p.service_type || p.service || '';
+            const overdueClass = (p.status && (p.status === 'Overdue' || p.status === 'Missed')) ? 'overdue' : '';
+            tableRows += `<tr class="${overdueClass}"><td>${p.id || ''}</td><td>${p.patient_name || ''}</td><td>${svc}</td><td>${d}</td><td>${p.assigned || p.assigned_staff || ''}</td></tr>`;
+          });
+        }
+
+        const tableHtml = `
+          <h4>Patients Included in Report</h4>
+          <table class="patients-report-table">
+            <thead>
+              <tr><th>ID</th><th>Patient Name</th><th>Service</th><th>Date</th><th>Assigned</th></tr>
+            </thead>
+            <tbody>
+              ${tableRows}
+            </tbody>
+          </table>
+        `;
+
+        const reportContent = document.getElementById('reportContent');
+        if (reportContent) {
+          reportContent.innerHTML = headerHtml + kpiHtml + tableHtml;
+          console.log('reportContent html length =', reportContent.innerHTML.length);
+          console.log('reportContent preview:', reportContent.innerText.slice(0,300));
+          document.getElementById('monthlyReportSection').style.display = 'block';
+          // Scroll into view so user sees report area
+          reportContent.scrollIntoView({behavior: 'smooth'});
+        }
+      }
+
+      function exportReport() {
+        const el = document.getElementById('reportContent');
+        // If report not generated yet, generate it automatically before exporting
+        if (!el || !el.innerHTML.trim()) {
+          console.log('exportReport: report empty, generating before export');
+          generateMonthlyReport();
+        }
+        // Use html2pdf to create a printable PDF
+        const opt = {
+          margin:       10,
+          filename:     `SanLorenzo_Report_${new Date().toISOString().slice(0,10)}.pdf`,
+          image:        { type: 'jpeg', quality: 0.98 },
+          html2canvas:  { scale: 1.25, useCORS: true },
+          jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        };
+        // Slight timeout ensures DOM updated by generateMonthlyReport before html2pdf runs
+        setTimeout(() => {
+          const exportEl = document.getElementById('reportContent');
+          if (!exportEl || !exportEl.innerHTML.trim()) return alert('Report generation failed.');
+          html2pdf().set(opt).from(exportEl).save();
+        }, 250);
+      }
+
+      function printReport() {
+        // Ensure report is generated and visible
+        const el = document.getElementById('reportContent');
+        if (!el || !el.innerHTML.trim()) { generateMonthlyReport(); }
+        window.print();
+      }
+
+      // Expose to global scope for buttons
+      window.generateMonthlyReport = generateMonthlyReport;
+      window.exportReport = exportReport;
+      window.printReport = printReport;
+    } catch (err) {
+      console.error('Error building report:', err);
+      window.generateMonthlyReport = function(){ alert('Report generation is unavailable.'); };
+      window.exportReport = function(){ alert('PDF export unavailable.'); };
+      window.printReport = function(){ alert('Print unavailable.'); };
+    }
+  </script>
   <script src="{{ url_for('static', filename='employee-script.js') }}"></script>
 </body>
 </html>
+

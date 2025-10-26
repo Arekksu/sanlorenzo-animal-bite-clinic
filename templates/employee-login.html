@@ -19,13 +19,9 @@
                 <p class="clinic-subtitle">Employee Login Portal</p>
             </div>
             
-           <form class="login-form" method="POST" action="{{ url_for('employee_login') }}">
+                     <form class="login-form" method="POST" action="{{ url_for('employee_login') }}">
                 
-                {% if error %}
-                <div class="error-message">
-                    {{ error }}
-                </div>
-                {% endif %}
+                                <!-- notifications are shown as top-right toasts -->
 
                 <div class="form-group">
                     <label for="employeeId">Employee ID:</label>
@@ -54,21 +50,61 @@
         </div>
     </div>
 
-    <!-- Correct Flask way to load JS -->
-    <script src="{{ url_for('static', filename='employee-login-script.js') }}">
+        <!-- External script (if present) -->
+        <script src="{{ url_for('static', filename='employee-login-script.js') }}"></script>
 
-        function handleEmployeeLogin(event) {
-    event.preventDefault();
+        <!-- Toast container and script -->
+        <div id="toast-container" aria-live="polite" aria-atomic="true"></div>
+        <script>
+            // Create and show a top-right toast. Auto-dismiss after timeout.
+            function showToast(type, message, timeoutMs) {
+                timeoutMs = timeoutMs || 2500;
+                var container = document.getElementById('toast-container');
+                if (!container) return;
+                var toast = document.createElement('div');
+                toast.className = 'toast ' + (type === 'success' ? 'toast-success' : 'toast-error');
+                toast.textContent = message;
+                container.appendChild(toast);
+                // show animation
+                requestAnimationFrame(function(){ toast.classList.add('visible'); });
+                // remove after timeout
+                setTimeout(function(){
+                    toast.classList.remove('visible');
+                    setTimeout(function(){ if (toast.parentNode) toast.parentNode.removeChild(toast); }, 300);
+                }, timeoutMs);
+            }
 
-    const empId = document.getElementById("employeeId").value;
-    const password = document.getElementById("password").value;
+            window.addEventListener('DOMContentLoaded', function () {
+                // Read server-provided login status from JSON blob
+                var serverDataEl = document.getElementById('login-server-data');
+                var server = { error: null, success: false, redirect_url: '' };
+                if (serverDataEl && serverDataEl.textContent) {
+                    try { server = JSON.parse(serverDataEl.textContent); } catch(e){ console.warn('Invalid server login data', e); }
+                }
+                if (server.error) {
+                    // show error toast (no redirect)
+                    showToast('error', server.error, 3500);
+                }
+                if (server.success) {
+                    // show a clean success toast (no "Go to Dashboard" button)
+                    showToast('success', 'Login successful — redirecting...', 1600);
+                    setTimeout(function(){ window.location = server.redirect_url; }, 1400);
+                }
 
-    if (empId === "admin" && password === "admin123") {
-        window.location.href = "/employee-dashboard";  // 👈 Flask must have this route
-    } else {
-        alert("Invalid credentials");
-    }
-}
-    </script>
+                // current date/time
+                var dtEl = document.getElementById('currentDateTime');
+                if (dtEl) dtEl.textContent = new Date().toLocaleString();
+            });
+        </script>
+        <style>
+            /* Toast container (top-right) */
+            #toast-container{ position:fixed; top:16px; right:16px; z-index:9999; display:flex; flex-direction:column; gap:8px; }
+            .toast{ min-width:220px; max-width:360px; padding:10px 14px; border-radius:8px; color:#fff; box-shadow:0 4px 10px rgba(0,0,0,0.12); opacity:0; transform:translateY(-8px) scale(0.98); transition:all .28s ease; }
+            .toast.visible{ opacity:1; transform:translateY(0) scale(1); }
+            .toast-success{ background:linear-gradient(180deg,#2dbb74,#1fa45a); }
+            .toast-error{ background:linear-gradient(180deg,#f36b6b,#d64545); }
+        </style>
+        <!-- Server-provided login result (keeps JS syntax clean) -->
+        <script id="login-server-data" type="application/json">{{ {'error': error|default(None), 'success': success|default(False), 'redirect_url': redirect_url|default('') } | tojson | safe }}</script>
 </body>
 </html>
