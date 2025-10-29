@@ -172,10 +172,7 @@
                             <h4>New Patients</h4>
                             <div class="summary-number" id="monthlyNewPatients">0</div>
                           </div>
-                          <div class="summary-card">
-                            <h4>Completed Treatments</h4>
-                            <div class="summary-number" id="monthlyCompleted">0</div>
-                          </div>
+                          
                           <div class="summary-card">
                             <h4>Active Treatments</h4>
                             <div class="summary-number" id="monthlyActive">0</div>
@@ -642,35 +639,8 @@
                 <!-- Tabs header -->
                 <div class="form-header">
                   <div class="form-tabs">
-                    <button type="button" class="tab-btn active" onclick="showTab('settings-display')">Display</button>
                     <button type="button" class="tab-btn" onclick="showTab('settings-activity')">Activity Log</button>
                     <button type="button" class="tab-btn" onclick="showTab('settings-maintenance')">Maintenance</button>
-                  </div>
-                </div>
-
-                <!-- Display -->
-                <div id="settings-display" class="tab-content active">
-                  <div class="form-grid">
-                    <div class="form-group">
-                      <label>Theme</label>
-                      <select id="setting-theme">
-                        <option value="system">System</option>
-                        <option value="light">Light</option>
-                        <option value="dark">Dark</option>
-                      </select>
-                      <p class="hint">Choose how the app appears.</p>
-                    </div>
-
-                    <div class="form-group">
-                      <label>Density</label>
-                      <select id="setting-density">
-                        <option value="comfortable">Comfortable</option>
-                        <option value="compact">Compact</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div class="form-actions">
-                    <button type="button" class="btn-success" onclick="saveDisplaySettings()">Save Display Settings</button>
                   </div>
                 </div>
 
@@ -864,5 +834,32 @@
                   </div>
 
                 <script src="{{ url_for('static', filename='employee-script.js') }}"></script>
+                <script>
+function applyTheme(theme) {
+  document.body.classList.remove('dark-mode');
+  if (theme === 'dark') {
+    document.body.classList.add('dark-mode');
+  } else if (theme === 'system') {
+    if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+      document.body.classList.add('dark-mode');
+    }
+  }
+}
+
+function saveDisplaySettings() {
+  const theme = document.getElementById('setting-theme').value;
+  localStorage.setItem('theme', theme);
+  applyTheme(theme);
+  alert('Display settings saved.');
+}
+
+// Apply saved theme on page load
+window.addEventListener('DOMContentLoaded', () => {
+  const savedTheme = localStorage.getItem('theme') || 'system';
+  document.getElementById('setting-theme').value = savedTheme;
+  applyTheme(savedTheme);
+});
+</script>
+
               </body>
               </html>

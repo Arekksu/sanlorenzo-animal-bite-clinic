@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, g, send_file, session
+from flask import Flask, render_template, request, redirect, url_for, g, send_file, session, flash
 import sqlite3
 from datetime import date
 import pandas as pd # type: ignore
@@ -387,6 +387,72 @@ def backup_sqlite():
         print(f"Error backing up database: {e}")
         return redirect(url_for('employee_dashboard'))
 
+
+#UPDATE PATIENT, EDIT PATIENT ROUTE
+
+@app.route('/update-patient/<int:pid>', methods=['POST'])
+@role_required('role')
+def update_patient(pid):
+    auth_check = require_login()
+    if auth_check:
+        return auth_check
+
+    db = get_db()
+    db.execute("""
+        UPDATE patients SET
+            patient_name = ?,
+            age = ?,
+            gender = ?,
+            contact_number = ?,
+            address = ?,
+            service_type = ?,
+            date_of_bite = ?,
+            bite_location = ?,
+            place_of_bite = ?,
+            type_of_bite = ?,
+            source_of_bite = ?,
+            other_source_of_bite = ?,
+            source_status = ?,
+            exposure = ?,
+            vaccinated = ?,
+            day0 = ?,
+            day3 = ?,
+            day7 = ?,
+            day14 = ?,
+            day28 = ?
+        WHERE id = ?
+    """, (
+        request.form['patient_name'],
+        request.form['age'],
+        request.form['gender'],
+        request.form['contact_number'],
+        request.form['address'],
+        request.form['service_type'],
+        request.form['date_of_bite'],
+        request.form['bite_location'],
+        request.form['place_of_bite'],
+        request.form['type_of_bite'],
+        request.form['source_of_bite'],
+        request.form.get('other_source_of_bite'),
+        request.form['source_status'],
+        request.form['exposure'],
+        request.form['vaccinated'],
+        request.form['day0'],
+        request.form['day3'],
+        request.form['day7'],
+        request.form['day14'],
+        request.form['day28'],
+        pid
+    ))
+    db.commit()
+
+    emp_id = session.get('employee_id', 'unknown')
+    emp_name = session.get('employee_name', 'unknown')
+    log_audit_trail(emp_id, emp_name, f'EDIT patient #{pid}', request.remote_addr)
+
+    flash('Patient record updated successfully!', 'success')
+    return redirect(url_for('employee_dashboard'))
+
 @app.route('/settings', methods=['GET', 'POST'])
 def settings():
     # Allow employees to update their display name and (client-side) password change request.
@@ -429,6 +495,13 @@ def audit_trail():
     conn = get_db()
     audit_logs = conn.execute('''
         SELECT employee_id, employee_name, action, timestamp, ip_address
+        FROM audit_trail
+        ORDER BY timestamp DESC
+        LIMIT 100
+    ''').fetchall()
+    
+    audit_logs = conn.execute('''
+        SELECT employee_id, employee_name, action, timestamp, ip_address   
         FROM audit_trail
         ORDER BY timestamp DESC
         LIMIT 100

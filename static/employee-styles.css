@@ -927,7 +927,7 @@ body {
 }
 .tab-content.active { display: block; }
 
-.form-grid { display: grid; gap: 20px; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+.form-grid { display: grid; gap: 30px; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
 
 .form-group { 
   position: relative; 
@@ -1830,9 +1830,12 @@ input:focus, select:focus, textarea:focus {
 .hint { color:#666; font-size:12px; }
 
 
+
 /* =========================================================
    RESPONSIVE
    ========================================================= */
+
+   
 @media (max-width: 1024px) {
   .calendar-days { grid-template-columns: repeat(7, minmax(90px, 1fr)); }
 }
