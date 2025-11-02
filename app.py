@@ -391,67 +391,43 @@ def backup_sqlite():
 #UPDATE PATIENT, EDIT PATIENT ROUTE
 
 @app.route('/update-patient/<int:pid>', methods=['POST'])
-@role_required('role')
 def update_patient(pid):
     auth_check = require_login()
-    if auth_check:
-        return auth_check
+    if auth_check: return auth_check
+
+    # Accept both form posts and JSON posts
+    payload = request.form.to_dict()
+    if not payload:  # probably JSON
+        payload = request.get_json(silent=True) or {}
+
+    # Optional: fail fast if required field missing
+    if not payload.get('patient_name'):
+        return ("Missing 'patient_name' in request. "
+                "Send as form fields or JSON with matching keys."), 400
+
+    fields = [
+        'patient_name','age','gender','contact_number','address',
+        'service_type','date_of_bite','bite_location','place_of_bite',
+        'type_of_bite','source_of_bite','other_source_of_bite',
+        'source_status','exposure','vaccinated',
+        'day0','day3','day7','day14','day28'
+    ]
+    vals = [payload.get(f) for f in fields]
 
     db = get_db()
     db.execute("""
         UPDATE patients SET
-            patient_name = ?,
-            age = ?,
-            gender = ?,
-            contact_number = ?,
-            address = ?,
-            service_type = ?,
-            date_of_bite = ?,
-            bite_location = ?,
-            place_of_bite = ?,
-            type_of_bite = ?,
-            source_of_bite = ?,
-            other_source_of_bite = ?,
-            source_status = ?,
-            exposure = ?,
-            vaccinated = ?,
-            day0 = ?,
-            day3 = ?,
-            day7 = ?,
-            day14 = ?,
-            day28 = ?
-        WHERE id = ?
-    """, (
-        request.form['patient_name'],
-        request.form['age'],
-        request.form['gender'],
-        request.form['contact_number'],
-        request.form['address'],
-        request.form['service_type'],
-        request.form['date_of_bite'],
-        request.form['bite_location'],
-        request.form['place_of_bite'],
-        request.form['type_of_bite'],
-        request.form['source_of_bite'],
-        request.form.get('other_source_of_bite'),
-        request.form['source_status'],
-        request.form['exposure'],
-        request.form['vaccinated'],
-        request.form['day0'],
-        request.form['day3'],
-        request.form['day7'],
-        request.form['day14'],
-        request.form['day28'],
-        pid
-    ))
+          patient_name=?, age=?, gender=?, contact_number=?, address=?,
+          service_type=?, date_of_bite=?, bite_location=?, place_of_bite=?,
+          type_of_bite=?, source_of_bite=?, other_source_of_bite=?,
+          source_status=?, exposure=?, vaccinated=?,
+          day0=?, day3=?, day7=?, day14=?, day28=?
+        WHERE id=?
+    """, [*vals, pid])
     db.commit()
-
-    emp_id = session.get('employee_id', 'unknown')
-    emp_name = session.get('employee_name', 'unknown')
-    log_audit_trail(emp_id, emp_name, f'EDIT patient #{pid}', request.remote_addr)
-
-    flash('Patient record updated successfully!', 'success')
     return redirect(url_for('employee_dashboard'))
+
+
 
 @app.route('/settings', methods=['GET', 'POST'])
 def settings():

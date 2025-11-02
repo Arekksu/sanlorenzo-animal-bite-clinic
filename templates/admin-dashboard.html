@@ -182,6 +182,7 @@
                             <div class="summary-number" id="monthlyRate">0%</div>
                           </div>
                         </div>
+                        
 
                         <div class="charts-grid">
                           <div class="chart-container">
@@ -740,33 +741,33 @@
                         <span class="close" onclick="closeModal('editPatientModal')">&times;</span>
                       </div>
                       <div class="modal-body">
-                        <form id="editPatientForm" onsubmit="return submitEditPatient(event)">
-                          <input type="hidden" id="edit_patient_id">
+                        <form id="editPatientForm" onsubmit="return submitEditPatient(event)" method="POST">
+                          <input type="hidden" id="edit_patient_id" name="id">
 
                           <div class="form-grid">
                             <div class="form-group">
                               <label for="edit_patient_name">Patient Name</label>
-                              <input id="edit_patient_name" type="text" required>
+                              <input id="edit_patient_name" name="patient_name" type="text" required>
                             </div>
                             <div class="form-group">
                               <label for="edit_date_of_bite">Date of Bite</label>
-                              <input id="edit_date_of_bite" type="date">
+                              <input id="edit_date_of_bite" name="date_of_bite" type="date">
                             </div>
                             <div class="form-group">
                               <label for="edit_service_type">Service</label>
-                              <input id="edit_service_type" type="text">
+                              <input id="edit_service_type" name="service_type" type="text">
                             </div>
                             <div class="form-group">
                               <label for="edit_contact_number">Contact</label>
-                              <input id="edit_contact_number" type="text">
+                              <input id="edit_contact_number" name="contact_number" type="text">
                             </div>
                             <div class="form-group">
                               <label for="edit_age">Age</label>
-                              <input id="edit_age" type="number" min="0">
+                              <input id="edit_age" name="age" type="number" min="0">
                             </div>
                             <div class="form-group">
                               <label for="edit_gender">Gender</label>
-                              <select id="edit_gender">
+                              <select id="edit_gender" name="gender">
                                 <option value=""></option>
                                 <option>Male</option>
                                 <option>Female</option>
@@ -774,53 +775,53 @@
                             </div>
                             <div class="form-group form-group full-width">
                               <label for="edit_address">Address</label>
-                              <input id="edit_address" type="text">
+                              <input id="edit_address" name="address" type="text">
                             </div>
 
                             <div class="form-group">
                               <label for="edit_bite_location">Bite Location</label>
-                              <input id="edit_bite_location" type="text">
+                              <input id="edit_bite_location" name="bite_location" type="text">
                             </div>
                             <div class="form-group">
                               <label for="edit_place_of_bite">Place of Bite</label>
-                              <input id="edit_place_of_bite" type="text">
+                              <input id="edit_place_of_bite" name="place_of_bite" type="text">
                             </div>
                             <div class="form-group">
                               <label for="edit_source_of_bite">Source of Bite</label>
-                              <input id="edit_source_of_bite" type="text">
+                              <input id="edit_source_of_bite" name="source_of_bite" type="text">
                             </div>
                             <div class="form-group">
                               <label for="edit_type_of_bite">Type of Bite</label>
-                              <input id="edit_type_of_bite" type="text">
+                              <input id="edit_type_of_bite" name="type_of_bite" type="text">
                             </div>
                             <div class="form-group">
                               <label for="edit_source_status">Source Status</label>
-                              <input id="edit_source_status" type="text">
+                              <input id="edit_source_status" name="source_status" type="text">
                             </div>
                             <div class="form-group">
                               <label for="edit_exposure">Exposure</label>
-                              <input id="edit_exposure" type="text">
+                              <input id="edit_exposure" name="exposure" type="text">
                             </div>
 
                             <div class="form-group">
                               <label for="edit_day0">Day 0</label>
-                              <input id="edit_day0" type="date">
+                              <input id="edit_day0" name="day0" type="date">
                             </div>
                             <div class="form-group">
                               <label for="edit_day3">Day 3</label>
-                              <input id="edit_day3" type="date">
+                              <input id="edit_day3" name="day3" type="date">
                             </div>
                             <div class="form-group">
                               <label for="edit_day7">Day 7</label>
-                              <input id="edit_day7" type="date">
+                              <input id="edit_day7" name="day7" type="date">
                             </div>
                             <div class="form-group">
                               <label for="edit_day14">Day 14</label>
-                              <input id="edit_day14" type="date">
+                              <input id="edit_day14" name="day14" type="date">
                             </div>
                             <div class="form-group">
                               <label for="edit_day28">Day 28</label>
-                              <input id="edit_day28" type="date">
+                              <input id="edit_day28" name="day28" type="date">
                             </div>
                           </div>
 
@@ -859,6 +860,80 @@ window.addEventListener('DOMContentLoaded', () => {
   document.getElementById('setting-theme').value = savedTheme;
   applyTheme(savedTheme);
 });
+
+// If you already pass patients_json from Flask, parse once:
+const PATIENTS = window.PATIENTS || (window.PATIENTS = (() => {
+  try { return JSON.parse(document.getElementById('patientsJson')?.textContent || '[]'); }
+  catch { return []; }
+})());
+
+// Attach click handlers to edit buttons
+document.addEventListener('click', async (e) => {
+  const btn = e.target.closest('.btn-edit');
+  if (!btn) return;
+  const id = btn.getAttribute('data-patient-id');
+
+  // Option A: fetch fresh data from server
+  const res = await fetch(`/patient/${id}`);
+  const p = await res.json();
+
+  openEditModal(p);
+});
+
+function openEditModal(p) {
+  // set action to /update-patient/<id>
+  const form = document.getElementById('editPatientForm');
+  form.action = `/update-patient/${p.id}`;
+
+  // fill fields
+  document.getElementById('edit_patient_id').value = p.id;
+  document.getElementById('edit_patient_name').value = p.patient_name || '';
+  document.getElementById('edit_date_of_bite').value = (p.date_of_bite || '').slice(0,10);
+  document.getElementById('edit_service_type').value = p.service_type || '';
+  document.getElementById('edit_contact_number').value = p.contact_number || '';
+  document.getElementById('edit_age').value = p.age ?? '';
+  document.getElementById('edit_gender').value = p.gender || '';
+  document.getElementById('edit_address').value = p.address || '';
+  document.getElementById('edit_bite_location').value = p.bite_location || '';
+  document.getElementById('edit_place_of_bite').value = p.place_of_bite || '';
+  document.getElementById('edit_source_of_bite').value = p.source_of_bite || '';
+  document.getElementById('edit_type_of_bite').value = p.type_of_bite || '';
+  document.getElementById('edit_source_status').value = p.source_status || '';
+  document.getElementById('edit_exposure').value = p.exposure || '';
+  document.getElementById('edit_day0').value = (p.day0 || '').slice(0,10);
+  document.getElementById('edit_day3').value = (p.day3 || '').slice(0,10);
+  document.getElementById('edit_day7').value = (p.day7 || '').slice(0,10);
+  document.getElementById('edit_day14').value = (p.day14 || '').slice(0,10);
+  document.getElementById('edit_day28').value = (p.day28 || '').slice(0,10);
+
+  // show modal (whatever your show function is)
+  document.getElementById('editPatientModal').style.display = 'block';
+}
+
+// trial
+document.addEventListener('click', async (e) => {
+  const btn = e.target.closest('.btn-edit');
+  if (!btn) return;
+
+  const id = btn.getAttribute('data-patient-id');
+  if (!id) {
+    console.warn('No data-patient-id on edit button');
+    return;
+  }
+
+  // Get the latest patient data from the server
+  const res = await fetch(`/patient/${id}`);
+  if (!res.ok) {
+    alert(`Cannot load patient ${id}. Server returned ${res.status}.`);
+    return;
+  }
+  const p = await res.json();
+
+  console.log('Editing patient:', p); // sanity check
+  openEditModal(p);                    // <-- now your function runs with a real object
+});
+
+
 </script>
 
               </body>
