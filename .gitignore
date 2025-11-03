@@ -1,0 +1,21 @@
+# Python virtual environments
+venv/
+vnev/
+env/
+ENV/
+
+# Database files - only ignore local changes, not the file itself
+# database.db
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db

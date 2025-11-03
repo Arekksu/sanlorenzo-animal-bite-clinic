@@ -7,6 +7,24 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='employee-styles.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='audit-log.css') }}">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    /* Vaccination button styling */
+    .vaccination-button:hover {
+      border-color: #3b82f6 !important;
+      background: #f0f9ff !important;
+      box-shadow: 0 2px 8px rgba(59, 130, 246, 0.15) !important;
+    }
+    
+    .vaccination-button:has(input:checked) {
+      border-color: #2563eb !important;
+      background: #dbeafe !important;
+      box-shadow: 0 2px 8px rgba(37, 99, 235, 0.2) !important;
+    }
+    
+    .vaccination-button:active {
+      transform: scale(0.98);
+    }
+  </style>
 </head>
 <body>
   <div class="dashboard-container">
@@ -369,27 +387,21 @@
                             </div>
                             <div class="form-group">
                               <label>Previous Rabies Vaccination Status:</label>
-                              <div class="vaccination-options" style="display:flex;flex-direction:row;gap:4px;align-items:stretch;justify-content:flex-start;">
-                                <div class="radio-group" style="flex:1;display:flex;align-items:center;gap:14px;min-width:320px;max-width:420px;padding:18px 20px;border:1.5px solid transparent;border-radius:12px;background:transparent;box-sizing:border-box;">
-                                  <input type="radio" id="vacc-yes" name="vaccinated" value="Yes" checked required>
-                                  <label for="vacc-yes" class="radio-label" style="margin-bottom:0;width:100%;">
-                                    <span class="radio-button"></span>
-                                    <span class="radio-text" style="display:block;">
-                                      <strong>Previously Vaccinated</strong>
-                                      <small style="display:block;">Patient has received anti-rabies vaccine within the last 2 years</small>
-                                    </span>
-                                  </label>
-                                </div>
-                                <div class="radio-group" style="flex:1;display:flex;align-items:center;gap:14px;min-width:320px;max-width:420px;padding:18px 20px;border:1.5px solid transparent;border-radius:12px;background:transparent;box-sizing:border-box;">
-                                  <input type="radio" id="vacc-no" name="vaccinated" value="No" required>
-                                  <label for="vacc-no" class="radio-label" style="margin-bottom:0;width:100%;">
-                                    <span class="radio-button"></span>
-                                    <span class="radio-text" style="display:block;">
-                                      <strong>Not Previously Vaccinated</strong>
-                                      <small style="display:block;">Patient has no prior anti-rabies vaccination or unsure</small>
-                                    </span>
-                                  </label>
-                                </div>
+                              <div class="vaccination-options" style="display:flex;flex-direction:row;gap:12px;align-items:stretch;justify-content:flex-start;">
+                                <label for="vacc-yes" class="vaccination-button" style="flex:1;display:flex;align-items:center;gap:12px;min-width:280px;max-width:380px;padding:16px 18px;border:2px solid #d1d5db;border-radius:8px;background:#ffffff;cursor:pointer;transition:all 0.2s ease;box-shadow:0 1px 3px rgba(0,0,0,0.1);">
+                                  <input type="radio" id="vacc-yes" name="vaccinated" value="Yes" checked required style="width:18px;height:18px;margin:0;cursor:pointer;flex-shrink:0;">
+                                  <span class="radio-text" style="display:block;flex:1;">
+                                    <strong style="display:block;font-size:15px;color:#1f2937;margin-bottom:4px;">Previously Vaccinated</strong>
+                                    <small style="display:block;font-size:13px;color:#6b7280;line-height:1.4;">Patient has received anti-rabies vaccine within the last 2 years</small>
+                                  </span>
+                                </label>
+                                <label for="vacc-no" class="vaccination-button" style="flex:1;display:flex;align-items:center;gap:12px;min-width:280px;max-width:380px;padding:16px 18px;border:2px solid #d1d5db;border-radius:8px;background:#ffffff;cursor:pointer;transition:all 0.2s ease;box-shadow:0 1px 3px rgba(0,0,0,0.1);">
+                                  <input type="radio" id="vacc-no" name="vaccinated" value="No" required style="width:18px;height:18px;margin:0;cursor:pointer;flex-shrink:0;">
+                                  <span class="radio-text" style="display:block;flex:1;">
+                                    <strong style="display:block;font-size:15px;color:#1f2937;margin-bottom:4px;">Not Previously Vaccinated</strong>
+                                    <small style="display:block;font-size:13px;color:#6b7280;line-height:1.4;">Patient has no prior anti-rabies vaccination or unsure</small>
+                                  </span>
+                                </label>
                               </div>
                             </div>
                           </div>
