@@ -135,8 +135,6 @@ def toggle_employee_status(employee_id):
         return jsonify({'success': False, 'message': 'Failed to update status'})
 
 @app.route('/reset_password/<int:employee_id>', methods=['POST'])
-
-@app.route('/reset_password/<int:employee_id>', methods=['POST'])
 @role_required('admin')
 def reset_password(employee_id):
     try:
@@ -163,52 +161,9 @@ def reset_password(employee_id):
             'success': True,
             'message': 'Password reset successfully'
         })
-        
-        if not employee:
-            return jsonify({'success': False, 'message': 'Employee not found'})
-            
-        if employee['username'] == 'admin':
-            return jsonify({'success': False, 'message': 'Cannot reset admin password'})
-            
-        # Default password will be "password123"
-        default_password = "password123"
-        hashed = bcrypt.hashpw(default_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
-        
-        conn.execute('UPDATE employees SET password = ? WHERE employee_id = ?',
-                    (hashed, employee_id))
-        conn.commit()
-        
-        return jsonify({
-            'success': True,
-            'message': 'Password reset successfully'
-        })
     except Exception as e:
         print(f"Error resetting password: {str(e)}")
         return jsonify({'success': False, 'message': 'Failed to reset password'})
-
-# Create Employee Route
-        return jsonify({
-            'success': True,
-            'message': 'Password reset successfully'
-        })
-    except Exception as e:
-        print(f"Error resetting password: {str(e)}")
-        return jsonify({'success': False, 'message': 'Failed to reset password'})
-        conn.execute('UPDATE employees SET active = ? WHERE employee_id = ?', 
-                    (new_status, employee_id))
-        conn.commit()
-        
-        log_audit_trail(
-            session['employee_id'],
-            session['employee_name'],
-            f"{'Activated' if new_status else 'Deactivated'} employee (ID: {employee_id})",
-            request.remote_addr
-        )
-        
-        return jsonify({'success': True})
-    except Exception as e:
-        print(f"Error toggling employee status: {str(e)}")
-        return jsonify({'success': False, 'message': 'Failed to update employee status'})
 
 @app.route('/reset_employee_password/<int:employee_id>', methods=['POST'])
 @role_required('admin')
@@ -271,7 +226,9 @@ def create_employee():
         if existing_user:
             return jsonify({'success': False, 'message': 'Username already exists'})
 
-        # Hash the password
+        # Hash the password (type check for safety)
+        if not password:
+            return jsonify({'success': False, 'message': 'Password is required'})
         hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
 
         # Insert new employee
@@ -402,6 +359,16 @@ def employee_dashboard():
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, data)
             conn.commit()
+            
+            # Log to audit trail
+            log_audit_trail(
+                session['employee_id'],
+                session['employee_name'],
+                f"Added new patient record: {request.form['patient_name']}",
+                request.remote_addr
+            )
+            
+            flash('Record added successfully!', 'success')
             return redirect(url_for("employee_dashboard"))
 
         # Get all patients for display
@@ -477,21 +444,34 @@ def patient_detail(patient_id):
 
 @app.route("/delete-patient/<int:patient_id>", methods=["DELETE"])
 def delete_patient(patient_id):
+    if 'employee_id' not in session:
+        return jsonify({"error": "Unauthorized"}), 401
+        
     conn = get_db()
     
-    # Check if patient exists
+    # Get patient info before deleting for audit log
     patient = conn.execute(
-        "SELECT id FROM patients WHERE id = ?", (patient_id,)
+        "SELECT patient_name FROM patients WHERE id = ?", (patient_id,)
     ).fetchone()
     
     if not patient:
-        return "Patient not found", 404
+        return jsonify({"error": "Patient not found"}), 404
+    
+    patient_name = patient['patient_name']
     
     # Delete the patient
     conn.execute("DELETE FROM patients WHERE id = ?", (patient_id,))
     conn.commit()
     
-    return {"message": "Patient deleted successfully"}, 200
+    # Log to audit trail
+    log_audit_trail(
+        session['employee_id'],
+        session['employee_name'],
+        f"Deleted patient record: {patient_name} (ID: {patient_id})",
+        request.remote_addr
+    )
+    
+    return jsonify({"message": "Patient deleted successfully"}), 200
 
 @app.route("/api/patients")
 def api_patients():
@@ -541,6 +521,74 @@ def get_patients_schedule():
     
     return patients_list
 
+@app.route('/mark-appointment-done', methods=['POST'])
+def mark_appointment_done():
+    """Mark an appointment as completed"""
+    if 'employee_id' not in session:
+        return jsonify({'success': False, 'error': 'Unauthorized'}), 401
+    
+    try:
+        data = request.get_json()
+        patient_id = data.get('patient_id')
+        appointment_day = data.get('day')  # e.g., 'day0', 'day3', etc.
+        appointment_date = data.get('date')
+        
+        conn = get_db()
+        patient = conn.execute(
+            "SELECT patient_name FROM patients WHERE id = ?", 
+            (patient_id,)
+        ).fetchone()
+        
+        if not patient:
+            return jsonify({'success': False, 'error': 'Patient not found'}), 404
+        
+        # Log to audit trail
+        log_audit_trail(
+            session['employee_id'],
+            session['employee_name'],
+            f"Marked appointment as DONE for {patient['patient_name']} - {appointment_day} ({appointment_date})",
+            request.remote_addr
+        )
+        
+        return jsonify({'success': True, 'message': 'Appointment marked as done'})
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/mark-appointment-noshow', methods=['POST'])
+def mark_appointment_noshow():
+    """Mark an appointment as no-show"""
+    if 'employee_id' not in session:
+        return jsonify({'success': False, 'error': 'Unauthorized'}), 401
+    
+    try:
+        data = request.get_json()
+        patient_id = data.get('patient_id')
+        appointment_day = data.get('day')
+        appointment_date = data.get('date')
+        
+        conn = get_db()
+        patient = conn.execute(
+            "SELECT patient_name FROM patients WHERE id = ?", 
+            (patient_id,)
+        ).fetchone()
+        
+        if not patient:
+            return jsonify({'success': False, 'error': 'Patient not found'}), 404
+        
+        # Log to audit trail
+        log_audit_trail(
+            session['employee_id'],
+            session['employee_name'],
+            f"Marked appointment as NO-SHOW for {patient['patient_name']} - {appointment_day} ({appointment_date})",
+            request.remote_addr
+        )
+        
+        return jsonify({'success': True, 'message': 'Appointment marked as no-show'})
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 @app.route('/restore-csv', methods=['POST'])
 @role_required('admin')
 def restore_csv():
@@ -548,13 +596,13 @@ def restore_csv():
         return redirect(url_for('employee_dashboard'))
     
     file = request.files['file']
-    if file.filename == '':
+    if not file.filename or file.filename == '':
         return redirect(url_for('employee_dashboard'))
     
     if file and file.filename.endswith('.csv'):
         try:
-            # Read CSV file
-            df = pd.read_csv(file)
+            # Read CSV file - type: ignore for FileStorage compatibility
+            df = pd.read_csv(file)  # type: ignore[arg-type]
             
             # Get database connection
             conn = get_db()
@@ -657,6 +705,15 @@ def update_patient(pid):
             WHERE id=?
         """, [*vals, pid])
         conn.commit()
+        
+        # Log to audit trail
+        log_audit_trail(
+            session['employee_id'],
+            session['employee_name'],
+            f"Updated patient record: {payload.get('patient_name')} (ID: {pid})",
+            request.remote_addr
+        )
+        
     finally:
         conn.close()
     return redirect(url_for('employee_dashboard'))
@@ -808,6 +865,7 @@ def settings():
                                 employee_name=session.get('employee_name'),
                                 user=user,
                                 active_tab='settings',
+                                patients_json=[],
                                 toast_messages=messages)
         
     finally:
@@ -819,6 +877,7 @@ def settings():
                         employee_name=session.get('employee_name'),
                         user=user,
                         active_tab='settings',
+                        patients_json=[],
                         toast_messages=[])
 
 
@@ -849,6 +908,7 @@ def audit_trail():
 
 def log_audit_trail(employee_id, employee_name, action, ip_address):
     """Log employee actions for audit trail"""
+    conn = None
     try:
         conn = get_db()
         conn.execute('BEGIN IMMEDIATE')
@@ -858,10 +918,11 @@ def log_audit_trail(employee_id, employee_name, action, ip_address):
         ''', (employee_id, employee_name, action, ip_address))
         conn.execute('COMMIT')
     except Exception as e:
-        try:
-            conn.execute('ROLLBACK')
-        except:
-            pass
+        if conn:
+            try:
+                conn.execute('ROLLBACK')
+            except:
+                pass
         # Only raise non-locking errors
         if not isinstance(e, sqlite3.OperationalError) or 'database is locked' not in str(e):
             raise

@@ -7,14 +7,264 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='employee-styles.css') }}?v=2.0">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
-    /* Lightweight toast */
-    .toast{position:fixed;right:20px;bottom:20px;padding:8px 12px;border-radius:6px;color:#fff;font-weight:500;
-      box-shadow:0 4px 12px rgba(0,0,0,.15);opacity:0;transform:translateY(10px);transition:.25s ease;z-index:9999;
-      display:flex;gap:8px;align-items:center;font-size:0.85rem;line-height:1.2}
-    .toast.show{opacity:1;transform:translateY(0)}
-    .toast-success{background:#16a34a}
-    .toast-error{background:#dc2626}
-    .toast-icon{font-size:1rem;line-height:1}
+    /* Date Input Calendar Icon Styles */
+    .date-input-wrapper {
+      position: relative;
+      width: 100%;
+    }
+    
+    .date-input-wrapper input[type="date"] {
+      width: 100%;
+      padding-right: 35px; /* Space for the calendar icon */
+    }
+    
+    .date-input-wrapper::after {
+      content: "📅";
+      position: absolute;
+      right: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      pointer-events: none;
+      font-size: 18px;
+      opacity: 0.7;
+    }
+
+    .date-input-wrapper input[type="date"]::-webkit-calendar-picker-indicator {
+      position: absolute;
+      right: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      opacity: 0;
+      cursor: pointer;
+    }
+
+    /* Select Dropdown Styles */
+    .select-wrapper {
+      position: relative;
+      width: 100%;
+    }
+    
+    .select-wrapper select {
+      appearance: none;
+      -webkit-appearance: none;
+      -moz-appearance: none;
+      width: 100%;
+      padding: 8px 32px 8px 12px;
+      border-radius: 6px;
+      border: 1px solid #e5e7eb;
+      background: #fff;
+      cursor: pointer;
+    }
+    
+    .select-arrow {
+      position: absolute;
+      right: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      pointer-events: none;
+      font-size: 12px;
+      color: #6b7280;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .select-wrapper select {
+        background: #1a1a1a;
+        border-color: #2d2d2d;
+        color: #e5e7eb;
+      }
+      .select-arrow {
+        color: #9ca3af;
+      }
+    }
+
+    /* Vaccination History Styles */
+    .radio-inline-group {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-top: 8px;
+    }
+
+    .radio-inline {
+      display: flex;
+      align-items: center;
+      background: #ffffff;
+      border: 1px solid #e5e7eb;
+      border-radius: 6px;
+      padding: 10px 16px;
+      cursor: pointer;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      min-width: 140px;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    }
+
+    .radio-inline::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(220, 38, 38, 0.04);
+      opacity: 0;
+      transition: opacity 0.2s ease;
+    }
+
+    .radio-inline:hover::before {
+      opacity: 1;
+    }
+
+    .radio-inline input[type="radio"] {
+      margin: 0;
+      margin-right: 8px;
+      width: 16px;
+      height: 16px;
+      position: relative;
+      z-index: 1;
+      cursor: pointer;
+      border: 2px solid #d1d5db;
+      transition: all 0.2s ease;
+    }
+
+    .radio-inline input[type="radio"]:checked {
+      accent-color: #dc2626;
+      border-color: #dc2626;
+    }
+
+    .radio-inline:has(input[type="radio"]:checked) {
+      border-color: #dc2626;
+      background: linear-gradient(to right bottom, #fff5f5, #fef2f2);
+      box-shadow: 0 1px 3px rgba(220, 38, 38, 0.1), 
+                  inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    }
+
+    .radio-inline:has(input[type="radio"]:checked) span {
+      font-weight: 500;
+      color: #991b1b;
+    }
+
+    .radio-inline span {
+      position: relative;
+      z-index: 1;
+      transition: all 0.2s ease;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .radio-inline {
+        background: #1f2937;
+        border-color: #374151;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+      }
+
+      .radio-inline::before {
+        background: rgba(239, 68, 68, 0.08);
+      }
+
+      .radio-inline input[type="radio"] {
+        border-color: #4b5563;
+      }
+
+      .radio-inline:hover {
+        border-color: #ef4444;
+      }
+
+      .radio-inline:has(input[type="radio"]:checked) {
+        background: linear-gradient(to right bottom, #7f1d1d, #991b1b);
+        border-color: #ef4444;
+        box-shadow: 0 1px 3px rgba(239, 68, 68, 0.2),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+      }
+
+      .radio-inline:has(input[type="radio"]:checked) span {
+        color: #fca5a5;
+      }
+    }
+
+    /* Field Notes */
+    .field-note {
+      font-size: 0.85rem;
+      color: #6c757d;
+      margin-top: 5px;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .radio-group {
+        background: #1a1a1a;
+        border-color: #2d2d2d;
+      }
+      
+      .radio-group:hover {
+        background: #2d2d2d;
+      }
+      
+      .radio-group:has(input[type="radio"]:checked) {
+        background: #1a365d;
+        border-color: #2b4c85;
+      }
+      
+      .radio-group label strong {
+        color: #e5e7eb;
+      }
+      
+      .radio-group label small {
+        color: #9ca3af;
+      }
+      
+      .field-note {
+        color: #9ca3af;
+      }
+    }
+
+    /* Toast Notifications */
+    .toast {
+      position: fixed;
+      right: 20px;
+      bottom: 20px;
+      padding: 8px 16px;
+      border-radius: 6px;
+      background: #333;
+      color: white;
+      font-weight: 500;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      opacity: 0;
+      transform: translateY(20px);
+      transition: all 0.3s ease;
+      z-index: 9999;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+      line-height: 1;
+      min-width: auto;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .toast-success {
+      background: #10b981;
+    }
+
+    .toast-error {
+      background: #ef4444;
+    }
+
+    .toast-icon {
+      font-size: 18px;
+      line-height: 1;
+      display: flex;
+      align-items: center;
+    }
+
+    .toast-message {
+      padding-right: 4px;
+      white-space: nowrap;
+    }
 
     .settings-card{background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:20px}
     .field-note{color:#6b7280;font-size:.85rem;display:block;margin-top:6px}
@@ -59,6 +309,35 @@
     {% endfor %}
   {% endif %}
   
+  <!-- Flash Messages Toast -->
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% for category, message in messages %}
+        <div class="toast toast-{{ category }}" id="flashToast">
+          <span class="toast-icon">{{ '✓' if category == 'success' else '✕' }}</span>
+          <span class="toast-message">{{ message }}</span>
+        </div>
+        <script>
+          document.addEventListener('DOMContentLoaded', function() {
+            const toast = document.getElementById('flashToast');
+            if (toast) {
+              setTimeout(() => {
+                toast.classList.add('show');
+              }, 100);
+
+              setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => {
+                  toast.remove();
+                }, 300);
+              }, 3000);
+            }
+          });
+        </script>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+
   <div class="dashboard-container">
     <!-- Sidebar -->
     <nav class="sidebar">
@@ -268,123 +547,215 @@
           <!-- Vaccine & Bite Info -->
           <div id="vaccine-bite-info" class="tab-content">
             <div class="form-grid">
-              <div class="form-section-header"><h4>Service Information</h4></div>
+              <!-- Service Information and Vaccination History Row -->
+              <div class="form-section-header full-width"><h4>Service & Vaccination Information</h4></div>
+              
               <div class="form-group">
-                <label>Service Type:</label>
-                <select name="service_type" required>
-                  <option value="">Select service type</option>
-                  <option value="Booster">Booster</option>
-                  <option value="Pre-Exposure Prophylaxis">Pre-Exposure Prophylaxis</option>
-                  <option value="Post-Exposure Prophylaxis">Post-Exposure Prophylaxis</option>
-                </select>
+                <label>🏥 Service Type:</label>
+                <div class="select-wrapper">
+                  <select name="service_type" required>
+                    <option value="">Select service type</option>
+                    <option value="Booster">💉 Booster</option>
+                    <option value="Pre-Exposure Prophylaxis">🛡️ Pre-Exposure Prophylaxis</option>
+                    <option value="Post-Exposure Prophylaxis">🚑 Post-Exposure Prophylaxis</option>
+                  </select>
+                  <span class="select-arrow">▼</span>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label>💉 Previous Anti-Rabies Vaccination:</label>
+                <div class="radio-inline-group">
+                  <label class="radio-inline">
+                    <input type="radio" name="vaccinated" value="Yes">
+                    <span>Yes</span>
+                  </label>
+                  <label class="radio-inline">
+                    <input type="radio" name="vaccinated" value="No" checked>
+                    <span>No</span>
+                  </label>
+                </div>
+              </div>
+              
+              <div class="form-group full-width" id="previous-vaccination-details" style="display: none;">
+                <label>📅 Date of Last Vaccination:</label>
+                <input type="date" name="last_vaccination_date">
+                <small class="field-note">When was the patient's last anti-rabies vaccination?</small>
               </div>
 
               <div class="form-section-header"><h4>Bite Incident Details</h4></div>
               <div class="form-group">
-                <label>Date of Bite:</label>
+                <label>📅 Date of Bite:</label>
                 <input type="date" name="date_of_bite" title="When did the bite incident occur?">
               </div>
               <div class="form-group">
-                <label>Bite Location on Body:</label>
+                <label>🎯 Bite Location on Body:</label>
                 <input type="text" name="bite_location" placeholder="e.g., left hand, right leg, face">
               </div>
               <div class="form-group">
-                <label>Place of Bite Incident:</label>
+                <label>📍 Place of Bite Incident:</label>
                 <input type="text" name="place_of_bite" placeholder="e.g., at home, in the street, at park">
               </div>
               <div class="form-group">
-                <label>Type of Bite:</label>
-                <select name="type_of_bite">
-                  <option value="">Select bite type</option>
-                  <option value="One Bite">Single Bite</option>
-                  <option value="Multiple Bites">Multiple Bites</option>
-                  <option value="Scratch">Scratch/Laceration</option>
-                  <option value="Lick on open wound">Lick on Open Wound</option>
-                </select>
+                <label>🤕 Type of Bite:</label>
+                <div class="select-wrapper">
+                  <select name="type_of_bite">
+                    <option value="">Select bite type</option>
+                    <option value="One Bite">🔴 Single Bite</option>
+                    <option value="Multiple Bites">🔴 Multiple Bites</option>
+                    <option value="Scratch">〰️ Scratch/Laceration</option>
+                    <option value="Lick on open wound">💧 Lick on Open Wound</option>
+                  </select>
+                  <span class="select-arrow">▼</span>
+                </div>
               </div>
 
               <div class="form-section-header"><h4>Animal Information</h4></div>
               <div class="form-group">
-                <label>Source of Bite:</label>
-                <select name="source_of_bite">
-                  <option value="">Select animal type</option>
-                  <option value="Dog">Dog</option>
-                  <option value="Cat">Cat</option>
-                  <option value="Bat">Bat</option>
-                  <option value="Monkey">Monkey</option>
-                  <option value="Other">Other Animal</option>
-                </select>
+                <label>🐾 Source of Bite:</label>
+                <div class="select-wrapper">
+                  <select name="source_of_bite">
+                    <option value="">Select animal type</option>
+                    <option value="Dog">🐕 Dog</option>
+                    <option value="Cat">🐱 Cat</option>
+                    <option value="Bat">🦇 Bat</option>
+                    <option value="Monkey">🐒 Monkey</option>
+                    <option value="Other">❓ Other Animal</option>
+                  </select>
+                  <span class="select-arrow">▼</span>
+                </div>
               </div>
               <div class="form-group">
-                <label>Other Animal Specify:</label>
+                <label>📝 Other Animal Specify:</label>
                 <input type="text" name="other_source_of_bite" placeholder="Specify if 'Other' selected above">
               </div>
               <div class="form-group">
-                <label>Animal Status:</label>
-                <select name="source_status">
-                  <option value="">Select status</option>
-                  <option value="Alive">Alive & Observable</option>
-                  <option value="Dead">Dead/Killed</option>
-                  <option value="Unknown">Unknown/Lost</option>
-                </select>
+                <label>⭕ Animal Status:</label>
+                <div class="select-wrapper">
+                  <select name="source_status">
+                    <option value="">Select status</option>
+                    <option value="Alive">✅ Alive & Observable</option>
+                    <option value="Dead">⚫ Dead/Killed</option>
+                    <option value="Unknown">❓ Unknown/Lost</option>
+                  </select>
+                  <span class="select-arrow">▼</span>
+                </div>
               </div>
               <div class="form-group">
-                <label>Animal Ownership:</label>
-                <select name="exposure" required>
-                  <option value="">Select ownership type</option>
-                  <option value="Neighbor">Neighbor</option>
-                  <option value="Stranger">Stranger</option>
-                  <option value="Family">Family</option>
-                  <option value="Other">Other</option>
-                </select>
+                <label>👥 Animal Ownership:</label>
+                <div class="select-wrapper">
+                  <select name="exposure" required>
+                    <option value="">Select ownership type</option>
+                    <option value="Neighbor">🏘️ Neighbor</option>
+                    <option value="Stranger">❓ Stranger</option>
+                    <option value="Family">👨‍👩‍👧‍👦 Family</option>
+                    <option value="Other">📝 Other</option>
+                  </select>
+                  <span class="select-arrow">▼</span>
+                </div>
               </div>
             </div>
           </div>
 
           <!-- Schedule -->
           <div id="schedule" class="tab-content schedule-section">
-            <div class="schedule-header"><h3>Anti-Rabies Vaccination Schedule</h3></div>
+            <div class="schedule-header">
+              <h3 style="color:#fff !important;">Anti-Rabies Vaccination Schedule</h3>
+              <div class="schedule-subtitle" style="color:#ddd !important;">Enter Day 0 (today's date or exposure date) to automatically calculate the full schedule</div>
+            </div>
             <div class="schedule-grid">
               <div class="schedule-item priority-high">
                 <div class="schedule-day">
                   <span class="day-number">Day 0</span>
                   <span class="day-description">Initial dose (exposure day)</span>
                 </div>
-                <input type="date" name="day0" class="schedule-input" required />
+                <div class="date-input-wrapper">
+                  <input type="date" name="day0" class="schedule-input" required title="Select the initial treatment date" />
+                </div>
                 <div class="schedule-status"><span class="status-badge critical">Critical</span></div>
               </div>
               <div class="schedule-item priority-high">
                 <div class="schedule-day"><span class="day-number">Day 3</span><span class="day-description">Second dose</span></div>
-                <input type="date" name="day3" class="schedule-input" />
+                <div class="date-input-wrapper">
+                  <input type="date" name="day3" class="schedule-input" title="Auto-calculated: 3 days after initial dose" readonly />
+                </div>
                 <div class="schedule-status"><span class="status-badge important">Important</span></div>
               </div>
               <div class="schedule-item priority-medium">
                 <div class="schedule-day"><span class="day-number">Day 7</span><span class="day-description">Third dose</span></div>
-                <input type="date" name="day7" class="schedule-input" />
+                <div class="date-input-wrapper">
+                  <input type="date" name="day7" class="schedule-input" title="Auto-calculated: 7 days after initial dose" readonly />
+                </div>
                 <div class="schedule-status"><span class="status-badge moderate">Moderate</span></div>
               </div>
               <div class="schedule-item priority-medium">
                 <div class="schedule-day"><span class="day-number">Day 14</span><span class="day-description">Fourth dose</span></div>
-                <input type="date" name="day14" class="schedule-input" />
+                <div class="date-input-wrapper">
+                  <input type="date" name="day14" class="schedule-input" title="Auto-calculated: 14 days after initial dose" readonly />
+                </div>
                 <div class="schedule-status"><span class="status-badge moderate">Moderate</span></div>
               </div>
               <div class="schedule-item priority-low">
                 <div class="schedule-day"><span class="day-number">Day 28</span><span class="day-description">Final dose</span></div>
-                <input type="date" name="day28" class="schedule-input" />
+                <div class="date-input-wrapper">
+                  <input type="date" name="day28" class="schedule-input" title="Auto-calculated: 28 days after initial dose" readonly />
+                </div>
                 <div class="schedule-status"><span class="status-badge low">Completion</span></div>
               </div>
             </div>
 
             <div class="schedule-notes">
-              <div class="note-item"><strong>Note:</strong> Dates will be auto-calculated when Day 0 is selected</div>
-              <div class="note-item"><strong>Important:</strong> Strict adherence to schedule is crucial for effectiveness</div>
+              <div class="note-item"><i class="fas fa-info-circle"></i> <strong>Automatic Scheduling:</strong> All follow-up dates are calculated based on Day 0</div>
+              <div class="note-item"><i class="fas fa-exclamation-circle"></i> <strong>Important:</strong> Strict adherence to schedule is crucial for effectiveness</div>
             </div>
           </div>
 
+          <!-- Add schedule calculator script -->
+          <script src="{{ url_for('static', filename='schedule-calculator.js') }}"></script>
+
           <div class="form-actions">
-            <button type="submit" class="btn-success">Save Record</button>
+            <button type="submit" class="btn-success" id="saveRecordBtn">Save Record</button>
           </div>
         </form>
+
+        <!-- Toast Notification -->
+        <div class="toast" id="notificationToast" style="display: none;">
+          <span class="toast-icon"></span>
+          <span class="toast-message"></span>
+        </div>
+      </section>
+
+      <!-- Success Message Handler -->
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for category, message in messages %}
+            <script>
+              window.onload = function() {
+                const toast = document.getElementById('notificationToast');
+                if (toast) {
+                  toast.className = 'toast toast-{{ category }}';
+                  toast.querySelector('.toast-icon').textContent = '{{ "✓" if category == "success" else "✕" }}';
+                  toast.querySelector('.toast-message').textContent = '{{ message }}';
+                  toast.style.display = 'flex';
+                  
+                  // Add show class after a brief delay to trigger animation
+                  setTimeout(() => {
+                    toast.classList.add('show');
+                  }, 100);
+
+                  // Remove the toast after 3 seconds
+                  setTimeout(() => {
+                    toast.classList.remove('show');
+                    setTimeout(() => {
+                      toast.style.display = 'none';
+                    }, 300);
+                  }, 3000);
+                }
+              };
+            </script>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
       </section>
 
       <!-- View Patient -->
@@ -409,7 +780,7 @@
             </thead>
             <tbody>
               {% for p in patients %}
-              <tr>
+              <tr data-patient-id="{{ p['id'] }}">
                 <td>{{ p['id'] }}</td>
                 <td>{{ p['patient_name'] }}</td>
                 <td>{{ p['date_of_bite']  }}</td>
@@ -481,7 +852,7 @@
         <div id="appointmentModal" class="modal" style="display:none">
           <div class="modal-content">
             <div class="modal-header">
-              <h2>Appointment Details</h2>
+              <h2 style="color:#fff !important;">Appointment Details</h2>
               <span class="close" onclick="closeAppointmentModal()">&times;</span>
             </div>
             <div id="appointmentDetailsContent" class="modal-body"></div>
@@ -591,7 +962,7 @@
   <div id="patientModal" class="modal" style="display:none">
     <div class="modal-content">
       <div class="modal-header">
-        <h2>Patient Details</h2>
+        <h2 style="color:#fff !important;">Patient Details</h2>
         <span class="close" onclick="closeModal('patientModal')">&times;</span>
       </div>
       <div id="patientModalBody" class="modal-body"></div>
@@ -694,9 +1065,114 @@
     </div>
   </div>
 
+  <!-- Delete Confirmation Modal -->
+  <div id="deleteConfirmModal" class="modal" style="display:none">
+    <div class="modal-content" style="max-width: 450px;">
+      <div class="modal-header">
+        <h2 style="color:#fff !important;">Confirm Delete</h2>
+        <span class="close" onclick="closeDeleteModal()">&times;</span>
+      </div>
+      <div class="modal-body">
+        <p style="font-size: 16px; margin-bottom: 20px;">Are you sure you want to delete this patient?</p>
+        <p style="font-size: 14px; color: #666; margin-bottom: 25px;">This action cannot be undone.</p>
+        <div class="form-actions" style="display: flex; gap: 10px; justify-content: flex-end;">
+          <button type="button" class="btn-secondary" onclick="closeDeleteModal()">Cancel</button>
+          <button type="button" class="btn-danger" onclick="confirmDeletePatient()" style="background-color: #d32f2f; color: white;">Delete</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Scripts -->
   <script src="{{ url_for('static', filename='employee-script.js') }}"></script>
-  <script>
+  <script type="text/javascript">
+    // Store patients data globally
+    // prettier-ignore
+    /* eslint-disable */
+    // @ts-nocheck
+    // The following line contains Jinja2 template syntax that will be rendered server-side
+    const patientsJsonData = {{ patients_json|tojson|safe }};
+    /* eslint-enable */
+    let globalPatientsData = Array.isArray(patientsJsonData) ? patientsJsonData : [];
+
+    // Function to update all dashboard stats and charts
+    function updateAllDashboardStats() {
+      const today = new Date().toISOString().split('T')[0];
+      
+      // Update total patients count everywhere
+      const totalPatients = globalPatientsData.length;
+      document.querySelectorAll('.stat-number').forEach((el, index) => {
+        if (index === 0) el.textContent = totalPatients;
+      });
+
+      // Update stats cards
+      const upcomingCount = globalPatientsData.filter(p => {
+        return [p.day3, p.day7, p.day14, p.day28].some(date => 
+          date && date >= today
+        );
+      }).length;
+
+      const todayCount = globalPatientsData.filter(p => {
+        return [p.day0, p.day3, p.day7, p.day14, p.day28].some(date => 
+          date === today
+        );
+      }).length;
+
+      // Update all stat numbers
+      document.querySelectorAll('.stat-number').forEach((el, index) => {
+        switch(index) {
+          case 0: el.textContent = totalPatients; break;  // Total patients
+          case 1: el.textContent = upcomingCount; break;  // Upcoming appointments
+          case 2: el.textContent = todayCount; break;     // Patients today
+          case 3: el.textContent = globalPatientsData.filter(p => p.day28 && new Date(p.day28) < new Date()).length; break; // Completed
+        }
+      });
+
+      // Update monthly summary cards
+      document.getElementById('monthlyNewPatients').textContent = totalPatients;
+      document.getElementById('monthlyActive').textContent = upcomingCount;
+      
+      // Update completion rate
+      const completedCount = globalPatientsData.filter(p => p.day28 && new Date(p.day28) < new Date()).length;
+      const completionRate = totalPatients > 0 ? Math.round((completedCount / totalPatients) * 100) : 0;
+      document.getElementById('monthlyRate').textContent = `${completionRate}%`;
+
+      // Update charts if they exist
+      if (typeof updateCharts === 'function') {
+        updateCharts(globalPatientsData);
+      }
+    }
+
+    // Function to refresh patients data
+    function refreshPatientsData() {
+      return fetch('/api/patients')
+        .then(response => response.json())
+        .then(data => {
+          globalPatientsData = data.patients;
+          updateAllDashboardStats();
+        })
+        .catch(error => console.error('Error updating patients data:', error));
+    }
+
+    // Function to show toast notification
+    function showToast(message, success = true) {
+      const toast = document.createElement('div');
+      toast.className = `toast toast-${success ? 'success' : 'error'}`;
+      toast.innerHTML = `
+        <span class="toast-icon">${success ? '✓' : '✕'}</span>
+        <span class="toast-message">${message}</span>
+      `;
+      document.body.appendChild(toast);
+
+      setTimeout(() => toast.classList.add('show'), 100);
+      setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => toast.remove(), 300);
+      }, 3000);
+    }
+
+    // Delete function handled in employee-script.js
+
     function togglePassword(fieldId, el) {
       const input = document.getElementById(fieldId);
       if (input.type === 'password') {
@@ -746,48 +1222,7 @@
       }
     });
   </script>
-  <script>
-    function togglePassword(fieldId, el) {
-      const input = document.getElementById(fieldId);
-      if (input.type === 'password') {
-        input.type = 'text';
-        el.style.opacity = 0.6;
-      } else {
-        input.type = 'password';
-        el.style.opacity = 1;
-      }
-    }
 
-    function validatePasswords() {
-      let valid = true;
-      const currentPw = document.getElementById('current_password').value;
-      const newPw = document.getElementById('new_password').value;
-      const confirmPw = document.getElementById('confirm_password').value;
-      document.getElementById('currentPasswordError').style.display = 'none';
-      document.getElementById('newPasswordError').style.display = 'none';
-      document.getElementById('confirmPasswordError').style.display = 'none';
-
-      // If changing password, require current password
-      if (newPw || confirmPw) {
-        if (!currentPw) {
-          document.getElementById('currentPasswordError').textContent = 'Enter your current password to change.';
-          document.getElementById('currentPasswordError').style.display = 'block';
-          valid = false;
-        }
-        if (newPw.length < 6) {
-          document.getElementById('newPasswordError').textContent = 'New password must be at least 6 characters.';
-          document.getElementById('newPasswordError').style.display = 'block';
-          valid = false;
-        }
-        if (newPw !== confirmPw) {
-          document.getElementById('confirmPasswordError').textContent = 'Passwords do not match.';
-          document.getElementById('confirmPasswordError').style.display = 'block';
-          valid = false;
-        }
-      }
-      return valid;
-    }
-  </script>
   <script>
     // Edit modal helper
     function openEditModal(p){
@@ -830,5 +1265,9 @@
       if(location.hash==='#settings'){ try{ showSection('settings'); }catch(e){} }
     });
   </script>
+
+  <!-- Toast Notification Element -->
+  <div id="copilot-toast"></div>
+
 </body>
 </html>

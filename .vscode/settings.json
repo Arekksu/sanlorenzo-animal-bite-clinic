@@ -14,5 +14,25 @@
     ],
 
     // When opening terminals, automatically activate the environment
-    "python.terminal.activateEnvironment": true
+    "python.terminal.activateEnvironment": true,
+
+    // Disable JavaScript validation in HTML files (Jinja2 templates cause false errors)
+    "javascript.validate.enable": false,
+    "typescript.validate.enable": false,
+    "html.validate.scripts": false,
+    "html.validate.styles": false,
+
+    // Pylance settings - suppress missing imports warnings for installed packages
+    "python.analysis.diagnosticSeverityOverrides": {
+        "reportMissingImports": "none",
+        "reportMissingModuleSource": "none",
+        "reportUnusedExcept": "none",
+        "reportOptionalMemberAccess": "warning",
+        "reportArgumentType": "warning",
+        "reportPossiblyUnboundVariable": "none"
+    },
+
+    // Python type checking
+    "python.analysis.typeCheckingMode": "off"
 }
+

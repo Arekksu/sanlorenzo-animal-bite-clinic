@@ -160,22 +160,92 @@ function wirePatientRowActions(){
     };
   });
 
-  // DELETE (with confirm)
+  // DELETE (with modal confirm)
   document.querySelectorAll('.btn-delete').forEach(b=>{
-    b.onclick = async ()=>{
+    b.onclick = ()=>{
       const id=b.getAttribute('data-patient-id');
-      const ok = confirm('Are you sure you want to delete this patient?');
-      if(!ok) return;
-      try{
-        const res=await fetch(`/delete-patient/${id}`,{method:'DELETE'});
-        if(!res.ok) throw new Error(`HTTP ${res.status}`);
-        await reloadPatientTableFromAPI();
-      }catch(err){
-        console.error(err);
-        alert('Failed to delete patient.');
-      }
+      showDeleteModal(id);
     };
   });
+}
+
+// DELETE MODAL FUNCTIONS
+let pendingDeletePatientId = null;
+
+function showDeleteModal(patientId) {
+  pendingDeletePatientId = patientId;
+  const modal = document.getElementById('deleteConfirmModal');
+  if (modal) {
+    modal.style.display = 'block';
+    
+    // Force reflow to trigger animation
+    modal.offsetHeight;
+    
+    // Add show class for animation
+    setTimeout(() => {
+      modal.classList.add('show');
+    }, 10);
+    
+    // Add click outside to close
+    setTimeout(() => {
+      modal.onclick = function(event) {
+        if (event.target === modal) {
+          closeDeleteModal();
+        }
+      };
+    }, 100);
+    
+    // Add ESC key to close
+    document.addEventListener('keydown', handleDeleteModalEscape);
+  }
+}
+
+function handleDeleteModalEscape(event) {
+  if (event.key === 'Escape') {
+    closeDeleteModal();
+  }
+}
+
+function closeDeleteModal() {
+  const modal = document.getElementById('deleteConfirmModal');
+  if (modal) {
+    // Remove show class for fade out animation
+    modal.classList.remove('show');
+    
+    // Wait for animation to finish before hiding
+    setTimeout(() => {
+      modal.style.display = 'none';
+    }, 300);
+    
+    modal.onclick = null;
+  }
+  document.removeEventListener('keydown', handleDeleteModalEscape);
+  pendingDeletePatientId = null;
+}
+
+async function confirmDeletePatient() {
+  if (!pendingDeletePatientId) return;
+  
+  const id = pendingDeletePatientId;
+  closeDeleteModal();
+  
+  try{
+    const res=await fetch(`/delete-patient/${id}`,{method:'DELETE'});
+    if(!res.ok) {
+      const errorData = await res.json().catch(() => ({}));
+      throw new Error(errorData.error || `HTTP ${res.status}`);
+    }
+    showToast('Patient deleted successfully!', 'success');
+    await reloadPatientTableFromAPI();
+    
+    // Update dashboard stats after deletion
+    if (typeof updateAllDashboardStats === 'function') {
+      updateAllDashboardStats();
+    }
+  }catch(err){
+    console.error(err);
+    showToast('Failed to delete patient: ' + err.message, 'error');
+  }
 }
 
 // VIEW MODAL CONTENT (all relevant details)
@@ -877,17 +947,9 @@ function wirePatientRowActions() {
   });
 
   document.querySelectorAll('.btn-delete').forEach(b => {
-    b.onclick = async () => {
+    b.onclick = () => {
       const id = b.getAttribute('data-patient-id');
-      if (!confirm('Delete this patient?')) return;
-      try {
-        const res = await fetch(`/delete-patient/${id}`, { method: 'DELETE' });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        await reloadPatientTableFromAPI();
-      } catch (err) {
-        console.error(err);
-        alert('Failed to delete patient.');
-      }
+      showDeleteModal(id);
     };
   });
 }
@@ -1072,17 +1134,83 @@ function addAppointmentActionHandlers(){
     };
   });
   document.querySelectorAll('.btn-mark-done').forEach(b=>{
-    b.onclick = ()=>{
-      setAppointmentStatus(b.dataset.appointmentId,'completed');
-      showToast('Marked as Done!', 'success');
-      if (selectedDate) updateDailySchedule(selectedDate);
+    b.onclick = async ()=>{
+      const appointmentId = b.dataset.appointmentId;
+      // Parse appointmentId to get patient_id and day (format: "patientId-dayType")
+      const [patientId, dayType] = appointmentId.split('-');
+      
+      // Get patient data to extract the actual date
+      const patient = patientsData.find(p => p.id == patientId);
+      if (!patient) {
+        showToast('Patient not found!', 'error');
+        return;
+      }
+      
+      const date = patient[dayType]; // e.g., patient.day0, patient.day3, etc.
+      
+      try {
+        const res = await fetch('/mark-appointment-done', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({
+            patient_id: patientId,
+            day: dayType,
+            date: date
+          })
+        });
+        
+        const result = await res.json();
+        if (result.success) {
+          setAppointmentStatus(appointmentId, 'completed');
+          showToast('Marked as Done!', 'success');
+          if (selectedDate) updateDailySchedule(selectedDate);
+        } else {
+          showToast(result.error || 'Failed to mark as done', 'error');
+        }
+      } catch (err) {
+        console.error('Error marking as done:', err);
+        showToast('Error marking appointment as done', 'error');
+      }
     };
   });
   document.querySelectorAll('.btn-mark-absent').forEach(b=>{
-    b.onclick = ()=>{
-      setAppointmentStatus(b.dataset.appointmentId,'absent');
-      showToast('Marked as No Show!', 'warning');
-      if (selectedDate) updateDailySchedule(selectedDate);
+    b.onclick = async ()=>{
+      const appointmentId = b.dataset.appointmentId;
+      // Parse appointmentId to get patient_id and day (format: "patientId-dayType")
+      const [patientId, dayType] = appointmentId.split('-');
+      
+      // Get patient data to extract the actual date
+      const patient = patientsData.find(p => p.id == patientId);
+      if (!patient) {
+        showToast('Patient not found!', 'error');
+        return;
+      }
+      
+      const date = patient[dayType]; // e.g., patient.day0, patient.day3, etc.
+      
+      try {
+        const res = await fetch('/mark-appointment-noshow', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({
+            patient_id: patientId,
+            day: dayType,
+            date: date
+          })
+        });
+        
+        const result = await res.json();
+        if (result.success) {
+          setAppointmentStatus(appointmentId, 'absent');
+          showToast('Marked as No Show!', 'warning');
+          if (selectedDate) updateDailySchedule(selectedDate);
+        } else {
+          showToast(result.error || 'Failed to mark as no show', 'error');
+        }
+      } catch (err) {
+        console.error('Error marking as no show:', err);
+        showToast('Error marking appointment as no show', 'error');
+      }
     };
   });
 }
@@ -2182,7 +2310,7 @@ function initializeScheduleCalculation() {
     });
     
     // Show a toast notification
-    showToast('Vaccination schedule auto-calculated based on Day 0 date', 'success');
+    showToast('Vaccination schedule auto-calculated', 'success');
   });
 }
 
