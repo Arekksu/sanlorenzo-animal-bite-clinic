@@ -1,21 +1,28 @@
-from flask import Flask, render_template, request, redirect, url_for, g, send_file, session, flash
+from flask import Flask, render_template, request, redirect, url_for, g, send_file, session, flash, jsonify
 import sqlite3
-from datetime import date
+import bcrypt
+from datetime import date, datetime
 import pandas as pd # type: ignore
 from io import BytesIO
 import json
 
-
+# Initialize Flask app
 app = Flask(__name__)
 app.secret_key = 'your_secret_key'  # Needed for session
 DATABASE = "database.db"
 
 def get_db():
-    db = getattr(g, '_database', None)
-    if db is None:
-        db = g._database = sqlite3.connect(DATABASE)
-        db.row_factory = sqlite3.Row
-    return db
+    """Get a database connection with proper row factory."""
+    # ALWAYS return a NEW connection - never share via g.db
+    conn = sqlite3.connect(DATABASE, timeout=30.0, check_same_thread=False)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+@app.teardown_appcontext
+def close_db(error):
+    """Clean up any database connections."""
+    # Since we're not using g.db anymore, just pass
+    pass
 
 def require_login():
     """Helper function to check if user is logged in"""
@@ -84,58 +91,271 @@ def logout():
     session.clear()
     return redirect(url_for('employee_login'))
 
+@app.route('/get_employees')
+@role_required('admin')
+def get_employees():
+    try:
+        conn = get_db()
+        employees = conn.execute('SELECT employee_id, username, name, role, active, last_login FROM employees ORDER BY username != "admin", name').fetchall()
+        return jsonify({'success': True, 'employees': [dict(emp) for emp in employees]})
+    except Exception as e:
+        print(f"Error getting employees: {str(e)}")
+        return jsonify({'success': False, 'message': 'Failed to retrieve employees'})
+
+@app.route('/get_employee/<int:employee_id>')
+@role_required('admin')
+def get_employee(employee_id):
+    try:
+        conn = get_db()
+        employee = conn.execute('SELECT employee_id, username, name, role, active, last_login FROM employees WHERE employee_id = ?', (employee_id,)).fetchone()
+        if employee:
+            return jsonify({'success': True, 'employee': dict(employee)})
+        return jsonify({'success': False, 'message': 'Employee not found'})
+    except Exception as e:
+        print(f"Error getting employee: {str(e)}")
+        return jsonify({'success': False, 'message': 'Failed to retrieve employee details'})
+
+@app.route('/toggle_employee_status/<int:employee_id>', methods=['POST'])
+@role_required('admin')
+def toggle_employee_status(employee_id):
+    try:
+        data = request.get_json()
+        new_status = data.get('active', False)
+        conn = get_db()
+        employee = conn.execute('SELECT username FROM employees WHERE employee_id = ?', (employee_id,)).fetchone()
+        if not employee:
+            return jsonify({'success': False, 'message': 'Employee not found'})
+        if employee['username'] == 'admin':
+            return jsonify({'success': False, 'message': 'Cannot modify admin account status'})
+        conn.execute('UPDATE employees SET active = ? WHERE employee_id = ?', (1 if new_status else 0, employee_id))
+        conn.commit()
+        return jsonify({'success': True, 'message': 'Status updated successfully'})
+    except Exception as e:
+        print(f"Error updating status: {str(e)}")
+        return jsonify({'success': False, 'message': 'Failed to update status'})
+
+@app.route('/reset_password/<int:employee_id>', methods=['POST'])
+
+@app.route('/reset_password/<int:employee_id>', methods=['POST'])
+@role_required('admin')
+def reset_password(employee_id):
+    try:
+        conn = get_db()
+        # Don't allow resetting admin password
+        employee = conn.execute('SELECT username FROM employees WHERE employee_id = ?', 
+                              (employee_id,)).fetchone()
+
+        if not employee:
+            return jsonify({'success': False, 'message': 'Employee not found'})
+
+        if employee['username'] == 'admin':
+            return jsonify({'success': False, 'message': 'Cannot reset admin password'})
+
+        # Default password will be "password123"
+        default_password = "password123"
+        hashed = bcrypt.hashpw(default_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+
+        conn.execute('UPDATE employees SET password = ? WHERE employee_id = ?',
+                    (hashed, employee_id))
+        conn.commit()
+
+        return jsonify({
+            'success': True,
+            'message': 'Password reset successfully'
+        })
+        
+        if not employee:
+            return jsonify({'success': False, 'message': 'Employee not found'})
+            
+        if employee['username'] == 'admin':
+            return jsonify({'success': False, 'message': 'Cannot reset admin password'})
+            
+        # Default password will be "password123"
+        default_password = "password123"
+        hashed = bcrypt.hashpw(default_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+        
+        conn.execute('UPDATE employees SET password = ? WHERE employee_id = ?',
+                    (hashed, employee_id))
+        conn.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Password reset successfully'
+        })
+    except Exception as e:
+        print(f"Error resetting password: {str(e)}")
+        return jsonify({'success': False, 'message': 'Failed to reset password'})
+
+# Create Employee Route
+        return jsonify({
+            'success': True,
+            'message': 'Password reset successfully'
+        })
+    except Exception as e:
+        print(f"Error resetting password: {str(e)}")
+        return jsonify({'success': False, 'message': 'Failed to reset password'})
+        conn.execute('UPDATE employees SET active = ? WHERE employee_id = ?', 
+                    (new_status, employee_id))
+        conn.commit()
+        
+        log_audit_trail(
+            session['employee_id'],
+            session['employee_name'],
+            f"{'Activated' if new_status else 'Deactivated'} employee (ID: {employee_id})",
+            request.remote_addr
+        )
+        
+        return jsonify({'success': True})
+    except Exception as e:
+        print(f"Error toggling employee status: {str(e)}")
+        return jsonify({'success': False, 'message': 'Failed to update employee status'})
+
+@app.route('/reset_employee_password/<int:employee_id>', methods=['POST'])
+@role_required('admin')
+def reset_employee_password(employee_id):
+    try:
+        conn = get_db()
+        # Don't allow resetting admin password
+        employee = conn.execute('SELECT username FROM employees WHERE employee_id = ?', 
+                              (employee_id,)).fetchone()
+        
+        if employee and employee['username'] == 'admin':
+            return jsonify({
+                'success': False,
+                'message': 'Cannot reset admin password through this interface'
+            })
+        
+        # Generate a secure temporary password
+        import random
+        import string
+        temp_password = ''.join(random.choices(string.ascii_letters + string.digits, k=12))
+        hashed_password = bcrypt.hashpw(temp_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+        
+        conn.execute('UPDATE employees SET password = ? WHERE employee_id = ?', 
+                    (hashed_password, employee_id))
+        conn.commit()
+        
+        log_audit_trail(
+            session['employee_id'],
+            session['employee_name'],
+            f"Reset password for employee (ID: {employee_id})",
+            request.remote_addr
+        )
+        
+        return jsonify({
+            'success': True,
+            'message': f'Password reset successfully. Temporary password: {temp_password}'
+        })
+    except Exception as e:
+        print(f"Error resetting password: {str(e)}")
+        return jsonify({'success': False, 'message': 'Failed to reset password'})
+
+@app.route('/create_employee', methods=['POST'])
+def create_employee():
+    if 'role' not in session or session['role'] != 'admin':
+        return jsonify({'success': False, 'message': 'Unauthorized'}), 403
+
+    try:
+        username = request.form.get('username')
+        display_name = request.form.get('display_name')
+        password = request.form.get('password')
+        role = request.form.get('role')
+
+        # Validate required fields
+        if not all([username, display_name, password, role]):
+            return jsonify({'success': False, 'message': 'All fields are required'})
+
+        # Check if username already exists
+        conn = get_db()
+        existing_user = conn.execute('SELECT * FROM employees WHERE username = ?', (username,)).fetchone()
+        if existing_user:
+            return jsonify({'success': False, 'message': 'Username already exists'})
+
+        # Hash the password
+        hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+
+        # Insert new employee
+        conn.execute('''
+            INSERT INTO employees (username, name, password) 
+            VALUES (?, ?, ?)
+        ''', (username, display_name, hashed_password))
+        conn.commit()
+
+        # Log the action
+        log_audit_trail(session['employee_id'], session['employee_name'], 
+                       f"Created new employee account: {username}", request.remote_addr)
+
+        return jsonify({'success': True, 'message': 'Employee created successfully'})
+
+    except Exception as e:
+        print(f"Error creating employee: {str(e)}")
+        return jsonify({'success': False, 'message': 'An error occurred while creating the account'})
+
 @app.route('/employee-login', methods=['GET', 'POST'])
 def employee_login():
+    import re
+    def is_sql_injection(text):
+        # Fixed pattern: removed unescaped parentheses and simplified for safety
+        pattern = r"(--|;|/\*|\*/|@|char\s|nchar\s|varchar\s|alter\s|begin\s|cast\s|create\s|cursor\s|declare\s|delete\s|drop\s|end\s|exec\s|execute\s|fetch\s|insert\s|kill\s|open\s|select\s|sys\.|table\s|update\s)"
+        return re.search(pattern, text, re.IGNORECASE)
     if request.method == 'POST':
-        emp_id = request.form['employeeId']
+        username = request.form['username']
         password = request.form['password']
-
-        # Employee credentials dictionary
-        employees = {
-            "admin": {"password": "admin123", "name": "Admin"},
-            "doctor1": {"password": "doc123", "name": "Dr. Smith"},
-            "nurse1": {"password": "nurse123", "name": "Nurse Johnson"},
-            "staff1": {"password": "staff123", "name": "Staff Member"}
-        }
-
-        # Check credentials
-        if emp_id in employees and employees[emp_id]["password"] == password:
-            session['employee_name'] = employees[emp_id]["name"]
-            session['employee_id'] = emp_id
-            # assign role: admin if emp_id is 'admin', else employee
-            session['role'] = 'admin' if emp_id == 'admin' else 'employee'
-
-            # Log successful login for audit trail
-            log_audit_trail(emp_id, employees[emp_id]["name"], "LOGIN", request.remote_addr)
-
-            # Instead of immediate redirect, show success notification and client will redirect
-            redirect_url = url_for('admin_dashboard') if session['role'] == 'admin' else url_for('employee_dashboard')
-            return render_template('employee-login.html', success=True, redirect_url=redirect_url)
-        else:
-            # Log failed login attempt
-            log_audit_trail(emp_id, "Unknown", "FAILED_LOGIN", request.remote_addr)
-            return render_template('employee-login.html', error="Invalid credentials")
-
-    return render_template('employee-login.html')
+        # SQL injection pattern check
+        if is_sql_injection(username) or is_sql_injection(password):
+            return render_template('employee-login.html', error='Invalid input detected.')
+        
+        conn = get_db()
+        try:
+            user = conn.execute('SELECT * FROM employees WHERE username = ?', (username,)).fetchone()
+            if user and bcrypt.checkpw(password.encode(), user['password'].encode('utf-8')):
+                session['employee_name'] = user['name']
+                session['employee_id'] = user['employee_id']
+                session['role'] = 'admin' if username == 'admin' else 'employee'
+                log_audit_trail(username, user['name'], "LOGIN", request.remote_addr)
+                # Ensure we go to dashboard on login
+                if session['role'] == 'admin':
+                    return redirect(url_for('admin_dashboard'))
+                else:
+                    return redirect(url_for('employee_dashboard', active_tab='dashboard'))
+            else:
+                log_audit_trail(username, "Unknown", "FAILED_LOGIN", request.remote_addr)
+                import json
+                server_data = json.dumps({
+                    "success": False,
+                    "error": "Invalid credentials",
+                    "redirect_url": ""
+                })
+                return render_template('employee-login.html', login_server_data=server_data)
+        finally:
+            conn.close()
+    
+    # GET request - show login form
+    import json
+    server_data = json.dumps({
+        "success": False,
+        "error": None,
+        "redirect_url": ""
+    })
+    return render_template('employee-login.html', login_server_data=server_data)
 
 
 @app.route('/admin-login', methods=['GET', 'POST'])
 def admin_login():
-    # Simple admin login route (can be expanded to real auth)
     if request.method == 'POST':
-        emp_id = request.form['employeeId']
+        username = request.form['username']
         password = request.form['password']
-        # Only allow admin here
-        if emp_id == 'admin' and password == 'admin123':
-            session['employee_name'] = 'Admin'
-            session['employee_id'] = 'admin'
+        conn = get_db()
+        user = conn.execute('SELECT * FROM employees WHERE username = ?', (username,)).fetchone()
+        if user and username == 'admin' and bcrypt.checkpw(password.encode(), user['password'].encode('utf-8')):
+            session['employee_name'] = user['name']
+            session['employee_id'] = user['employee_id']
             session['role'] = 'admin'
-            log_audit_trail('admin', 'Admin', 'ADMIN_LOGIN', request.remote_addr)
+            log_audit_trail('admin', user['name'], 'ADMIN_LOGIN', request.remote_addr)
             return redirect(url_for('admin_dashboard'))
         else:
-            log_audit_trail(emp_id or 'unknown', 'Unknown', 'FAILED_ADMIN_LOGIN', request.remote_addr)
+            log_audit_trail(username or 'unknown', 'Unknown', 'FAILED_ADMIN_LOGIN', request.remote_addr)
             return render_template('employee-login.html', error='Invalid admin credentials')
-
     return render_template('employee-login.html')
 
 @app.route('/employee-dashboard', methods=["GET", "POST"])
@@ -144,74 +364,82 @@ def employee_dashboard():
     if 'employee_id' not in session or 'employee_name' not in session:
         return redirect(url_for('employee_login'))
     
+    # Initialize active_tab as dashboard unless specified
+    active_tab = request.args.get('active_tab', 'dashboard')
     conn = get_db()
-
-    # Save patient form
-    if request.method == "POST":
-        data = (
-            request.form['patient_name'],
-            request.form['age'],
-            request.form['gender'],
-            request.form['contact_number'],
-            request.form['address'],
-            request.form['service_type'],
-            request.form['date_of_bite'],
-            request.form['bite_location'],
-            request.form['place_of_bite'],
-            request.form['type_of_bite'],
-            request.form['source_of_bite'],
-            request.form.get('other_source_of_bite'),
-            request.form['source_status'],
-            request.form['exposure'],
-            request.form['vaccinated'],
-            request.form.get('day0'),
-            request.form.get('day3'),
-            request.form.get('day7'),
-            request.form.get('day14'),
-            request.form.get('day28'),
-        )
-        conn.execute("""
-            INSERT INTO patients 
-            (patient_name, age, gender, contact_number, address, service_type,
-            date_of_bite, bite_location, place_of_bite, type_of_bite,
-            source_of_bite, other_source_of_bite, source_status, exposure, vaccinated,
-            day0, day3, day7, day14, day28)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, data)
-        conn.commit()
-        return redirect(url_for("employee_dashboard"))
-
-    # Get all patients for display
-    patients = conn.execute("""
-    SELECT id, patient_name, date_of_bite, service_type, age, gender, contact_number,
-           day0, day3, day7, day14, day28
-    FROM patients
-        """).fetchall()
-    # Convert sqlite Row objects to list of dicts so templates and JS can consume JSON safely
-    patients_list = [dict(row) for row in patients]
-
-    # Calculate dashboard statistics
-    today = date.today().isoformat()
     
-    # For upcoming appointments, we'll use patients who have day3, day7, day14, or day28 scheduled
-    upcoming_appointments = conn.execute("""
-        SELECT COUNT(*) as count FROM patients 
-        WHERE day3 >= ? OR day7 >= ? OR day14 >= ? OR day28 >= ?
-    """, (today, today, today, today)).fetchone()
-    
-    # Patients today (based on any scheduled appointment today)
-    patients_today = conn.execute("""
-        SELECT COUNT(*) as count FROM patients 
-        WHERE day0 = ? OR day3 = ? OR day7 = ? OR day14 = ? OR day28 = ?
-    """, (today, today, today, today, today)).fetchone()
+    try:
+        # Save patient form
+        if request.method == "POST":
+            data = (
+                request.form['patient_name'],
+                request.form['age'],
+                request.form['gender'],
+                request.form['contact_number'],
+                request.form['address'],
+                request.form['service_type'],
+                request.form['date_of_bite'],
+                request.form['bite_location'],
+                request.form['place_of_bite'],
+                request.form['type_of_bite'],
+                request.form['source_of_bite'],
+                request.form.get('other_source_of_bite'),
+                request.form['source_status'],
+                request.form['exposure'],
+                request.form['vaccinated'],
+                request.form.get('day0'),
+                request.form.get('day3'),
+                request.form.get('day7'),
+                request.form.get('day14'),
+                request.form.get('day28'),
+            )
+            conn.execute("""
+                INSERT INTO patients 
+                (patient_name, age, gender, contact_number, address, service_type,
+                date_of_bite, bite_location, place_of_bite, type_of_bite,
+                source_of_bite, other_source_of_bite, source_status, exposure, vaccinated,
+                day0, day3, day7, day14, day28)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, data)
+            conn.commit()
+            return redirect(url_for("employee_dashboard"))
 
-    return render_template("employee-dashboard.html", 
-                         patients=patients_list,
-                         patients_json=json.dumps(patients_list),
-                         upcoming_appointments=[{'count': upcoming_appointments['count'] if upcoming_appointments else 0}],
-                         patients_today=[{'count': patients_today['count'] if patients_today else 0}],
-                         employee_name=session.get('employee_name', 'User'),
-                         role=session.get('role', 'employee'))
+        # Get all patients for display
+        patients = conn.execute("""
+        SELECT id, patient_name, date_of_bite, service_type, age, gender, contact_number,
+               day0, day3, day7, day14, day28
+        FROM patients
+            """).fetchall()
+        # Convert sqlite Row objects to list of dicts so templates and JS can consume JSON safely
+        patients_list = [dict(row) for row in patients]
+
+        # Calculate dashboard statistics
+        today = date.today().isoformat()
+        
+        # For upcoming appointments, we'll use patients who have day3, day7, day14, or day28 scheduled
+        upcoming_appointments = conn.execute("""
+            SELECT COUNT(*) as count FROM patients 
+            WHERE day3 >= ? OR day7 >= ? OR day14 >= ? OR day28 >= ?
+        """, (today, today, today, today)).fetchone()
+        
+        # Patients today (based on any scheduled appointment today)
+        patients_today = conn.execute("""
+            SELECT COUNT(*) as count FROM patients 
+            WHERE day0 = ? OR day3 = ? OR day7 = ? OR day14 = ? OR day28 = ?
+        """, (today, today, today, today, today)).fetchone()
+
+        employee_id = session.get('employee_id')
+        user = conn.execute('SELECT * FROM employees WHERE employee_id = ?', (employee_id,)).fetchone()
+        return render_template("employee-dashboard.html", 
+                             patients=patients_list,
+                             patients_json=json.dumps(patients_list, default=str),
+                             upcoming_appointments=[{'count': upcoming_appointments['count'] if upcoming_appointments else 0}],
+                             patients_today=[{'count': patients_today['count'] if patients_today else 0}],
+                             employee_name=session.get('employee_name', 'User'),
+                             role=session.get('role', 'employee'),
+                             user=user)
+    finally:
+        conn.close()
 
 
 @app.route('/admin-dashboard')
@@ -226,7 +454,7 @@ def admin_dashboard():
     patients_today = conn.execute("SELECT COUNT(*) as count FROM patients WHERE day0 = ? OR day3 = ? OR day7 = ? OR day14 = ? OR day28 = ?", (today, today, today, today, today)).fetchone()
     return render_template('admin-dashboard.html',
                            patients=patients_list,
-                           patients_json=json.dumps(patients_list),
+                           patients_json=json.dumps(patients_list, default=str),
                            upcoming_appointments=[{'count': upcoming_appointments['count'] if upcoming_appointments else 0}],
                            patients_today=[{'count': patients_today['count'] if patients_today else 0}],
                            employee_name=session.get('employee_name', 'Admin'),
@@ -414,50 +642,185 @@ def update_patient(pid):
     ]
     vals = [payload.get(f) for f in fields]
 
-    db = get_db()
-    db.execute("""
-        UPDATE patients SET
-          patient_name=?, age=?, gender=?, contact_number=?, address=?,
-          service_type=?, date_of_bite=?, bite_location=?, place_of_bite=?,
-          type_of_bite=?, source_of_bite=?, other_source_of_bite=?,
-          source_status=?, exposure=?, vaccinated=?,
-          day0=?, day3=?, day7=?, day14=?, day28=?
-        WHERE id=?
-    """, [*vals, pid])
-    db.commit()
+    # Use direct connection instead of shared g.db
+    conn = sqlite3.connect(DATABASE, timeout=30.0)
+    conn.row_factory = sqlite3.Row
+    try:
+        conn.execute('BEGIN')
+        conn.execute("""
+            UPDATE patients SET
+              patient_name=?, age=?, gender=?, contact_number=?, address=?,
+              service_type=?, date_of_bite=?, bite_location=?, place_of_bite=?,
+              type_of_bite=?, source_of_bite=?, other_source_of_bite=?,
+              source_status=?, exposure=?, vaccinated=?,
+              day0=?, day3=?, day7=?, day14=?, day28=?
+            WHERE id=?
+        """, [*vals, pid])
+        conn.commit()
+    finally:
+        conn.close()
     return redirect(url_for('employee_dashboard'))
 
 
 
 @app.route('/settings', methods=['GET', 'POST'])
 def settings():
-    # Allow employees to update their display name and (client-side) password change request.
-    if request.method == 'POST':
-        # Read submitted fields
-        username = request.form.get('username')
-        display_name = request.form.get('display_name')
-        # Password fields (note: passwords are not persisted in this simple demo)
-        current_password = request.form.get('current_password')
-        new_password = request.form.get('new_password')
-        confirm_password = request.form.get('confirm_password')
+    """Handle user settings updates"""
+    error = None
+    success = None
+    employee_id = session.get('employee_id')
+    
+    if not employee_id:
+        return redirect(url_for('employee_login'))
+    
+    # Create a fresh connection - DEFERRED mode to avoid locks
+    conn = sqlite3.connect(DATABASE, timeout=30.0, isolation_level='DEFERRED')
+    conn.row_factory = sqlite3.Row
+    
+    try:
+        # Get current user info
+        user = conn.execute(
+            'SELECT * FROM employees WHERE employee_id = ?', 
+            (employee_id,)
+        ).fetchone()
+        
+        if not user:
+            conn.close()
+            return redirect(url_for('employee_login'))
+        
+        if request.method == 'POST':
+            import bcrypt
+            
+            messages = []  # Store all messages
+            
+            username = request.form.get('username', '').strip()
+            display_name = request.form.get('display_name', '').strip()
+            current_password = request.form.get('current_password', '')
+            new_password = request.form.get('new_password', '')
+            confirm_password = request.form.get('confirm_password', '')
+            
+            # Update username if changed
+            if username and username != user['username']:
+                # Check if username already exists
+                existing = conn.execute(
+                    'SELECT employee_id FROM employees WHERE username = ? AND employee_id != ?',
+                    (username, employee_id)
+                ).fetchone()
+                
+                if existing:
+                    messages.append(('error', 'Username already taken. Please choose another.'))
+                else:
+                    try:
+                        conn.execute('UPDATE employees SET username = ? WHERE employee_id = ?', 
+                                  (username, employee_id))
+                        conn.commit()
+                        messages.append(('success', 'Username updated successfully!'))
+                        
+                        # Log the username change to audit trail
+                        conn.execute("""
+                            INSERT INTO audit_trail (employee_id, employee_name, action, timestamp, ip_address)
+                            VALUES (?, ?, ?, ?, ?)
+                        """, (
+                            employee_id,
+                            session['employee_name'],
+                            f'Changed username to: {username}',
+                            datetime.now().isoformat(),
+                            request.remote_addr
+                        ))
+                        conn.commit()
+                        
+                        # Refresh user data
+                        user = conn.execute(
+                            'SELECT * FROM employees WHERE employee_id = ?', 
+                            (employee_id,)
+                        ).fetchone()
+                    except Exception as e:
+                        conn.rollback()
+                        messages.append(('error', f'Error updating username: {str(e)}'))
+            
+            # Update display name if changed
+            if display_name and display_name != user['name']:
+                try:
+                    conn.execute('UPDATE employees SET name = ? WHERE employee_id = ?', 
+                              (display_name, employee_id))
+                    conn.commit()
+                    
+                    # Log the display name change to audit trail
+                    conn.execute("""
+                        INSERT INTO audit_trail (employee_id, employee_name, action, timestamp, ip_address)
+                        VALUES (?, ?, ?, ?, ?)
+                    """, (
+                        employee_id,
+                        session['employee_name'],
+                        f'Changed display name to: {display_name}',
+                        datetime.now().isoformat(),
+                        request.remote_addr
+                    ))
+                    conn.commit()
+                    
+                    session['employee_name'] = display_name
+                    messages.append(('success', 'Display name updated successfully!'))
+                    
+                    # Refresh user data
+                    user = conn.execute(
+                        'SELECT * FROM employees WHERE employee_id = ?', 
+                        (employee_id,)
+                    ).fetchone()
+                except Exception as e:
+                    conn.rollback()
+                    messages.append(('error', f'Error updating display name: {str(e)}'))
+            
+            # Update password if provided
+            if new_password:
+                if not current_password:
+                    messages.append(('error', 'Current password is required to change password.'))
+                elif not bcrypt.checkpw(current_password.encode(), user['password'].encode('utf-8')):
+                    messages.append(('error', 'Current password is incorrect.'))
+                elif new_password != confirm_password:
+                    messages.append(('error', 'New passwords do not match.'))
+                else:
+                    try:
+                        hashed = bcrypt.hashpw(new_password.encode(), bcrypt.gensalt()).decode('utf-8')
+                        conn.execute('UPDATE employees SET password = ? WHERE employee_id = ?', 
+                                 (hashed, employee_id))
+                        conn.commit()
+                        
+                        # Log the password change to audit trail
+                        conn.execute("""
+                            INSERT INTO audit_trail (employee_id, employee_name, action, timestamp, ip_address)
+                            VALUES (?, ?, ?, ?, ?)
+                        """, (
+                            employee_id,
+                            session['employee_name'],
+                            'Changed account password',
+                            datetime.now().isoformat(),
+                            request.remote_addr
+                        ))
+                        conn.commit()
+                        messages.append(('success', 'Password updated successfully!'))
+                    except Exception as e:
+                        conn.rollback()
+                        messages.append(('error', f'Error updating password: {str(e)}'))
+            
+            # Return with messages
+            return render_template('employee-dashboard.html',
+                                role=session.get('role', 'employee'),
+                                employee_name=session.get('employee_name'),
+                                user=user,
+                                active_tab='settings',
+                                toast_messages=messages)
+        
+    finally:
+        # Always close the connection
+        conn.close()
+    
+    return render_template('employee-dashboard.html',
+                        role=session.get('role', 'employee'),
+                        employee_name=session.get('employee_name'),
+                        user=user,
+                        active_tab='settings',
+                        toast_messages=[])
 
-        # Update session values so the UI reflects the change immediately.
-        if username:
-            session['employee_id'] = username
-        if display_name:
-            session['employee_name'] = display_name
-
-        # Log the account update in the audit trail
-        try:
-            log_audit_trail(session.get('employee_id', 'unknown'), session.get('employee_name', 'unknown'), 'UPDATE_ACCOUNT', request.remote_addr)
-        except Exception:
-            pass
-
-        # Note: password change handling would require a persistent user store. Here we accept the form and
-        # acknowledge it by returning the settings page with updated session values.
-        return redirect(url_for('settings'))
-
-    return render_template('settings.html', role=session.get('role', 'employee'), employee_name=session.get('employee_name'))
 
 @app.route('/audit-trail')
 @role_required('admin')
@@ -467,59 +830,42 @@ def audit_trail():
     if auth_check:
         return auth_check
     
-    from flask import jsonify
     conn = get_db()
-    audit_logs = conn.execute('''
-        SELECT employee_id, employee_name, action, timestamp, ip_address
-        FROM audit_trail
-        ORDER BY timestamp DESC
-        LIMIT 100
-    ''').fetchall()
-    
-    audit_logs = conn.execute('''
-        SELECT employee_id, employee_name, action, timestamp, ip_address   
-        FROM audit_trail
-        ORDER BY timestamp DESC
-        LIMIT 100
-    ''').fetchall()
-    
-    return jsonify({'audit_logs': [dict(log) for log in audit_logs]})
+    try:
+        audit_logs = conn.execute('''
+            SELECT employee_id, employee_name, action, timestamp, ip_address
+            FROM audit_trail
+            ORDER BY timestamp DESC
+        ''').fetchall()
+        return jsonify([dict(row) for row in audit_logs])
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    finally:
+        try:
+            conn.rollback()
+        except:
+            pass
 
-def init_database():
-    """Initialize database tables including audit trail"""
-    conn = sqlite3.connect(DATABASE)
-    cursor = conn.cursor()
-    
-    # Create audit_trail table if it doesn't exist
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS audit_trail (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            employee_id TEXT,
-            employee_name TEXT,
-            action TEXT,
-            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-            ip_address TEXT
-        )
-    ''')
-    
-    conn.commit()
-    conn.close()
 
 def log_audit_trail(employee_id, employee_name, action, ip_address):
     """Log employee actions for audit trail"""
-    conn = sqlite3.connect(DATABASE)
-    cursor = conn.cursor()
-    
-    cursor.execute('''
-        INSERT INTO audit_trail (employee_id, employee_name, action, ip_address)
-        VALUES (?, ?, ?, ?)
-    ''', (employee_id, employee_name, action, ip_address))
-    
-    conn.commit()
-    conn.close()
+    try:
+        conn = get_db()
+        conn.execute('BEGIN IMMEDIATE')
+        conn.execute('''
+            INSERT INTO audit_trail (employee_id, employee_name, action, ip_address)
+            VALUES (?, ?, ?, ?)
+        ''', (employee_id, employee_name, action, ip_address))
+        conn.execute('COMMIT')
+    except Exception as e:
+        try:
+            conn.execute('ROLLBACK')
+        except:
+            pass
+        # Only raise non-locking errors
+        if not isinstance(e, sqlite3.OperationalError) or 'database is locked' not in str(e):
+            raise
 
 
 if __name__ == "__main__":
-    # Initialize database tables
-    init_database()
     app.run(debug=True, port=5001)

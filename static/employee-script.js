@@ -383,6 +383,292 @@ function initializeUserInfo() {
 }
 
 /* ---------- SECTION NAV ---------- */
+// Load and display employee list
+async function loadEmployeeList() {
+    const tbody = document.getElementById('employee-list-body');
+    if (!tbody) return;
+
+    try {
+        const response = await fetch('/get_employees');
+        const data = await response.json();
+
+        if (data.success) {
+            tbody.innerHTML = data.employees.map(emp => `
+                <tr>
+                    <td>${emp.employee_id}</td>
+                    <td>${escapeHtml(emp.username)}</td>
+                    <td>${escapeHtml(emp.name)}</td>
+                    <td>${escapeHtml(emp.role)}</td>
+                    <td>${emp.username === 'admin' ? 'Admin' : 'Employee'}</td>
+                    <td>${emp.last_login || 'Never'}</td>
+                    <td>
+                        <span class="status-badge ${emp.active ? 'active' : 'inactive'}">
+                            ${emp.active ? 'Active' : 'Inactive'}
+                        </span>
+                    </td>
+                    <td class="actions-cell">
+                        <button onclick="viewEmployeeDetails(${emp.employee_id})" class="btn-icon" title="View Details">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                        ${emp.username !== 'admin' ? `
+                            <button onclick="toggleEmployeeStatus(${emp.employee_id}, ${!emp.active})" class="btn-icon" title="${emp.active ? 'Deactivate' : 'Activate'}">
+                                <i class="fas fa-${emp.active ? 'user-slash' : 'user-check'}"></i>
+                            </button>
+                            <button onclick="resetEmployeePassword(${emp.employee_id})" class="btn-icon" title="Reset Password">
+                                <i class="fas fa-key"></i>
+                            </button>
+                        ` : ''}
+                    </td>
+                </tr>
+            `).join('');
+        } else {
+            tbody.innerHTML = '<tr><td colspan="7" class="text-center">Failed to load employee list.</td></tr>';
+        }
+    } catch (error) {
+        console.error('Error loading employees:', error);
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center">Error loading employee list.</td></tr>';
+    }
+}
+
+// Refresh employee list
+function refreshEmployeeList() {
+    loadEmployeeList();
+    showToast('Employee list refreshed', 'success');
+}
+
+// Handle employee search
+function handleEmployeeSearch(event) {
+    const searchTerm = event.target.value.toLowerCase();
+    const rows = document.querySelectorAll('#employee-list-body tr');
+
+    rows.forEach(row => {
+        const text = row.textContent.toLowerCase();
+        row.style.display = text.includes(searchTerm) ? '' : 'none';
+    });
+}
+
+// View employee details
+async function viewEmployeeDetails(employeeId) {
+    try {
+        const response = await fetch(`/get_employee/${employeeId}`);
+        const data = await response.json();
+        
+        if (!data.success) {
+            showNotification('Failed to load employee details: ' + data.message, 'error');
+            return;
+        }
+
+        const emp = data.employee;
+        const modalContent = `
+            <div class="employee-details">
+                <h3>Employee Information</h3>
+                <div class="detail-grid">
+                    <div class="detail-item">
+                        <label>Employee ID:</label>
+                        <span>${emp.employee_id}</span>
+                    </div>
+                    <div class="detail-item">
+                        <label>Username:</label>
+                        <span>${escapeHtml(emp.username)}</span>
+                    </div>
+                    <div class="detail-item">
+                        <label>Display Name:</label>
+                        <span>${escapeHtml(emp.name)}</span>
+                    </div>
+                    <div class="detail-item">
+                        <label>Role:</label>
+                        <span>${emp.username === 'admin' ? 'Admin' : 'Employee'}</span>
+                    </div>
+                    <div class="detail-item">
+                        <label>Status:</label>
+                        <span class="status-badge ${emp.active ? 'active' : 'inactive'}">
+                            ${emp.active ? 'Active' : 'Inactive'}
+                        </span>
+                    </div>
+                    <div class="detail-item">
+                        <label>Last Login:</label>
+                        <span>${emp.last_login || 'Never'}</span>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        showModal('Employee Details', modalContent);
+    } catch (error) {
+        console.error('Error viewing employee details:', error);
+        showNotification('Error loading employee details: ' + error.message, 'error');
+    }
+}
+
+// Toggle employee status (activate/deactivate)
+async function toggleEmployeeStatus(employeeId, newStatus) {
+    const action = newStatus ? 'activate' : 'deactivate';
+    const confirmMsg = `Are you sure you want to ${action} this employee account?`;
+    
+    showConfirmModal(
+        `${action.charAt(0).toUpperCase() + action.slice(1)} Employee`,
+        confirmMsg,
+        async () => {
+            try {
+                const response = await fetch(`/toggle_employee_status/${employeeId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ active: newStatus })
+                });
+
+                const data = await response.json();
+                if (!data.success) {
+                    showNotification(data.message || 'Failed to update employee status', 'error');
+                    return;
+                }
+
+                showNotification(`Employee ${action}d successfully!`, 'success');
+                loadEmployeeList();
+            } catch (error) {
+                console.error('Error toggling employee status:', error);
+                showNotification('Error updating employee status: ' + error.message, 'error');
+            }
+        }
+    );
+}
+
+// Reset employee password
+async function resetEmployeePassword(employeeId) {
+    const modalContent = `
+        <div class="reset-password-info">
+            <p style="margin-bottom: 15px;">This will reset the employee's password to the default password.</p>
+            <div style="background: #fff3cd; padding: 15px; border-radius: 5px; border-left: 4px solid #ffc107;">
+                <strong style="color: #856404;">Default Password:</strong>
+                <div style="font-family: monospace; font-size: 18px; margin-top: 8px; color: #856404;">
+                    <strong>password123</strong>
+                </div>
+            </div>
+            <p style="margin-top: 15px; color: #666; font-size: 14px;">
+                <em>Note: The employee should change this password after logging in.</em>
+            </p>
+        </div>
+    `;
+    
+    showConfirmModal(
+        'Reset Password',
+        modalContent,
+        async () => {
+            try {
+                const response = await fetch(`/reset_password/${employeeId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const data = await response.json();
+                if (!data.success) {
+                    showNotification(data.message || 'Failed to reset password', 'error');
+                    return;
+                }
+
+                showNotification('Password reset successfully to: password123', 'success');
+            } catch (error) {
+                console.error('Error resetting password:', error);
+                showNotification('Error resetting password: ' + error.message, 'error');
+            }
+        },
+        'Reset Password',
+        'Cancel'
+    );
+}
+
+// Initialize employee list features
+document.addEventListener('DOMContentLoaded', () => {
+    const searchInput = document.getElementById('employee-search');
+    if (searchInput) {
+        searchInput.addEventListener('input', handleEmployeeSearch);
+    }
+
+    // Load employee list when switching to the view
+    const viewEmployeesBtn = document.querySelector('button[onclick="showSection(\'view-employees\')"]');
+    if (viewEmployeesBtn) {
+        viewEmployeesBtn.addEventListener('click', loadEmployeeList);
+    }
+});
+
+// Clear form and prevent autofill
+function clearEmployeeForm() {
+  const form = document.getElementById('add-employee-form');
+  if (form) {
+    form.reset();
+    // Clear all inputs explicitly
+    form.querySelectorAll('input').forEach(input => {
+      input.value = '';
+    });
+    // Reset select to default
+    const roleSelect = document.getElementById('new-employee-role');
+    if (roleSelect) roleSelect.selectedIndex = 0;
+  }
+}
+
+function handleAddEmployee(event) {
+  event.preventDefault();
+  
+  // Get form values (trim to remove any whitespace)
+  const username = document.getElementById('new-employee-username').value.trim();
+  const displayName = document.getElementById('new-employee-name').value.trim();
+  const password = document.getElementById('new-employee-password').value;
+  const confirmPassword = document.getElementById('new-employee-confirm-password').value;
+  const role = document.getElementById('new-employee-role').value;
+
+  // Basic validation
+  if (password !== confirmPassword) {
+    showToast('Passwords do not match!', 'error');
+    return false;
+  }
+
+  // Create form data
+  const formData = new FormData();
+  formData.append('username', username);
+  formData.append('display_name', displayName);
+  formData.append('password', password);
+  formData.append('role', role);
+
+  // Send request to server
+  fetch('/create_employee', {
+    method: 'POST',
+    body: formData
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      showToast('Employee account created successfully!', 'success');
+      clearEmployeeForm(); // Use our new clear function
+    } else {
+      showToast(data.message || 'Failed to create account', 'error');
+    }
+  })
+  .catch(error => {
+    console.error('Error:', error);
+    showToast('An error occurred while creating the account', 'error');
+  });
+
+  return false;
+}
+
+function togglePasswordVisibility(inputId) {
+  const input = document.getElementById(inputId);
+  const icon = input.nextElementSibling.querySelector('i');
+  
+  if (input.type === 'password') {
+    input.type = 'text';
+    icon.classList.remove('fa-eye');
+    icon.classList.add('fa-eye-slash');
+  } else {
+    input.type = 'password';
+    icon.classList.remove('fa-eye-slash');
+    icon.classList.add('fa-eye');
+  }
+}
+
 function showSection(sectionName) {
   document.querySelectorAll('.content-section').forEach(s => s.classList.remove('active'));
   const sec = document.getElementById(sectionName);
@@ -1902,23 +2188,137 @@ function initializeScheduleCalculation() {
 
 // Toast notification function
 function showToast(message, type = 'info') {
+  // Remove any existing toasts
+  const existingToasts = document.querySelectorAll('.toast');
+  existingToasts.forEach(toast => document.body.removeChild(toast));
+
+  // Create new toast
   const toast = document.createElement('div');
   toast.className = `toast toast-${type}`;
+  
+  const icon = type === 'success' ? '✓' : 
+               type === 'error' ? '✕' : 'ℹ';
+               
   toast.innerHTML = `
-    <div class="toast-content">
-      <span class="toast-icon">${type === 'success' ? '✓' : 'ℹ'}</span>
-      <span class="toast-message">${message}</span>
-    </div>
+    <span class="toast-icon">${icon}</span>
+    <span class="toast-message">${message}</span>
   `;
   
   document.body.appendChild(toast);
   
-  // Trigger show animation
-  setTimeout(() => toast.classList.add('show'), 10);
+  // Show toast
+  requestAnimationFrame(() => toast.classList.add('show'));
   
-  // Remove after 4 seconds
+  // Remove after 3 seconds
   setTimeout(() => {
     toast.classList.remove('show');
-    setTimeout(() => document.body.removeChild(toast), 400);
-  }, 4000);
+    setTimeout(() => document.body.removeChild(toast), 300);
+  }, 3000);
+}
+
+// Show modal helper function
+function showModal(title, content, onClose = null) {
+    const modal = document.createElement('div');
+    modal.className = 'custom-modal';
+    modal.innerHTML = `
+        <div class="custom-modal-overlay"></div>
+        <div class="custom-modal-content">
+            <div class="custom-modal-header">
+                <h2>${title}</h2>
+                <button class="custom-modal-close">&times;</button>
+            </div>
+            <div class="custom-modal-body">
+                ${content}
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(modal);
+    setTimeout(() => modal.classList.add('show'), 10);
+
+    const closeModal = () => {
+        modal.classList.remove('show');
+        document.removeEventListener('keydown', escKeyHandler);
+        setTimeout(() => {
+            document.body.removeChild(modal);
+            if (onClose) onClose();
+        }, 300);
+    };
+
+    const escKeyHandler = (e) => {
+        if (e.key === 'Escape') {
+            closeModal();
+        }
+    };
+
+    document.addEventListener('keydown', escKeyHandler);
+    modal.querySelector('.custom-modal-close').onclick = closeModal;
+    modal.querySelector('.custom-modal-overlay').onclick = closeModal;
+}
+
+// Show confirm modal helper function
+function showConfirmModal(title, message, onConfirm, confirmText = 'Confirm', cancelText = 'Cancel') {
+    const modal = document.createElement('div');
+    modal.className = 'custom-modal';
+    modal.innerHTML = `
+        <div class="custom-modal-overlay"></div>
+        <div class="custom-modal-content">
+            <div class="custom-modal-header">
+                <h2>${title}</h2>
+                <button class="custom-modal-close">&times;</button>
+            </div>
+            <div class="custom-modal-body">
+                ${message}
+            </div>
+            <div class="custom-modal-footer">
+                <button class="btn-cancel">${cancelText}</button>
+                <button class="btn-confirm">${confirmText}</button>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(modal);
+    setTimeout(() => modal.classList.add('show'), 10);
+
+    const closeModal = () => {
+        modal.classList.remove('show');
+        document.removeEventListener('keydown', escKeyHandler);
+        setTimeout(() => document.body.removeChild(modal), 300);
+    };
+
+    const escKeyHandler = (e) => {
+        if (e.key === 'Escape') {
+            closeModal();
+        }
+    };
+
+    document.addEventListener('keydown', escKeyHandler);
+    modal.querySelector('.custom-modal-close').onclick = closeModal;
+    modal.querySelector('.custom-modal-overlay').onclick = closeModal;
+    modal.querySelector('.btn-cancel').onclick = closeModal;
+    modal.querySelector('.btn-confirm').onclick = () => {
+        closeModal();
+        if (onConfirm) onConfirm();
+    };
+}
+
+// Show notification helper function
+function showNotification(message, type = 'info') {
+    const notification = document.createElement('div');
+    notification.className = `notification notification-${type}`;
+    
+    const icon = type === 'success' ? '✓' : type === 'error' ? '✕' : 'ℹ';
+    
+    notification.innerHTML = `
+        <span class="notification-icon">${icon}</span>
+        <span class="notification-message">${message}</span>
+    `;
+
+    document.body.appendChild(notification);
+    setTimeout(() => notification.classList.add('show'), 10);
+    
+    setTimeout(() => {
+        notification.classList.remove('show');
+        setTimeout(() => document.body.removeChild(notification), 300);
+    }, 4000);
 }

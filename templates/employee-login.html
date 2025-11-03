@@ -24,13 +24,18 @@
                                 <!-- notifications are shown as top-right toasts -->
 
                 <div class="form-group">
-                    <label for="employeeId">Employee ID:</label>
-                    <input type="text" id="employeeId" name="employeeId" placeholder="Enter your employee ID" required>
+                    <label for="username">Username:</label>
+                    <input type="text" id="username" name="username" placeholder="Enter your username" required>
                 </div>
                 
                 <div class="form-group">
                     <label for="password">Password:</label>
-                    <input type="password" id="password" name="password" placeholder="Enter your password" required>
+                    <div style="position:relative;">
+                        <input type="password" id="password" name="password" placeholder="Enter your password" required style="padding-right:2.5rem;">
+                        <span id="togglePassword" style="position:absolute; right:0.75rem; top:50%; transform:translateY(-50%); cursor:pointer;">
+                            <svg id="eyeIcon" xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                        </span>
+                    </div>
                 </div>
                 
                 <button type="submit" class="login-btn">
@@ -38,8 +43,7 @@
                 </button>
                 
                 <div class="login-footer">
-                    <p class="demo-info">Demo Credentials:</p>
-                    <p class="demo-credentials">admin/admin123 | doctor1/doc123 | nurse1/nurse123 | staff1/staff123</p>
+                    <!-- Demo credentials removed -->
                 </div>
             </form>
             
@@ -52,9 +56,28 @@
 
         <!-- External script (if present) -->
         <script src="{{ url_for('static', filename='employee-login-script.js') }}"></script>
+        <script>
+        // Password visibility toggle
+        document.addEventListener('DOMContentLoaded', function() {
+            var passwordInput = document.getElementById('password');
+            var togglePassword = document.getElementById('togglePassword');
+            var eyeIcon = document.getElementById('eyeIcon');
+            var visible = false;
+            if (togglePassword) {
+                togglePassword.addEventListener('click', function() {
+                    visible = !visible;
+                    passwordInput.type = visible ? 'text' : 'password';
+                    eyeIcon.innerHTML = visible
+                        ? '<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.477 0-8.268-2.943-9.542-7a9.978 9.978 0 012.042-3.362m3.087-2.978A9.956 9.956 0 0112 5c4.477 0 8.268 2.943 9.542 7a9.978 9.978 0 01-4.442 5.568M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3l18 18"/></svg>'
+                        : '<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>';
+                });
+            }
+        });
+        </script>
 
         <!-- Toast container and script -->
         <div id="toast-container" aria-live="polite" aria-atomic="true"></div>
+        <script id="login-server-data" type="application/json">{{ login_server_data|safe }}</script>
         <script>
             // Create and show a top-right toast. Auto-dismiss after timeout.
             function showToast(type, message, timeoutMs) {

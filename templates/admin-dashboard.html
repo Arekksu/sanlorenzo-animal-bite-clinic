@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>San Lorenzo Animal Bite Center - Admin Dashboard</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='employee-styles.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='audit-log.css') }}">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
@@ -13,13 +14,15 @@
     <nav class="sidebar">
       <div class="sidebar-header">
         <img src="{{ url_for('static', filename='images/san lorenzo.jpg') }}" alt="Clinic Logo" class="sidebar-logo">
-        <h3>San Lorenzo Animal Bite Center</h3>
+        <h3 style="color: #ffffff !important; text-shadow: 0 1px 2px rgba(0,0,0,0.2);">San Lorenzo Animal Bite Center</h3>
       </div>
       <ul class="sidebar-menu">
         <li><button class="menu-btn active" onclick="showSection('dashboard')">Dashboard</button></li>
         <li><button class="menu-btn" onclick="showSection('add-record')">Add Record</button></li>
         <li><button class="menu-btn" onclick="showSection('view-patient')">View Patient</button></li>
-  <li><button class="menu-btn" onclick="showSection('view-schedule')">View Schedule</button></li>
+        <li><button class="menu-btn" onclick="showSection('view-schedule')">View Schedule</button></li>
+        <li><button class="menu-btn" onclick="showSection('view-employees')">View Employees</button></li>
+        <li><button class="menu-btn" onclick="showSection('add-employee')">Add Employee Account</button></li>
       </ul>
       <div class="sidebar-bottom">
         <div class="employee-greeting">
@@ -85,7 +88,7 @@
                   <nav class="sidebar">
                     <div class="sidebar-header">
                       <img src="{{ url_for('static', filename='images/san lorenzo.jpg') }}" alt="Clinic Logo" class="sidebar-logo">
-                      <h3>San Lorenzo Animal Bite Center</h3>
+                       <h3 class="clinic-title" style="color:#fff !important;">San Lorenzo Animal Bite Center</h3>
                     </div>
                     <ul class="sidebar-menu">
                       <li><button class="menu-btn active" onclick="showSection('dashboard')">Dashboard</button></li>
@@ -136,7 +139,7 @@
                       <!-- Analytics Charts Section -->
                       <div class="analytics-section">
                         <div class="analytics-header">
-                          <h3>Treatment Analytics</h3>
+                          <h3 style="color: #ffffff;">Treatment Analytics</h3>
                           <div class="analytics-controls">
                             <label for="periodType">Period:</label>
                             <select id="periodType" onchange="updateMonthlyReports()">
@@ -169,16 +172,16 @@
                         <!-- Monthly Summary Cards -->
                         <div class="monthly-summary" id="monthlySummary">
                           <div class="summary-card">
-                            <h4>New Patients</h4>
+                            <h4 style="color:#fff !important;">New Patients</h4>
                             <div class="summary-number" id="monthlyNewPatients">0</div>
                           </div>
                           
                           <div class="summary-card">
-                            <h4>Active Treatments</h4>
+                            <h4 style="color:#fff !important;">Active Treatments</h4>
                             <div class="summary-number" id="monthlyActive">0</div>
                           </div>
                           <div class="summary-card">
-                            <h4>Completion Rate</h4>
+                            <h4 style="color:#fff !important;">Completion Rate</h4>
                             <div class="summary-number" id="monthlyRate">0%</div>
                           </div>
                         </div>
@@ -395,7 +398,7 @@
                           <!-- Schedule -->
                           <div id="schedule" class="tab-content schedule-section">
                             <div class="schedule-header">
-                              <h3>Anti-Rabies Vaccination Schedule</h3>
+                              <h3 style="color:#fff !important;">Anti-Rabies Vaccination Schedule</h3>
                             </div>
               
                             <div class="schedule-grid">
@@ -486,11 +489,11 @@
                         <table class="patient-table">
                           <thead>
                             <tr>
-                              <th>ID</th>
-                              <th>Patient Name</th>
-                              <th>Date of Bite</th>
-                              <th>Service</th>
-                              <th>Actions</th>
+                              <th style="color:#fff !important;">ID</th>
+                              <th style="color:#fff !important;">Patient Name</th>
+                              <th style="color:#fff !important;">Date of Bite</th>
+                              <th style="color:#fff !important;">Service</th>
+                              <th style="color:#fff !important;">Actions</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -633,6 +636,144 @@
                           </div>
                         </div>
                       </section>
+
+                      <!-- View Employees Section -->
+                      <section id="view-employees" class="content-section">
+                        <h2>Employee List</h2>
+                        <div class="content-card">
+                          <div class="section-header">
+                            <div class="header-actions">
+                              <div class="search-container">
+                                <i class="fas fa-search search-icon"></i>
+                                <input type="text" id="employee-search" class="search-input" placeholder="Search employees...">
+                              </div>
+                              <button onclick="refreshEmployeeList()" class="btn btn-secondary">
+                                <i class="fas fa-sync"></i> Refresh
+                              </button>
+                            </div>
+                          </div>
+
+                          <div class="table-responsive">
+                            <table class="data-table employee-table">
+                              <thead>
+                                <tr>
+                                  <th>Employee ID</th>
+                                  <th>Username</th>
+                                  <th>Display Name</th>
+                                  <th>Role</th>
+                                  <th>Last Login</th>
+                                  <th>Status</th>
+                                  <th>Actions</th>
+                                </tr>
+                              </thead>
+                              <tbody id="employee-list-body">
+                                <!-- Employee list will be loaded here -->
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      </section>
+
+                      <!-- Add Employee Account Section -->
+                      <section id="add-employee" class="content-section">
+                        <h2>Add Employee Account</h2>
+                        <div class="content-card">
+                          <div class="form-section">
+                            <div class="section-header">
+                              <h3>New Employee Information</h3>
+                              <p class="section-description">Create a new employee account by filling out the form below.</p>
+                            </div>
+                            <form id="add-employee-form" onsubmit="return handleAddEmployee(event)" autocomplete="off">
+                              <div class="form-grid two-columns">
+                                <div class="form-group">
+                                  <label for="new-employee-username">Username</label>
+                                  <input type="text" 
+                                         id="new-employee-username" 
+                                         class="form-input" 
+                                         required
+                                         autocomplete="off"
+                                         placeholder="Enter employee username"
+                                         pattern="[a-zA-Z0-9_]+"
+                                         title="Only letters, numbers, and underscore allowed">
+                                  <small class="field-hint">Choose a unique username for the employee.</small>
+                                </div>
+
+                                <div class="form-group">
+                                  <label for="new-employee-name">Display Name</label>
+                                  <input type="text" 
+                                         id="new-employee-name" 
+                                         class="form-input" 
+                                         required
+                                         autocomplete="off"
+                                         placeholder="Enter employee's full name"
+                                         pattern="[A-Za-z\s]+"
+                                         title="Only letters and spaces allowed">
+                                  <small class="field-hint">Employee's name as shown in the system.</small>
+                                </div>
+
+                                <div class="form-group">
+                                  <label for="new-employee-password">Password</label>
+                                  <div class="password-input-container">
+                                    <input type="password" 
+                                           id="new-employee-password" 
+                                           class="form-input" 
+                                           required
+                                           autocomplete="new-password"
+                                           placeholder="Enter password"
+                                           pattern=".{8,}"
+                                           title="Password must be at least 8 characters long">
+                                    <button type="button" class="toggle-password-btn" onclick="togglePasswordVisibility('new-employee-password')">
+                                      <i class="fas fa-eye"></i>
+                                    </button>
+                                  </div>
+                                  <small class="field-hint">Choose a strong password with letters, numbers, and symbols.</small>
+                                </div>
+
+                                <div class="form-group">
+                                  <label for="new-employee-confirm-password">Confirm Password</label>
+                                  <div class="password-input-container">
+                                    <input type="password" 
+                                           id="new-employee-confirm-password" 
+                                           class="form-input" 
+                                           required
+                                           autocomplete="new-password"
+                                           placeholder="Confirm password"
+                                           pattern=".{8,}"
+                                           title="Password must be at least 8 characters long">
+                                    <button type="button" class="toggle-password-btn" onclick="togglePasswordVisibility('new-employee-confirm-password')">
+                                      <i class="fas fa-eye"></i>
+                                    </button>
+                                  </div>
+                                  <small class="field-hint">Re-enter the password to confirm.</small>
+                                </div>
+
+                                <div class="form-group">
+                                  <label for="new-employee-role">Account Type</label>
+                                  <select id="new-employee-role" 
+                                         class="form-input" 
+                                         required
+                                         autocomplete="off">
+                                    <option value="">Select account type</option>
+                                    <option value="employee">Employee</option>
+                                    <option value="admin">Admin</option>
+                                  </select>
+                                  <small class="field-hint">Select the account privileges level.</small>
+                                </div>
+                              </div>
+
+                              <div class="form-actions">
+                                <button type="submit" class="btn btn-primary">
+                                  <i class="fas fa-user-plus"></i> Create Account
+                                </button>
+                                <button type="reset" class="btn btn-secondary">
+                                  <i class="fas fa-undo"></i> Clear Form
+                                </button>
+                              </div>
+                            </form>
+                          </div>
+                        </div>
+                      </section>
+
                       <!-- Settings -->
               <section id="settings" class="content-section">
                 <h2>Settings</h2>
@@ -646,23 +787,36 @@
                 </div>
 
                 <!-- Activity Log -->
-                <div id="settings-activity" class="tab-content">
-                  <h3>Recent Activity</h3>
-                  <div class="table-container">
-                    <table class="patient-table">
+                <div id="settings-activity" class="tab-content active">
+                  <div class="audit-log-container">
+                    <div class="audit-log-header">
+                      <div class="audit-search-container">
+                        <i class="fas fa-search audit-search-icon"></i>
+                        <input type="text" id="audit-search" class="audit-search-input" placeholder="Search activities...">
+                      </div>
+                      <div class="audit-actions">
+                        <button onclick="loadAuditLogs()" class="audit-btn refresh-btn">
+                          <i class="fas fa-sync"></i> Refresh
+                        </button>
+                        <button onclick="printAuditLogs()" class="audit-btn print-btn">
+                          <i class="fas fa-print"></i> Print
+                        </button>
+                      </div>
+                    </div>
+                    <table class="audit-log-table">
                       <thead>
                         <tr>
-                          <th>When</th>
+                          <th>Timestamp</th>
                           <th>User</th>
                           <th>Action</th>
-                          <th>Details</th>
+                          <th>IP Address</th>
                         </tr>
                       </thead>
-                      <tbody id="activity-log-body">
-                        <!-- Filled by JS (optional). You can also server-render rows here. -->
-                        <tr><td colspan="4">No activity yet.</td></tr>
+                      <tbody id="audit-log-body">
+                        <!-- Audit logs will be loaded here -->
                       </tbody>
                     </table>
+                    <div id="audit-pagination" class="pagination"></div>
                   </div>
                 </div>
 
@@ -933,8 +1087,54 @@ document.addEventListener('click', async (e) => {
   openEditModal(p);                    // <-- now your function runs with a real object
 });
 
+// Activity Log Auto-refresh
+document.addEventListener('DOMContentLoaded', function() {
+    if (document.getElementById('activity-log-section')) {
+        loadActivityLog();
+        // Refresh activity log every 30 seconds
+        activityLogTimer = setInterval(loadActivityLog, 30000);
+    }
+});
 
 </script>
+
+<!-- Activity Log Section -->
+<div id="activity-log-section" class="tab-content">
+  <h2>Activity Log</h2>
+  <div class="activity-log-container">
+    <div class="activity-log-header">
+      <div class="activity-log-controls">
+        <select id="activity-filter" onchange="filterActivityLog()">
+          <option value="all">All Activities</option>
+          <option value="add_record">Add Records</option>
+          <option value="edit_record">Edit Records</option>
+          <option value="update_schedule">Schedule Changes</option>
+          <option value="profile_update">Profile Changes</option>
+          <option value="login">Login Events</option>
+        </select>
+      <button onclick="refreshActivityLog()" class="refresh-btn">
+        <i class="fas fa-sync"></i> Refresh
+      </button>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Timestamp</th>
+          <th>Username</th>
+          <th>Action</th>
+          <th>Details</th>
+        </tr>
+      </thead>
+      <tbody id="activity-log-body">
+        <!-- Activity log entries will be loaded here -->
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Include Font Awesome for icons -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+<script src="{{ url_for('static', filename='audit-log.js') }}"></script>
 
               </body>
               </html>
