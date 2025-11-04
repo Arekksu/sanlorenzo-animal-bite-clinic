@@ -1,0 +1,48 @@
+/* Select Dropdown Styles */
+.select-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.select-wrapper select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  width: 100%;
+  padding: 8px 32px 8px 12px;
+  border-radius: 6px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.select-arrow {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  font-size: 10px;
+  color: #6b7280;
+  padding-right: 8px;
+  padding-left: 8px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+}
+
+/* Dark mode styles */
+@media (prefers-color-scheme: dark) {
+  .select-wrapper select {
+    background: #1f2937;
+    border-color: #374151;
+    color: #e5e7eb;
+  }
+  
+  .select-arrow {
+    color: #9ca3af;
+    border-left-color: #374151;
+  }
+}

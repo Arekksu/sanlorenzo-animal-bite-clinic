@@ -6,6 +6,7 @@
   <title>San Lorenzo Animal Bite Center - Admin Dashboard</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='employee-styles.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='audit-log.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='select-styles.css') }}">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
@@ -263,12 +264,15 @@
                             </div>
                             <div class="form-group">
                               <label>Gender:</label>
-                              <select name="gender" required>
-                                <option value="">Select gender</option>
-                                <option value="Male">Male</option>
-                                <option value="Female">Female</option>
-                                <option value="Other">Other</option>
-                              </select>
+                              <div class="select-wrapper">
+                                <select name="gender" required placeholder="Select gender">
+                                  <option value="" disabled selected hidden>Select gender</option>
+                                  <option value="Male">Male</option>
+                                  <option value="Female">Female</option>
+                                  <option value="Other">Other</option>
+                                </select>
+                                <div class="select-arrow">▼</div>
+                              </div>
                             </div>
                             <div class="form-group">
                               <label>Contact Number:</label>
@@ -290,12 +294,15 @@
               
                             <div class="form-group">
                               <label>Service Type:</label>
-                              <select name="service_type" required>
-                                <option value="">Select service type</option>
-                                <option value="Booster">Booster</option>
-                                <option value="Pre-Exposure Prophylaxis">Pre-Exposure Prophylaxis</option>
-                                <option value="Post-Exposure Prophylaxis">Post-Exposure Prophylaxis</option>
-                              </select>
+                              <div class="select-wrapper">
+                                <select name="service_type" required placeholder="Select service type">
+                                  <option value="" disabled selected hidden>Select service type</option>
+                                  <option value="Booster">Booster</option>
+                                  <option value="Pre-Exposure Prophylaxis">Pre-Exposure Prophylaxis</option>
+                                  <option value="Post-Exposure Prophylaxis">Post-Exposure Prophylaxis</option>
+                                </select>
+                                <div class="select-arrow">▼</div>
+                              </div>
                             </div>
               
                             <div class="form-section-header">
@@ -316,13 +323,16 @@
                             </div>
                             <div class="form-group">
                               <label>Type of Bite:</label>
-                              <select name="type_of_bite">
-                                <option value="">Select bite type</option>
-                                <option value="One Bite">Single Bite</option>
-                                <option value="Multiple Bites">Multiple Bites</option>
-                                <option value="Scratch">Scratch/Laceration</option>
-                                <option value="Lick on open wound">Lick on Open Wound</option>
-                              </select>
+                              <div class="select-wrapper">
+                                <select name="type_of_bite" placeholder="Select bite type">
+                                  <option value="" disabled selected hidden>Select bite type</option>
+                                  <option value="One Bite">Single Bite</option>
+                                  <option value="Multiple Bites">Multiple Bites</option>
+                                  <option value="Scratch">Scratch/Laceration</option>
+                                  <option value="Lick on open wound">Lick on Open Wound</option>
+                                </select>
+                                <div class="select-arrow">▼</div>
+                              </div>
                             </div>
               
                             <div class="form-section-header">
@@ -331,14 +341,17 @@
               
                             <div class="form-group">
                               <label>Source of Bite:</label>
-                              <select name="source_of_bite">
-                                <option value="">Select animal type</option>
-                                <option value="Dog">Dog</option>
-                                <option value="Cat">Cat</option>
-                                <option value="Bat">Bat</option>
-                                <option value="Monkey">Monkey</option>
-                                <option value="Other">Other Animal</option>
-                              </select>
+                              <div class="select-wrapper">
+                                <select name="source_of_bite" placeholder="Select animal type">
+                                  <option value="" disabled selected hidden>Select animal type</option>
+                                  <option value="Dog">Dog</option>
+                                  <option value="Cat">Cat</option>
+                                  <option value="Bat">Bat</option>
+                                  <option value="Monkey">Monkey</option>
+                                  <option value="Other">Other Animal</option>
+                                </select>
+                                <div class="select-arrow">▼</div>
+                              </div>
                             </div>
                             <div class="form-group">
                               <label>Other Animal Specify:</label>
@@ -346,22 +359,28 @@
                             </div>
                             <div class="form-group">
                               <label>Animal Status:</label>
-                              <select name="source_status">
-                                <option value="">Select status</option>
-                                <option value="Alive">Alive & Observable</option>
-                                <option value="Dead">Dead/Killed</option>
-                                <option value="Unknown">Unknown/Lost</option>
-                              </select>
+                              <div class="select-wrapper">
+                                <select name="source_status" placeholder="Select status">
+                                  <option value="" disabled selected hidden>Select status</option>
+                                  <option value="Alive">Alive & Observable</option>
+                                  <option value="Dead">Dead/Killed</option>
+                                  <option value="Unknown">Unknown/Lost</option>
+                                </select>
+                                <div class="select-arrow">▼</div>
+                              </div>
                             </div>
                             <div class="form-group">
                               <label>Animal Ownership:</label>
-                              <select name="exposure" required>
-                                <option value="">Select ownership type</option>
-                                <option value="Neighbor">Neighbor</option>
-                                <option value="Stranger">Stranger</option>
-                                <option value="Family">Family</option>
-                                <option value="Other">Other</option>
-                              </select>
+                              <div class="select-wrapper">
+                                <select name="exposure" required placeholder="Select ownership type">
+                                  <option value="" disabled selected hidden>Select ownership type</option>
+                                  <option value="Neighbor">Neighbor</option>
+                                  <option value="Stranger">Stranger</option>
+                                  <option value="Family">Family</option>
+                                  <option value="Other">Other</option>
+                                </select>
+                                <div class="select-arrow">▼</div>
+                              </div>
                             </div>
               
                             <div class="form-section-header">

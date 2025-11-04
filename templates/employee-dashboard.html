@@ -43,6 +43,7 @@
     .select-wrapper {
       position: relative;
       width: 100%;
+      display: inline-block;
     }
     
     .select-wrapper select {
@@ -55,16 +56,21 @@
       border: 1px solid #e5e7eb;
       background: #fff;
       cursor: pointer;
+      font-size: 14px;
+      line-height: 1.4;
     }
     
     .select-arrow {
       position: absolute;
-      right: 12px;
+      right: 8px;
       top: 50%;
       transform: translateY(-50%);
       pointer-events: none;
-      font-size: 12px;
+      font-size: 10px;
       color: #6b7280;
+      z-index: 1;
+      padding: 0 4px;
+      background: transparent;
     }
 
     @media (prefers-color-scheme: dark) {
@@ -526,12 +532,15 @@
               </div>
               <div class="form-group">
                 <label>Gender:</label>
-                <select name="gender" required>
-                  <option value="">Select gender</option>
-                  <option value="Male">Male</option>
-                  <option value="Female">Female</option>
-                  <option value="Other">Other</option>
-                </select>
+                <div class="select-wrapper">
+                  <select name="gender" required>
+                    <option value="">Select gender</option>
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                    <option value="Other">Other</option>
+                  </select>
+                  <div class="select-arrow">▼</div>
+                </div>
               </div>
               <div class="form-group">
                 <label>Contact Number:</label>
@@ -547,111 +556,127 @@
           <!-- Vaccine & Bite Info -->
           <div id="vaccine-bite-info" class="tab-content">
             <div class="form-grid">
-              <!-- Service Information and Vaccination History Row -->
-              <div class="form-section-header full-width"><h4>Service & Vaccination Information</h4></div>
-              
+              <div class="form-section-header">
+                <h4>Service Information</h4>
+              </div>
+
               <div class="form-group">
-                <label>🏥 Service Type:</label>
+                <label>Service Type:</label>
                 <div class="select-wrapper">
-                  <select name="service_type" required>
-                    <option value="">Select service type</option>
-                    <option value="Booster">💉 Booster</option>
-                    <option value="Pre-Exposure Prophylaxis">🛡️ Pre-Exposure Prophylaxis</option>
-                    <option value="Post-Exposure Prophylaxis">🚑 Post-Exposure Prophylaxis</option>
+                  <select name="service_type" required placeholder="Select service type">
+                    <option value="" disabled selected hidden>Select service type</option>
+                    <option value="Booster">Booster</option>
+                    <option value="Pre-Exposure Prophylaxis">Pre-Exposure Prophylaxis</option>
+                    <option value="Post-Exposure Prophylaxis">Post-Exposure Prophylaxis</option>
                   </select>
-                  <span class="select-arrow">▼</span>
+                  <div class="select-arrow">▼</div>
                 </div>
               </div>
 
-              <div class="form-group">
-                <label>💉 Previous Anti-Rabies Vaccination:</label>
-                <div class="radio-inline-group">
-                  <label class="radio-inline">
-                    <input type="radio" name="vaccinated" value="Yes">
-                    <span>Yes</span>
-                  </label>
-                  <label class="radio-inline">
-                    <input type="radio" name="vaccinated" value="No" checked>
-                    <span>No</span>
-                  </label>
-                </div>
-              </div>
-              
-              <div class="form-group full-width" id="previous-vaccination-details" style="display: none;">
-                <label>📅 Date of Last Vaccination:</label>
-                <input type="date" name="last_vaccination_date">
-                <small class="field-note">When was the patient's last anti-rabies vaccination?</small>
+              <div class="form-section-header">
+                <h4>Bite Incident Details</h4>
               </div>
 
-              <div class="form-section-header"><h4>Bite Incident Details</h4></div>
               <div class="form-group">
-                <label>📅 Date of Bite:</label>
+                <label>Date of Bite:</label>
                 <input type="date" name="date_of_bite" title="When did the bite incident occur?">
               </div>
               <div class="form-group">
-                <label>🎯 Bite Location on Body:</label>
-                <input type="text" name="bite_location" placeholder="e.g., left hand, right leg, face">
+                <label>Bite Location on Body:</label>
+                <input type="text" name="bite_location" placeholder="e.g., left hand, right leg, face" title="Where on the body was the bite located?">
               </div>
               <div class="form-group">
-                <label>📍 Place of Bite Incident:</label>
-                <input type="text" name="place_of_bite" placeholder="e.g., at home, in the street, at park">
+                <label>Place of Bite Incident:</label>
+                <input type="text" name="place_of_bite" placeholder="e.g., at home, in the street, at park" title="Where did the bite incident happen?">
               </div>
               <div class="form-group">
-                <label>🤕 Type of Bite:</label>
+                <label>Type of Bite:</label>
                 <div class="select-wrapper">
-                  <select name="type_of_bite">
-                    <option value="">Select bite type</option>
-                    <option value="One Bite">🔴 Single Bite</option>
-                    <option value="Multiple Bites">🔴 Multiple Bites</option>
-                    <option value="Scratch">〰️ Scratch/Laceration</option>
-                    <option value="Lick on open wound">💧 Lick on Open Wound</option>
+                  <select name="type_of_bite" placeholder="Select bite type">
+                    <option value="" disabled selected hidden>Select bite type</option>
+                    <option value="One Bite">Single Bite</option>
+                    <option value="Multiple Bites">Multiple Bites</option>
+                    <option value="Scratch">Scratch/Laceration</option>
+                    <option value="Lick on open wound">Lick on Open Wound</option>
                   </select>
-                  <span class="select-arrow">▼</span>
+                  <div class="select-arrow">▼</div>
                 </div>
               </div>
 
-              <div class="form-section-header"><h4>Animal Information</h4></div>
+              <div class="form-section-header">
+                <h4>Animal Information</h4>
+              </div>
+
               <div class="form-group">
-                <label>🐾 Source of Bite:</label>
+                <label>Source of Bite:</label>
                 <div class="select-wrapper">
-                  <select name="source_of_bite">
-                    <option value="">Select animal type</option>
-                    <option value="Dog">🐕 Dog</option>
-                    <option value="Cat">🐱 Cat</option>
-                    <option value="Bat">🦇 Bat</option>
-                    <option value="Monkey">🐒 Monkey</option>
-                    <option value="Other">❓ Other Animal</option>
+                  <select name="source_of_bite" placeholder="Select animal type">
+                    <option value="" disabled selected hidden>Select animal type</option>
+                    <option value="Dog">Dog</option>
+                    <option value="Cat">Cat</option>
+                    <option value="Bat">Bat</option>
+                    <option value="Monkey">Monkey</option>
+                    <option value="Other">Other Animal</option>
                   </select>
-                  <span class="select-arrow">▼</span>
+                  <div class="select-arrow">▼</div>
                 </div>
               </div>
               <div class="form-group">
-                <label>📝 Other Animal Specify:</label>
+                <label>Other Animal Specify:</label>
                 <input type="text" name="other_source_of_bite" placeholder="Specify if 'Other' selected above">
               </div>
               <div class="form-group">
-                <label>⭕ Animal Status:</label>
+                <label>Animal Status:</label>
                 <div class="select-wrapper">
-                  <select name="source_status">
-                    <option value="">Select status</option>
-                    <option value="Alive">✅ Alive & Observable</option>
-                    <option value="Dead">⚫ Dead/Killed</option>
-                    <option value="Unknown">❓ Unknown/Lost</option>
+                  <select name="source_status" placeholder="Select status">
+                    <option value="" disabled selected hidden>Select status</option>
+                    <option value="Alive">Alive & Observable</option>
+                    <option value="Dead">Dead/Killed</option>
+                    <option value="Unknown">Unknown/Lost</option>
                   </select>
-                  <span class="select-arrow">▼</span>
+                  <div class="select-arrow">▼</div>
                 </div>
               </div>
               <div class="form-group">
-                <label>👥 Animal Ownership:</label>
+                <label>Animal Ownership:</label>
                 <div class="select-wrapper">
-                  <select name="exposure" required>
-                    <option value="">Select ownership type</option>
-                    <option value="Neighbor">🏘️ Neighbor</option>
-                    <option value="Stranger">❓ Stranger</option>
-                    <option value="Family">👨‍👩‍👧‍👦 Family</option>
-                    <option value="Other">📝 Other</option>
+                  <select name="exposure" required placeholder="Select ownership type">
+                    <option value="" disabled selected hidden>Select ownership type</option>
+                    <option value="Neighbor">Neighbor</option>
+                    <option value="Stranger">Stranger</option>
+                    <option value="Family">Family</option>
+                    <option value="Other">Other</option>
                   </select>
-                  <span class="select-arrow">▼</span>
+                  <div class="select-arrow">▼</div>
+                </div>
+              </div>
+
+              <div class="form-section-header">
+                <h4>Vaccination History</h4>
+              </div>
+              <div class="form-group">
+                <label>Previous Rabies Vaccination Status:</label>
+                <div class="vaccination-options" style="display:flex;flex-direction:row;gap:4px;align-items:stretch;justify-content:flex-start;">
+                  <div class="radio-group" style="flex:1;display:flex;align-items:center;gap:14px;min-width:320px;max-width:420px;padding:18px 20px;border:1.5px solid transparent;border-radius:12px;background:transparent;box-sizing:border-box;">
+                    <input type="radio" id="vacc-yes" name="vaccinated" value="Yes" checked required>
+                    <label for="vacc-yes" class="radio-label" style="margin-bottom:0;width:100%;">
+                      <span class="radio-button"></span>
+                      <span class="radio-text" style="display:block;">
+                        <strong style="color: #000000;">Previously Vaccinated</strong>
+                        <small style="display:block;color: #000000;">Patient has received anti-rabies vaccine within the last 2 years</small>
+                      </span>
+                    </label>
+                  </div>
+                  <div class="radio-group" style="flex:1;display:flex;align-items:center;gap:14px;min-width:320px;max-width:420px;padding:18px 20px;border:1.5px solid transparent;border-radius:12px;background:transparent;box-sizing:border-box;">
+                    <input type="radio" id="vacc-no" name="vaccinated" value="No" required>
+                    <label for="vacc-no" class="radio-label" style="margin-bottom:0;width:100%;">
+                      <span class="radio-button"></span>
+                      <span class="radio-text" style="display:block;">
+                        <strong style="color: #000000;">Not Previously Vaccinated</strong>
+                        <small style="display:block;color: #000000;">Patient has no prior anti-rabies vaccination or unsure</small>
+                      </span>
+                    </label>
+                  </div>
                 </div>
               </div>
             </div>
