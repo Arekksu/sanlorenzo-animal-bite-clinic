@@ -5,7 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>San Lorenzo Animal Bite Center - Employee Dashboard</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='employee-styles.css') }}?v=2.0">
+  <link rel="stylesheet" href="{{ url_for('static', filename='print-styles.css') }}">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="{{ url_for('static', filename='report-generator.js') }}"></script>
   <style>
     /* Date Input Calendar Icon Styles */
     .date-input-wrapper {
@@ -441,24 +443,10 @@
               </select>
               <label for="monthSelector">View:</label>
               <select id="monthSelector" onchange="updateMonthlyReports()">
-                <option value="all">All Time</option>
-                <option value="current">Current Month</option>
-                <option value="year-current">Current Year</option>
-                <option value="2025">Year 2025</option>
-                <option value="2025-01">January 2025</option>
-                <option value="2025-02">February 2025</option>
-                <option value="2025-03">March 2025</option>
-                <option value="2025-04">April 2025</option>
-                <option value="2025-05">May 2025</option>
-                <option value="2025-06">June 2025</option>
-                <option value="2025-07">July 2025</option>
-                <option value="2025-08">August 2025</option>
-                <option value="2025-09">September 2025</option>
-                <option value="2025-10">October 2025</option>
-                <option value="2025-11">November 2025</option>
-                <option value="2025-12">December 2025</option>
+                <option value="weekly">This Week</option>
+                <option value="monthly" selected>This Month</option>
+                <option value="yearly">This Year</option>
               </select>
-              <button id="generateReport" onclick="generateMonthlyReport()" class="btn-report">📊 Generate Report</button>
             </div>
           </div>
 
@@ -495,14 +483,6 @@
               <h4>Weekly Completion Trends</h4>
               <canvas id="weeklyTrendChart" width="400" height="200"></canvas>
             </div>
-          </div>
-
-          <!-- Monthly Report -->
-          <div class="monthly-report" id="monthlyReportSection" style="display:none;">
-            <h4>📈 Report</h4>
-            <div class="report-content" id="reportContent"></div>
-            <button onclick="printReport()" class="btn-print">🖨️ Print Report</button>
-            <button onclick="exportReport()" class="btn-export">📥 Export PDF</button>
           </div>
         </div>
       </section>
