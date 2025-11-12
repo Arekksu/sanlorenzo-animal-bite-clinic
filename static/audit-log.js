@@ -111,12 +111,15 @@ function handleAuditSearch(event) {
 // Format date for display
 function formatDateTime(timestamp) {
     const date = new Date(timestamp);
-    return date.toLocaleString('en-US', {
+    // Adjust for local timezone offset
+    const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+    return localDate.toLocaleString('en-US', {
         year: 'numeric',
-        month: 'short',
+        month: 'long',
         day: 'numeric',
         hour: '2-digit',
-        minute: '2-digit'
+        minute: '2-digit',
+        hour12: true
     });
 }
 
