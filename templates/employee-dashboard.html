@@ -674,49 +674,66 @@
                   <span class="day-number">Day 0</span>
                   <span class="day-description">Initial dose (exposure day)</span>
                 </div>
-                <div class="date-input-wrapper">
-                  <input type="date" name="day0" class="schedule-input" required title="Select the initial treatment date" />
+                <input type="date" name="day0" class="schedule-input" required />
+                <div class="schedule-status">
+                  <span class="status-badge critical">Critical</span>
                 </div>
-                <div class="schedule-status"><span class="status-badge critical">Critical</span></div>
               </div>
+
               <div class="schedule-item priority-high">
-                <div class="schedule-day"><span class="day-number">Day 3</span><span class="day-description">Second dose</span></div>
-                <div class="date-input-wrapper">
-                  <input type="date" name="day3" class="schedule-input" title="Auto-calculated: 3 days after initial dose" readonly />
+                <div class="schedule-day">
+                  <span class="day-number">Day 3</span>
+                  <span class="day-description">Second dose</span>
                 </div>
-                <div class="schedule-status"><span class="status-badge important">Important</span></div>
+                <input type="date" name="day3" class="schedule-input" />
+                <div class="schedule-status">
+                  <span class="status-badge important">Important</span>
+                </div>
               </div>
+
               <div class="schedule-item priority-medium">
-                <div class="schedule-day"><span class="day-number">Day 7</span><span class="day-description">Third dose</span></div>
-                <div class="date-input-wrapper">
-                  <input type="date" name="day7" class="schedule-input" title="Auto-calculated: 7 days after initial dose" readonly />
+                <div class="schedule-day">
+                  <span class="day-number">Day 7</span>
+                  <span class="day-description">Third dose</span>
                 </div>
-                <div class="schedule-status"><span class="status-badge moderate">Moderate</span></div>
+                <input type="date" name="day7" class="schedule-input" />
+                <div class="schedule-status">
+                  <span class="status-badge moderate">Moderate</span>
+                </div>
               </div>
+
               <div class="schedule-item priority-medium">
-                <div class="schedule-day"><span class="day-number">Day 14</span><span class="day-description">Fourth dose</span></div>
-                <div class="date-input-wrapper">
-                  <input type="date" name="day14" class="schedule-input" title="Auto-calculated: 14 days after initial dose" readonly />
+                <div class="schedule-day">
+                  <span class="day-number">Day 14</span>
+                  <span class="day-description">Fourth dose</span>
                 </div>
-                <div class="schedule-status"><span class="status-badge moderate">Moderate</span></div>
+                <input type="date" name="day14" class="schedule-input" />
+                <div class="schedule-status">
+                  <span class="status-badge moderate">Moderate</span>
+                </div>
               </div>
+
               <div class="schedule-item priority-low">
-                <div class="schedule-day"><span class="day-number">Day 28</span><span class="day-description">Final dose</span></div>
-                <div class="date-input-wrapper">
-                  <input type="date" name="day28" class="schedule-input" title="Auto-calculated: 28 days after initial dose" readonly />
+                <div class="schedule-day">
+                  <span class="day-number">Day 28</span>
+                  <span class="day-description">Final dose</span>
                 </div>
-                <div class="schedule-status"><span class="status-badge low">Completion</span></div>
+                <input type="date" name="day28" class="schedule-input" />
+                <div class="schedule-status">
+                  <span class="status-badge low">Completion</span>
+                </div>
               </div>
             </div>
 
             <div class="schedule-notes">
-              <div class="note-item"><i class="fas fa-info-circle"></i> <strong>Automatic Scheduling:</strong> All follow-up dates are calculated based on Day 0</div>
-              <div class="note-item"><i class="fas fa-exclamation-circle"></i> <strong>Important:</strong> Strict adherence to schedule is crucial for effectiveness</div>
+              <div class="note-item">
+                <strong>Note:</strong> Dates will be manually entered.
+              </div>
+              <div class="note-item">
+                <strong>Important:</strong> Strict adherence to schedule is crucial for effectiveness.
+              </div>
             </div>
           </div>
-
-          <!-- Add schedule calculator script -->
-          <script src="{{ url_for('static', filename='schedule-calculator.js') }}"></script>
 
           <div class="form-actions">
             <button type="submit" class="btn-success" id="saveRecordBtn">Save Record</button>

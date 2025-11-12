@@ -469,8 +469,69 @@ async function loadEmployeeList() {
                     <td>${escapeHtml(emp.username)}</td>
                     <td>${escapeHtml(emp.name)}</td>
                     <td>${escapeHtml(emp.role)}</td>
-                    <td>${emp.username === 'admin' ? 'Admin' : 'Employee'}</td>
-                    <td>${emp.last_login || 'Never'}</td>
+                    <td>${formatLastLogin(emp.last_login)}</td>
+                    <td>
+                        <span class="status-badge ${emp.active ? 'active' : 'inactive'}">
+                            ${emp.active ? 'Active' : 'Inactive'}
+                        </span>
+                    </td>
+                    <td class="actions-cell">
+                        <button onclick="viewEmployeeDetails(${emp.employee_id})" class="btn-icon" title="View Details">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                        ${emp.username !== 'admin' ? `
+                            <button onclick="toggleEmployeeStatus(${emp.employee_id}, ${!emp.active})" class="btn-icon" title="${emp.active ? 'Deactivate' : 'Activate'}">
+                                <i class="fas fa-${emp.active ? 'user-slash' : 'user-check'}"></i>
+                            </button>
+                            <button onclick="resetEmployeePassword(${emp.employee_id})" class="btn-icon" title="Reset Password">
+                                <i class="fas fa-key"></i>
+                            </button>
+                        ` : ''}
+                    </td>
+                </tr>
+            `).join('');
+        } else {
+            tbody.innerHTML = '<tr><td colspan="7" class="text-center">Failed to load employee list.</td></tr>';
+        }
+    } catch (error) {
+        console.error('Error loading employees:', error);
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center">Error loading employee list.</td></tr>';
+    }
+}
+
+// Helper to format last login
+function formatLastLogin(val) {
+    if (!val) return 'Never';
+    const d = new Date(val);
+    if (isNaN(d)) {
+        // Fallback: show raw string if parsing fails
+        return String(val);
+    }
+    return d.toLocaleString('en-PH', {
+        year: 'numeric', month: 'long', day: 'numeric',
+        hour: '2-digit', minute: '2-digit', hour12: true,
+        timeZone: 'Asia/Manila'
+    });
+}
+
+/* ---------- SECTION NAV ---------- */
+// Load and display employee list
+async function loadEmployeeList() {
+    const tbody = document.getElementById('employee-list-body');
+    if (!tbody) return;
+
+    try {
+        const response = await fetch('/get_employees');
+        const data = await response.json();
+
+        if (data.success) {
+            tbody.innerHTML = data.employees.map(emp => `
+                <tr>
+                    <td>${emp.employee_id}</td>
+                    <td>${escapeHtml(emp.username)}</td>
+                    <td>${escapeHtml(emp.name)}</td>
+                    <td>${escapeHtml(emp.role)}</td>
+                    <td>${formatLastLogin(emp.last_login)}</td>
                     <td>
                         <span class="status-badge ${emp.active ? 'active' : 'inactive'}">
                             ${emp.active ? 'Active' : 'Inactive'}
@@ -842,13 +903,15 @@ async function reloadPatientTableFromAPI() {
         <td>${escapeHtml(p.service_type || '')}</td>
         <td class="actions-cell">
           <button class="btn-view" data-patient-id="${p.id}" title="View">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"></path><circle cx="12" cy="12" r="3"></circle>
           </button>
           <button class="btn-edit" data-patient-id="${p.id}" title="Edit">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 3a2.828 2.828 0 1 1 4 4L7 21H3v-4L17 3z"></path></svg>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 3a2.828 2.828 0 1 1 4 4L7 21H3v-4L17 3z"></path>
+            </svg>
           </button>
           <button class="btn-delete" data-patient-id="${p.id}" title="Delete">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path><path d="M10 11v6"></path><path d="M14 11v6"></path><path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"></path></svg>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path><path d="M10 11v6"></path><path d="M14 11v6"></path><path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"></path>
+            </svg>
           </button>
         </td>
       </tr>
@@ -1688,6 +1751,7 @@ function generateMonthlyReport() {
     } else {
       rangeLabel = new Date(selectedMonth + '-01').toLocaleDateString('en', {month: 'long', year: 'numeric'});
     }
+
   }
 
   // Get completed patients from the global data
@@ -2394,8 +2458,7 @@ function showToast(message, type = 'info') {
   const toast = document.createElement('div');
   toast.className = `toast toast-${type}`;
   
-  const icon = type === 'success' ? '✓' : 
-               type === 'error' ? '✕' : 'ℹ';
+  const icon = type === 'success' ? '✓' : type === 'error' ? '✕' : 'ℹ';
                
   toast.innerHTML = `
     <span class="toast-icon">${icon}</span>

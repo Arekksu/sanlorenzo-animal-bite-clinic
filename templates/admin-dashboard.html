@@ -467,10 +467,10 @@
               
                             <div class="schedule-notes">
                               <div class="note-item">
-                                <strong>Note:</strong> Dates will be auto-calculated when Day 0 is selected
+                                <strong>Note:</strong> Dates will be manually entered.
                               </div>
                               <div class="note-item">
-                                <strong>Important:</strong> Strict adherence to schedule is crucial for effectiveness
+                                <strong>Important:</strong> Strict adherence to schedule is crucial for effectiveness.
                               </div>
                             </div>
                           </div>
@@ -1137,7 +1137,7 @@ function generateReportWithData(patientsData) {
           <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; text-align: center; border: 1px solid #dee2e6;">
             <div style="font-size: 24px; font-weight: bold; color: #800020;">${completedPatients.length}</div>
             <div style="font-size: 14px; color: #666;">Completed Treatments</div>
-            <div style="font-size: 12px; color: #28a745; margin-top: 5px;">✅ ${getChangeText(completedPatients.length, prevCompletedPatients, 'Completed')}</div>
+            <div style="font-size: 12px, color: #28a745; margin-top: 5px;">✅ ${getChangeText(completedPatients.length, prevCompletedPatients, 'Completed')}</div>
           </div>
           <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; text-align: center; border: 1px solid #dee2e6;">
             <div style="font-size: 24px; font-weight: bold; color: #800020;">${activePatients}</div>
@@ -1740,7 +1740,6 @@ document.addEventListener('DOMContentLoaded', function() {
         activityLogTimer = setInterval(loadActivityLog, 30000);
     }
 });
-
 </script>
 
 <!-- Activity Log Section -->

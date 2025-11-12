@@ -1,7 +1,7 @@
 from flask import Flask, render_template, request, redirect, url_for, g, send_file, session, flash, jsonify
 import sqlite3
 import bcrypt
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 import pandas as pd # type: ignore
 from io import BytesIO
 import json
@@ -97,7 +97,18 @@ def get_employees():
     try:
         conn = get_db()
         employees = conn.execute('SELECT employee_id, username, name, role, active, last_login FROM employees ORDER BY username != "admin", name').fetchall()
-        return jsonify({'success': True, 'employees': [dict(emp) for emp in employees]})
+        def to_iso(dt):
+            return dt.isoformat() if dt else None
+        return jsonify({'success': True, 'employees': [
+            {
+                'employee_id': emp['employee_id'],
+                'username': emp['username'],
+                'name': emp['name'],
+                'role': emp['role'],
+                'active': bool(emp['active']),
+                'last_login': emp['last_login']
+            } for emp in employees
+        ]})
     except Exception as e:
         print(f"Error getting employees: {str(e)}")
         return jsonify({'success': False, 'message': 'Failed to retrieve employees'})
@@ -250,18 +261,9 @@ def create_employee():
 
 @app.route('/employee-login', methods=['GET', 'POST'])
 def employee_login():
-    import re
-    def is_sql_injection(text):
-        # Fixed pattern: removed unescaped parentheses and simplified for safety
-        pattern = r"(--|;|/\*|\*/|@|char\s|nchar\s|varchar\s|alter\s|begin\s|cast\s|create\s|cursor\s|declare\s|delete\s|drop\s|end\s|exec\s|execute\s|fetch\s|insert\s|kill\s|open\s|select\s|sys\.|table\s|update\s)"
-        return re.search(pattern, text, re.IGNORECASE)
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
-        # SQL injection pattern check
-        if is_sql_injection(username) or is_sql_injection(password):
-            return render_template('employee-login.html', error='Invalid input detected.')
-        
         conn = get_db()
         try:
             user = conn.execute('SELECT * FROM employees WHERE username = ?', (username,)).fetchone()
@@ -269,33 +271,21 @@ def employee_login():
                 session['employee_name'] = user['name']
                 session['employee_id'] = user['employee_id']
                 session['role'] = 'admin' if username == 'admin' else 'employee'
+                # Save last login timestamp in UTC
+                conn.execute('UPDATE employees SET last_login = ? WHERE employee_id = ?',
+                             (datetime.now(timezone.utc).isoformat(), user['employee_id']))
+                conn.commit()
                 log_audit_trail(username, user['name'], "LOGIN", request.remote_addr)
-                # Ensure we go to dashboard on login
                 if session['role'] == 'admin':
                     return redirect(url_for('admin_dashboard'))
                 else:
                     return redirect(url_for('employee_dashboard', active_tab='dashboard'))
             else:
                 log_audit_trail(username, "Unknown", "FAILED_LOGIN", request.remote_addr)
-                import json
-                server_data = json.dumps({
-                    "success": False,
-                    "error": "Invalid credentials",
-                    "redirect_url": ""
-                })
-                return render_template('employee-login.html', login_server_data=server_data)
+                return render_template('employee-login.html', error='Invalid credentials')
         finally:
             conn.close()
-    
-    # GET request - show login form
-    import json
-    server_data = json.dumps({
-        "success": False,
-        "error": None,
-        "redirect_url": ""
-    })
-    return render_template('employee-login.html', login_server_data=server_data)
-
+    return render_template('employee-login.html')
 
 @app.route('/admin-login', methods=['GET', 'POST'])
 def admin_login():
