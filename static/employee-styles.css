@@ -1491,9 +1491,35 @@ body {
   padding-top: 20px;
   border-top: 1px solid #e1e8ed;
 }
+.modal-tabs {
+    display: flex;
+    justify-content: center;
+    border-bottom: 2px solid #ccc;
+    margin-bottom: 15px;
+  }
 
+  .modal-tab {
+    padding: 10px 20px;
+    cursor: pointer;
+    font-weight: 600;
+    color: #333;
+  }
+
+  .modal-tab.active {
+    border-bottom: 3px solid #8B0000; /* dark red (match SLABC theme) */
+    color: #8B0000;
+  }
+
+  .tab-content {
+    display: none;
+  }
+
+  .tab-content.active {
+    display: block;
+  }
+  
 .btn-success {
-  background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+  background: linear-gradient(135deg, #520d21 0%, #611619 100%);
   color: #fff;
   border: 0;
   padding: 12px 24px;
@@ -1506,7 +1532,7 @@ body {
 }
 
 .btn-success:hover {
-  background: linear-gradient(135deg, #218838 0%, #1e7e34 100%);
+  background: linear-gradient(135deg, #88212f 0%, #570a21 100%);
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
 }
@@ -2601,11 +2627,12 @@ input:focus, select:focus, textarea:focus {
 }
 
 .notification-success {
-  border-left: 4px solid #10b981;
+  border-left: 4px solid #5e0f20;
 }
 
 .notification-success .notification-icon {
   background: #d1fae5;
+  
   color: #10b981;
 }
 

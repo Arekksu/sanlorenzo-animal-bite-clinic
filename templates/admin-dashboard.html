@@ -261,11 +261,25 @@
                                 </select>
                                 <div class="select-arrow">▼</div>
                               </div>
+                
                             </div>
                             <div class="form-group">
                               <label>Contact Number:</label>
                               <input type="tel" name="contact_number" placeholder="09XX-XXX-XXXX" required>
                             </div>
+                             <div class="form-group">
+                                <label>Weight:</label>
+                                <input type="text" name="weight" placeholder="Enter weight in kg" required>
+                              </div>
+                            <div class="form-group">
+                              <label>Medical History & Allergies</label>
+                              <input type="text" name="medical_history_allergies" placeholder="Enter medical history and allergies" required>
+                            </div>
+                            <div class="form-group">
+                              <label>Medication (NA if Not Applicable):</label>
+                              <input type="text" name="medication" placeholder="Enter medication details" required>
+                            </div>
+                          
                             <div class="form-group full-width">
                               <label>Complete Address:</label>
                               <textarea name="address" rows="3" placeholder="Enter complete address including barangay, city/municipality, province" required></textarea>
@@ -292,7 +306,32 @@
                                 <div class="select-arrow">▼</div>
                               </div>
                             </div>
-              
+                             <div class="form-group">  
+                              <label>Route of Vaccine</label>
+                                  <select name="route_of_vaccine" required placeholder="Select route">
+                                    <option value="" disabled selected hidden>Select consent</option>
+                                    <option value="Yes">IM</option>
+                                    <option value="No">ID</option>
+                                    </select>
+                            </div>
+                            
+                  
+                            <div class="form-group">  
+                                 <div class="schedule-day">
+                                  <span class="day-number">Booster 1</span>
+                                </div>
+                                <input type="date" name="booster1" class="schedule-input"/>
+                                <div class="schedule-status">
+                                </div>
+                            </div>
+                            <div class="form-group">  
+                                 <div class="schedule-day">
+                                  <span class="day-number">Booster 2</span>
+                                </div>
+                                <input type="date" name="booster2" class="schedule-input"/>
+                                <div class="schedule-status">
+                                </div>
+                            </div>
                             <div class="form-section-header">
                               <h4>Bite Incident Details</h4>
                             </div>
@@ -322,6 +361,15 @@
                                 <div class="select-arrow">▼</div>
                               </div>
                             </div>
+                              <div class="form-group">
+                                <label>Bite Category</label>
+                                <Select name="bite_category" required placeholder="Select bite category">
+                                  <option value="" disabled selected hidden>Select bite category</option>
+                                  <option value="Category I">CAT I</option>
+                                  <option value="Category II">CAT II</option>
+                                  <option value="Category III">CAT III</option>
+                                </Select>
+                              </div>
               
                             <div class="form-section-header">
                               <h4>Animal Information</h4>
@@ -370,7 +418,65 @@
                                 <div class="select-arrow">▼</div>
                               </div>
                             </div>
-              
+                            <div class="form-group">
+                              <label>Type of Exposure</label>
+                              <Select name="type_of_exposure" required placeholder="Select type of exposure">
+                                <option value="" disabled selected hidden>Select type of exposure</option>
+                                <option value="vaccinated_pet">VACCINATED PET</option>
+                                <option value="not_vaccinated_pet">NOT VACCINATED PET</option>
+                                <option value="not_vaccinated_stray_animal">NOT VACCINATED STRAY ANIMAL</option>
+                                <option value="vaccinated_pet_of_neighbor">VACCINATED PET OF NEIGHBOR</option>
+                              </Select>
+                            </div>
+
+                            <div class="form-section-header">
+                              <h4>Additional Information/Other Dosage/Consent</h4>
+                            </div>
+                              <div class="form-group">
+                                <label>Additional Remarks:</label>
+                                <input type="text" name="additional_remarks" placeholder="Enter any additional information or dosage details">
+                              </div>
+                              <div class="form-group">
+                                <label>TT1</label>
+                                <input type="date" name="tt1" class="schedule-input"/>
+                              </div>
+                              <div class="form-group">
+                                <label>TT6</label>
+                                <input type="date" name="tt6" class="schedule-input"/>
+                              </div>
+                              <div class="form-group">
+                                <label>TT30</label>
+                                <input type="date" name="tt30" class="schedule-input"/>
+                              </div>
+                              <div class="form-group">
+                                <label>Anti-tetanus Toxoid Dosage</label>
+                                <input type="text" name="anti_tetanus" placeholder="Enter anti-tetanus toxoid dosage details">
+                              </div><Br>
+                              <div class="form-group">
+                                <label><b>Patient Refusal to Erig</b><Br><i> (I have been advised for ERIG administration and I hereby REFUSE the treatment.  I am FULLY AWARE of the risks and consequences for refusing to receive ERIG treatment as advised by the Staff/Nurse on Duty. Furthermore, I have been informed of the nature, benefit and purpose of ERIG administration. I, NONETHELESS, REFUSE ERIG ADMINISTRATION). </i> </label>
+                                <select name="erig_refusal" required>
+                                  <opttion value="Select">Select refusal</option>
+                                  <option value="I REFUSE TO ADMINISTER ERIG.">I REFUSE TO ADMINISTER ERIG.</option>
+                                  <option value="I ACCEPT THE ADMINISTER ERIG.">I ACCEPT THE ADMINISTER ERIG.</option>
+                                  </select>
+                              </div>
+                              <div class="form-group">  
+                              <label>I hereby consent Vaccination route for IM</label>
+                                  <select name="route_im_consent" required placeholder="Select consent">
+                                    <option value="" disabled selected hidden>Select consent</option>
+                                    <option value="Yes">YES (w/maintenance, Immunocompromised, Others)</option>
+                                    <option value="No">NO, I refuse IM ROUTE.</option>
+                                    </select>
+                            </div>
+                            <div class="form-group">
+                              <label> I consent to the treatment and vaccination.</label>
+                              <select name="consent" required>
+                                <opttion value="Select">Select consent</option>
+                                <option value="Yes">Yes, I consent</option>
+                                <option value="No">No</option>
+                              </select>
+                            </div>
+
                             <div class="form-section-header">
                               <h4>Vaccination History</h4>
                             </div>
@@ -397,7 +503,9 @@
                                     </span>
                                   </label>
                                 </div>
+                                
                               </div>
+                             
                             </div>
                           </div>
                         </div>
@@ -455,7 +563,7 @@
                 
                               <div class="schedule-item priority-low">
                                 <div class="schedule-day">
-                                  <span class="day-number">Day 28</span>
+                                  <span class="day-number">Day 21/28</span>
                                   <span class="day-description">Final dose</span>
                                 </div>
                                 <input type="date" name="day28" class="schedule-input" />
@@ -464,7 +572,11 @@
                                 </div>
                               </div>
                             </div>
-              
+                          
+
+                            
+              <!-- Booster Schedule -->
+                         
                             <div class="schedule-notes">
                               <div class="note-item">
                                 <strong>Note:</strong> Dates will be manually entered.
@@ -474,7 +586,9 @@
                               </div>
                             </div>
                           </div>
-
+                        <br>
+                         
+                          
                         <!-- Actions -->
                         <div class="form-actions">
                           <button type="submit" class="btn-success">Save Record</button>
@@ -510,6 +624,10 @@
                               <td>{{ p['patient_name'] }}</td>
                               <td>{{ p['date_of_bite']  }}</td>
                               <td>{{ p['service_type'] }}</td>
+                              <td>{{ p['medical_history_allergies'] }}</td>
+                              <td>{{ p['weight'] }}</td>
+                              <td>{{ p['medication'] }}</td>
+                          
                               <td class="action-buttons">
                                 <button class="btn-view" data-patient-id="{{ p['id'] }}" title="View Details">
                                   <img src="{{ url_for('static', filename='images/icons/istockphoto-845329690-612x612-removebg-preview.png') }}" alt="View" class="action-icon">
@@ -1172,6 +1290,9 @@ function generateReportWithData(patientsData) {
                   <td style="border: 1px solid #ddd; padding: 10px;">${new Date(p.day0).toLocaleDateString()}</td>
                   <td style="border: 1px solid #ddd; padding: 10px;">${new Date(p.day28).toLocaleDateString()}</td>
                   <td style="border: 1px solid #ddd; padding: 10px;">${p.service_type}</td>
+                  <td style="border: 1px solid #ddd; padding: 10px;">${p.medical_history_allergies}</td>
+                  <td style="border: 1px solid #ddd; padding: 10px;">${p.weight}</td>
+                  <td style="border: 1px solid #ddd; padding: 10px;">${p.medication}</td>
                   <td style="border: 1px solid #ddd; padding: 10px; text-align: center;">
                     <span style="background: #28a745; color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px;">✓ Completed</span>
                   </td>
@@ -1340,6 +1461,9 @@ function generatePrintReport(patientsData) {
                         <td style="border: 1px solid #ddd; padding: 8px;">${startDate}</td>
                         <td style="border: 1px solid #ddd; padding: 8px;">${endDate}</td>
                         <td style="border: 1px solid #ddd; padding: 8px;">${p.service_type || 'N/A'}</td>
+                        <td style="border: 1px solid #ddd; padding: 8px;">${p.medical_history_allergies || 'N/A'}</td>
+                        <td style="border: 1px solid #ddd; padding: 8px;">${p.weight || 'N/A'}</td>
+                        <td style="border: 1px solid #ddd; padding: 8px;">${p.medication || 'N/A'}</td>
                     </tr>
                 `;
             });
@@ -1690,6 +1814,7 @@ function openEditModal(p) {
   document.getElementById('edit_date_of_bite').value = (p.date_of_bite || '').slice(0,10);
   document.getElementById('edit_service_type').value = p.service_type || '';
   document.getElementById('edit_contact_number').value = p.contact_number || '';
+  
   document.getElementById('edit_age').value = p.age ?? '';
   document.getElementById('edit_gender').value = p.gender || '';
   document.getElementById('edit_address').value = p.address || '';

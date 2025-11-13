@@ -319,35 +319,83 @@ def employee_dashboard():
         # Save patient form
         if request.method == "POST":
             data = (
+                # Personal
                 request.form['patient_name'],
                 request.form['age'],
                 request.form['gender'],
                 request.form['contact_number'],
                 request.form['address'],
+                request.form.get('weight'),
+                request.form.get('medical_history_allergies'),
+                request.form.get('medication'),
+                request.form.get('consent'),
+
+                # Service / vaccine
                 request.form['service_type'],
-                request.form['date_of_bite'],
-                request.form['bite_location'],
-                request.form['place_of_bite'],
-                request.form['type_of_bite'],
-                request.form['source_of_bite'],
+                request.form.get('route_of_vaccine'),
+                request.form.get('route_im_consent'),
+                request.form.get('booster1'),
+                request.form.get('booster2'),
+
+                # Bite details
+                request.form.get('date_of_bite'),
+                request.form.get('bite_location'),
+                request.form.get('place_of_bite'),
+                request.form.get('type_of_bite'),
+                request.form.get('bite_category'),
+
+                # Animal info
+                request.form.get('source_of_bite'),
                 request.form.get('other_source_of_bite'),
-                request.form['source_status'],
-                request.form['exposure'],
+                request.form.get('source_status'),
+                request.form.get('exposure'),
+                request.form.get('type_of_exposure'),
+
+                # Extra / tetanus
+                request.form.get('additional_remarks'),
+                request.form.get('tt1'),
+                request.form.get('tt6'),
+                request.form.get('tt30'),
+                request.form.get('anti_tetanus'),
+
+                # Rabies vacc history
                 request.form['vaccinated'],
+
+                # Schedule
                 request.form.get('day0'),
                 request.form.get('day3'),
                 request.form.get('day7'),
                 request.form.get('day14'),
                 request.form.get('day28'),
             )
+
             conn.execute("""
-                INSERT INTO patients 
-                (patient_name, age, gender, contact_number, address, service_type,
-                date_of_bite, bite_location, place_of_bite, type_of_bite,
-                source_of_bite, other_source_of_bite, source_status, exposure, vaccinated,
-                day0, day3, day7, day14, day28)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, data)
+            INSERT INTO patients (
+                patient_name, age, gender, contact_number, address,
+                weight, medical_history_allergies, medication, consent,
+                service_type, route_of_vaccine, route_im_consent,
+                booster1, booster2,
+                date_of_bite, bite_location, place_of_bite,
+                type_of_bite, bite_category,
+                source_of_bite, other_source_of_bite, source_status,
+                exposure, type_of_exposure,
+                additional_remarks, tt1, tt6, tt30, anti_tetanus,
+                vaccinated,
+                day0, day3, day7, day14, day28
+            ) VALUES (
+                ?, ?, ?, ?, ?,
+                ?, ?, ?, ?,
+                ?, ?, ?,
+                ?, ?,
+                ?, ?, ?,
+                ?, ?,
+                ?, ?, ?,
+                ?, ?,
+                ?, ?, ?, ?, ?,
+                ?,
+                ?, ?, ?, ?, ?
+            )
+        """, data)
             conn.commit()
             
             # Log to audit trail
@@ -359,14 +407,29 @@ def employee_dashboard():
             )
             
             flash('Record added successfully!', 'success')
-            return redirect(url_for("employee_dashboard"))
+            if session.get('role') == 'admin':
+                return redirect(url_for('admin_dashboard'))
+            else:
+                return redirect(url_for('employee_dashboard'))
+
 
         # Get all patients for display
         patients = conn.execute("""
-        SELECT id, patient_name, date_of_bite, service_type, age, gender, contact_number,
-               day0, day3, day7, day14, day28
-        FROM patients
-            """).fetchall()
+            SELECT
+                id, patient_name, age, gender, contact_number, address,
+                weight, medical_history_allergies, medication, consent,
+                service_type, route_of_vaccine, route_im_consent,
+                booster1, booster2,
+                date_of_bite, bite_location, place_of_bite,
+                type_of_bite, bite_category,
+                source_of_bite, other_source_of_bite, source_status,
+                exposure, type_of_exposure,
+                additional_remarks, tt1, tt6, tt30, anti_tetanus,
+                vaccinated,
+                day0, day3, day7, day14, day28
+            FROM patients
+        """).fetchall()
+
         # Convert sqlite Row objects to list of dicts so templates and JS can consume JSON safely
         patients_list = [dict(row) for row in patients]
 
@@ -419,18 +482,43 @@ def admin_dashboard():
 
 @app.route("/patient/<int:patient_id>")
 def patient_detail(patient_id):
-    conn = get_db()
-    patient = conn.execute(
-        "SELECT * FROM patients WHERE id = ?", (patient_id,)
-    ).fetchone()
+    try:
+        conn = get_db()
+        patient = conn.execute("""
+            SELECT
+                id, patient_name, age, gender, contact_number, address,
+                weight, medical_history_allergies, medication, consent,
+                service_type, route_of_vaccine, route_im_consent,
+                booster1, booster2,
+                date_of_bite, bite_location, place_of_bite,
+                type_of_bite, bite_category,
+                source_of_bite, other_source_of_bite, source_status,
+                exposure, type_of_exposure,
+                additional_remarks, tt1, tt6, tt30, anti_tetanus,
+                vaccinated, erig_refusal,
+                day0, day3, day7, day14, day28
+            FROM patients
+            WHERE id = ?
+        """, (patient_id,)).fetchone()
 
-    if not patient:
-        return "Patient not found", 404
+        if patient is None:
+            # klarong JSON ang balik, hindi plain text
+            return jsonify({"ok": False, "error": "not_found"}), 404
 
-    # Convert sqlite3.Row to dict
-    patient_dict = dict(patient)
+        return jsonify({
+            "ok": True,
+            "patient": dict(patient)
+        })
 
-    return patient_dict  # Flask will jsonify this automatically
+    except Exception as e:
+        # makikita  yung real error sa terminal/logs
+        app.logger.exception(f"Error loading patient {patient_id}")
+        return jsonify({
+            "ok": False,
+            "error": "server_error",
+            "message": str(e)
+        }), 500
+
 
 @app.route("/delete-patient/<int:patient_id>", methods=["DELETE"])
 def delete_patient(patient_id):
@@ -468,17 +556,26 @@ def api_patients():
     auth_check = require_login()
     if auth_check:
         return auth_check
-    
+
     conn = get_db()
     patients = conn.execute("""
-        SELECT id, patient_name, date_of_bite, service_type, age, gender, contact_number,
-               day0, day3, day7, day14, day28
-        FROM patients
+    SELECT
+        id, patient_name, age, gender, contact_number, address,
+        weight, medical_history_allergies, medication, consent,
+        service_type, route_of_vaccine, route_im_consent,
+        booster1, booster2,
+        date_of_bite, bite_location, place_of_bite,
+        type_of_bite, bite_category,
+        source_of_bite, other_source_of_bite, source_status,
+        exposure, type_of_exposure,
+        additional_remarks, tt1, tt6, tt30, anti_tetanus,
+        vaccinated,
+        day0, day3, day7, day14, day28
+    FROM patients
     """).fetchall()
-    
-    # Convert to list of dictionaries
-    patients_list = [dict(patient) for patient in patients]
-    
+
+    # Convert to list of dictionaries and return JSON serializable object
+    patients_list = [dict(p) for p in patients]
     return {"patients": patients_list}
 
 @app.route("/api/patients-schedule")
@@ -601,20 +698,58 @@ def restore_csv():
             # Insert each row from CSV into database
             for _, row in df.iterrows():
                 cursor.execute("""
-                    INSERT OR REPLACE INTO patients (
-                        id, patient_name, age, gender, contact_number, address,
-                        date_of_bite, bite_location, place_of_bite, source_of_bite,
-                        type_of_bite, source_status, exposure, service_type,
-                        day0, day3, day7, day14, day28
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """, (
-                    row.get('id'), row.get('patient_name'), row.get('age'), 
-                    row.get('gender'), row.get('contact_number'), row.get('address'),
-                    row.get('date_of_bite'), row.get('bite_location'), row.get('place_of_bite'),
-                    row.get('source_of_bite'), row.get('type_of_bite'), row.get('source_status'),
-                    row.get('exposure'), row.get('service_type'), row.get('day0'),
-                    row.get('day3'), row.get('day7'), row.get('day14'), row.get('day28')
-                ))
+    INSERT OR REPLACE INTO patients (
+        id, patient_name, age, gender, contact_number, address,
+        weight, medical_history_allergies, medication, consent,
+        service_type, route_of_vaccine, route_im_consent,
+        booster1, booster2,
+        date_of_bite, bite_location, place_of_bite,
+        type_of_bite, bite_category,
+        source_of_bite, other_source_of_bite, source_status,
+        exposure, type_of_exposure,
+        additional_remarks, tt1, tt6, tt30, anti_tetanus,
+        vaccinated,
+        day0, day3, day7, day14, day28
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            row.get('id'),
+            row.get('patient_name'),
+            row.get('age'),
+            row.get('gender'),
+            row.get('contact_number'),
+            row.get('address'),
+            row.get('weight'),
+            row.get('medical_history_allergies'),
+            row.get('medication'),
+            row.get('consent'),
+            row.get('service_type'),
+            row.get('route_of_vaccine'),
+            row.get('route_im_consent'),
+            row.get('booster1'),
+            row.get('booster2'),
+            row.get('date_of_bite'),
+            row.get('bite_location'),
+            row.get('place_of_bite'),
+            row.get('type_of_bite'),
+            row.get('bite_category'),
+            row.get('source_of_bite'),
+            row.get('other_source_of_bite'),
+            row.get('source_status'),
+            row.get('exposure'),
+            row.get('type_of_exposure'),
+            row.get('additional_remarks'),
+            row.get('tt1'),
+            row.get('tt6'),
+            row.get('tt30'),
+            row.get('anti_tetanus'),
+            row.get('vaccinated'),
+            row.get('day0'),
+            row.get('day3'),
+            row.get('day7'),
+            row.get('day14'),
+            row.get('day28'),
+        ))
+
             
             conn.commit()
             return redirect(url_for('employee_dashboard'))
@@ -672,13 +807,20 @@ def update_patient(pid):
                 "Send as form fields or JSON with matching keys."), 400
 
     fields = [
-        'patient_name','age','gender','contact_number','address',
-        'service_type','date_of_bite','bite_location','place_of_bite',
-        'type_of_bite','source_of_bite','other_source_of_bite',
-        'source_status','exposure','vaccinated',
-        'day0','day3','day7','day14','day28'
+    'patient_name', 'age', 'gender', 'contact_number', 'address',
+    'weight', 'medical_history_allergies', 'medication', 'consent',
+    'service_type', 'route_of_vaccine', 'route_im_consent',
+    'booster1', 'booster2',
+    'date_of_bite', 'bite_location', 'place_of_bite',
+    'type_of_bite', 'bite_category',
+    'source_of_bite', 'other_source_of_bite', 'source_status',
+    'exposure', 'type_of_exposure',
+    'additional_remarks', 'tt1', 'tt6', 'tt30', 'anti_tetanus',
+    'vaccinated',
+    'day0', 'day3', 'day7', 'day14', 'day28'
     ]
     vals = [payload.get(f) for f in fields]
+
 
     # Use direct connection instead of shared g.db
     conn = sqlite3.connect(DATABASE, timeout=30.0)
@@ -688,12 +830,19 @@ def update_patient(pid):
         conn.execute("""
             UPDATE patients SET
               patient_name=?, age=?, gender=?, contact_number=?, address=?,
-              service_type=?, date_of_bite=?, bite_location=?, place_of_bite=?,
-              type_of_bite=?, source_of_bite=?, other_source_of_bite=?,
-              source_status=?, exposure=?, vaccinated=?,
+              weight=?, medical_history_allergies=?, medication=?, consent=?,
+              service_type=?, route_of_vaccine=?, route_im_consent=?,
+              booster1=?, booster2=?,
+              date_of_bite=?, bite_location=?, place_of_bite=?,
+              type_of_bite=?, bite_category=?,
+              source_of_bite=?, other_source_of_bite=?, source_status=?,
+              exposure=?, type_of_exposure=?,
+              additional_remarks=?, tt1=?, tt6=?, tt30=?, anti_tetanus=?,
+              vaccinated=?,
               day0=?, day3=?, day7=?, day14=?, day28=?
             WHERE id=?
         """, [*vals, pid])
+
         conn.commit()
         
         # Log to audit trail

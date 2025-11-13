@@ -262,18 +262,39 @@ function openPatientDetailsModal(p){
         <div class="detail-row"><label>Age:</label><span>${show(p.age)}</span></div>
         <div class="detail-row"><label>Gender:</label><span>${show(p.gender)}</span></div>
         <div class="detail-row"><label>Contact:</label><span>${show(p.contact_number)}</span></div>
+        <div class="detail-row"><label>Weight:</label><span>${show(p.weight)}</span></div>
+        <div class="detail-row"><label>Medical History:</label><span>${show(p.medical_history)}</span></div>
+        <div class="detail-row"><label>Medication (NA if Not Applicable):</label><span>${show(p.medication)}</span></div>
+      
         <div class="detail-row"><label>Address:</label><span>${show(p.address)}</span></div>
       </div>
       <div class="detail-section">
         <h3>Incident & Service</h3>
+        <div class="detail-row"><label>Service:</label><span>${show(p.service_type)}</span></div>
+        <div class="detail-row"><label>Route of Vaccine:</label><span>${show(p.route_of_vaccine)}</span></div>
+        <div class="detail-row"><label>Booster 1</label><span>${show(p.booster1)}</span></div>
+        <div class="detail-row"><label>Booster 2</label><span>${show(p.booster2)}</span></div>
         <div class="detail-row"><label>Date of Bite:</label><span>${show(p.date_of_bite)}</span></div>
         <div class="detail-row"><label>Bite Location:</label><span>${show(p.bite_location)}</span></div>
         <div class="detail-row"><label>Place of Bite:</label><span>${show(p.place_of_bite)}</span></div>
         <div class="detail-row"><label>Source of Bite:</label><span>${show(p.source_of_bite)}</span></div>
         <div class="detail-row"><label>Type of Bite:</label><span>${show(p.type_of_bite)}</span></div>
+        <div class="detail-row"><label>Bite Category:</label><span>${show(p.bite_category)}</span></div>
         <div class="detail-row"><label>Source Status:</label><span>${show(p.source_status)}</span></div>
         <div class="detail-row"><label>Exposure:</label><span>${show(p.exposure)}</span></div>
-        <div class="detail-row"><label>Service:</label><span>${show(p.service_type)}</span></div>
+        <div class="detail-row"><label>Type of Exposure</label><span>${show(p.type_of_exposure)}</span></div>
+        
+
+        <div class="detail-row"><label>Additional Remarks: </label><span>${show(p.additional_remarks)}</span></div>
+        <div class="detail-row"><label>TT1</label><span>${show(p.tt1)}</span></div>
+        <div class="detail-row"><label>TT6</label><span>${show(p.tt6)}</span></div>
+        <div class="detail-row"><label>TT30</label><span>${show(p.tt30)}</span></div>
+        <div class="detail-row"><label>Anti-tetanus Toxoid Dosage</label><span>${show(p.anti_tetanus)}</span></div>
+        
+        <div class="detail-row"><label>Patient Refusal of Erig Administration</label><span>${show(p.erig_refusal)}</span></div>
+        <div class="detail-row"><label>Vaccincation Route for IM</label><span>${show(p.route_im_consent)}</span></div>
+         <div class="detail-row"><label>Treatment and Vaccination</label><span>${show(p.consent)}</span></div>
+        
       </div>
       <div class="detail-section">
         <h3>Schedule</h3>
@@ -591,7 +612,7 @@ async function viewEmployeeDetails(employeeId) {
 
         const emp = data.employee;
         const modalContent = `
-            <div class="employee-details">
+             <div class="employee-details">
                 <h3>Employee Information</h3>
                 <div class="detail-grid">
                     <div class="detail-item">
@@ -618,7 +639,7 @@ async function viewEmployeeDetails(employeeId) {
                     </div>
                     <div class="detail-item">
                         <label>Last Login:</label>
-                        <span>${emp.last_login || 'Never'}</span>
+                        <span>${emp.last_login ? formatLastLogin(emp.last_login) : 'Never'}</span>
                     </div>
                 </div>
             </div>

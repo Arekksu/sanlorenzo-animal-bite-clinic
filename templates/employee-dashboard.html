@@ -3,361 +3,28 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>San Lorenzo Animal Bite Center - Employee Dashboard</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='employee-styles.css') }}?v=2.0">
+  <title>San Lorenzo Animal Bite Center - Admin Dashboard</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='employee-styles.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='audit-log.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='select-styles.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='print-styles.css') }}">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="{{ url_for('static', filename='report-generator.js') }}"></script>
-  <style>
-    /* Date Input Calendar Icon Styles */
-    .date-input-wrapper {
-      position: relative;
-      width: 100%;
-    }
-    
-    .date-input-wrapper input[type="date"] {
-      width: 100%;
-      padding-right: 35px; /* Space for the calendar icon */
-    }
-    
-    .date-input-wrapper::after {
-      content: "📅";
-      position: absolute;
-      right: 10px;
-      top: 50%;
-      transform: translateY(-50%);
-      pointer-events: none;
-      font-size: 18px;
-      opacity: 0.7;
-    }
-
-    .date-input-wrapper input[type="date"]::-webkit-calendar-picker-indicator {
-      position: absolute;
-      right: 0;
-      top: 0;
-      width: 100%;
-      height: 100%;
-      opacity: 0;
-      cursor: pointer;
-    }
-
-    /* Select Dropdown Styles */
-    .select-wrapper {
-      position: relative;
-      width: 100%;
-      display: inline-block;
-    }
-    
-    .select-wrapper select {
-      appearance: none;
-      -webkit-appearance: none;
-      -moz-appearance: none;
-      width: 100%;
-      padding: 8px 32px 8px 12px;
-      border-radius: 6px;
-      border: 1px solid #e5e7eb;
-      background: #fff;
-      cursor: pointer;
-      font-size: 14px;
-      line-height: 1.4;
-    }
-    
-    .select-arrow {
-      position: absolute;
-      right: 8px;
-      top: 50%;
-      transform: translateY(-50%);
-      pointer-events: none;
-      font-size: 10px;
-      color: #6b7280;
-      z-index: 1;
-      padding: 0 4px;
-      background: transparent;
-    }
-
-    @media (prefers-color-scheme: dark) {
-      .select-wrapper select {
-        background: #1a1a1a;
-        border-color: #2d2d2d;
-        color: #e5e7eb;
-      }
-      .select-arrow {
-        color: #9ca3af;
-      }
-    }
-
-    /* Vaccination History Styles */
-    .radio-inline-group {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      margin-top: 8px;
-    }
-
-    .radio-inline {
-      display: flex;
-      align-items: center;
-      background: #ffffff;
-      border: 1px solid #e5e7eb;
-      border-radius: 6px;
-      padding: 10px 16px;
-      cursor: pointer;
-      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-      min-width: 140px;
-      position: relative;
-      overflow: hidden;
-      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-    }
-
-    .radio-inline::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: rgba(220, 38, 38, 0.04);
-      opacity: 0;
-      transition: opacity 0.2s ease;
-    }
-
-    .radio-inline:hover::before {
-      opacity: 1;
-    }
-
-    .radio-inline input[type="radio"] {
-      margin: 0;
-      margin-right: 8px;
-      width: 16px;
-      height: 16px;
-      position: relative;
-      z-index: 1;
-      cursor: pointer;
-      border: 2px solid #d1d5db;
-      transition: all 0.2s ease;
-    }
-
-    .radio-inline input[type="radio"]:checked {
-      accent-color: #dc2626;
-      border-color: #dc2626;
-    }
-
-    .radio-inline:has(input[type="radio"]:checked) {
-      border-color: #dc2626;
-      background: linear-gradient(to right bottom, #fff5f5, #fef2f2);
-      box-shadow: 0 1px 3px rgba(220, 38, 38, 0.1), 
-                  inset 0 1px 0 rgba(255, 255, 255, 0.1);
-    }
-
-    .radio-inline:has(input[type="radio"]:checked) span {
-      font-weight: 500;
-      color: #991b1b;
-    }
-
-    .radio-inline span {
-      position: relative;
-      z-index: 1;
-      transition: all 0.2s ease;
-    }
-
-    @media (prefers-color-scheme: dark) {
-      .radio-inline {
-        background: #1f2937;
-        border-color: #374151;
-        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
-      }
-
-      .radio-inline::before {
-        background: rgba(239, 68, 68, 0.08);
-      }
-
-      .radio-inline input[type="radio"] {
-        border-color: #4b5563;
-      }
-
-      .radio-inline:hover {
-        border-color: #ef4444;
-      }
-
-      .radio-inline:has(input[type="radio"]:checked) {
-        background: linear-gradient(to right bottom, #7f1d1d, #991b1b);
-        border-color: #ef4444;
-        box-shadow: 0 1px 3px rgba(239, 68, 68, 0.2),
-                    inset 0 1px 0 rgba(255, 255, 255, 0.05);
-      }
-
-      .radio-inline:has(input[type="radio"]:checked) span {
-        color: #fca5a5;
-      }
-    }
-
-    /* Field Notes */
-    .field-note {
-      font-size: 0.85rem;
-      color: #6c757d;
-      margin-top: 5px;
-    }
-
-    @media (prefers-color-scheme: dark) {
-      .radio-group {
-        background: #1a1a1a;
-        border-color: #2d2d2d;
-      }
-      
-      .radio-group:hover {
-        background: #2d2d2d;
-      }
-      
-      .radio-group:has(input[type="radio"]:checked) {
-        background: #1a365d;
-        border-color: #2b4c85;
-      }
-      
-      .radio-group label strong {
-        color: #e5e7eb;
-      }
-      
-      .radio-group label small {
-        color: #9ca3af;
-      }
-      
-      .field-note {
-        color: #9ca3af;
-      }
-    }
-
-    /* Toast Notifications */
-    .toast {
-      position: fixed;
-      right: 20px;
-      bottom: 20px;
-      padding: 8px 16px;
-      border-radius: 6px;
-      background: #333;
-      color: white;
-      font-weight: 500;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-      opacity: 0;
-      transform: translateY(20px);
-      transition: all 0.3s ease;
-      z-index: 9999;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 14px;
-      line-height: 1;
-      min-width: auto;
-    }
-
-    .toast.show {
-      opacity: 1;
-      transform: translateY(0);
-    }
-
-    .toast-success {
-      background: #10b981;
-    }
-
-    .toast-error {
-      background: #ef4444;
-    }
-
-    .toast-icon {
-      font-size: 18px;
-      line-height: 1;
-      display: flex;
-      align-items: center;
-    }
-
-    .toast-message {
-      padding-right: 4px;
-      white-space: nowrap;
-    }
-
-    .settings-card{background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:20px}
-    .field-note{color:#6b7280;font-size:.85rem;display:block;margin-top:6px}
-    .hr{border:0;border-top:1px solid #e5e7eb;margin:24px 0}
-
-    @media (prefers-color-scheme: dark){
-      .settings-card{background:#0b1220;border-color:#1f2937}
-      label,h2,h3,p,.field-note{color:#e5e7eb}
-      input,select,textarea{background:#0a0f1a;color:#e5e7eb;border-color:#374151}
-    }
-  </style>
 </head>
 <body>
-  <!-- Toast Notifications -->
-  {% if toast_messages %}
-    {% for category, msg in toast_messages %}
-      <div class="toast {{ 'toast-success' if category == 'success' else 'toast-error' }}" 
-           id="app-toast-{{ loop.index }}">
-        <span class="toast-icon">{{ '✓' if category == 'success' else '✕' }}</span>
-        <span class="toast-message">{{ msg }}</span>
-      </div>
-      <script>
-        (function(){
-          const t = document.getElementById('app-toast-{{ loop.index }}');
-          if(!t) return;
-          console.log('Toast element found:', t);
-          // Show toast notification
-          setTimeout(()=>{
-            t.classList.add('show');
-            console.log('Toast shown');
-          }, 100);
-          setTimeout(()=>{
-            t.classList.remove('show');
-            console.log('Toast hiding');
-          }, 3500);
-          setTimeout(()=>{
-            t.remove();
-            console.log('Toast removed');
-          }, 4000);
-        })();
-      </script>
-    {% endfor %}
-  {% endif %}
-  
-  <!-- Flash Messages Toast -->
-  {% with messages = get_flashed_messages(with_categories=true) %}
-    {% if messages %}
-      {% for category, message in messages %}
-        <div class="toast toast-{{ category }}" id="flashToast">
-          <span class="toast-icon">{{ '✓' if category == 'success' else '✕' }}</span>
-          <span class="toast-message">{{ message }}</span>
-        </div>
-        <script>
-          document.addEventListener('DOMContentLoaded', function() {
-            const toast = document.getElementById('flashToast');
-            if (toast) {
-              setTimeout(() => {
-                toast.classList.add('show');
-              }, 100);
-
-              setTimeout(() => {
-                toast.classList.remove('show');
-                setTimeout(() => {
-                  toast.remove();
-                }, 300);
-              }, 3000);
-            }
-          });
-        </script>
-      {% endfor %}
-    {% endif %}
-  {% endwith %}
-
   <div class="dashboard-container">
     <!-- Sidebar -->
     <nav class="sidebar">
       <div class="sidebar-header">
-  <img src="{{ url_for('static', filename='images/san lorenzo.jpg') }}" alt="Clinic Logo" class="sidebar-logo">
-  <h3 class="sidebar-title" style="color:#fff !important;">San Lorenzo Animal Bite Center</h3>
+        <img src="{{ url_for('static', filename='images/san lorenzo.jpg') }}" alt="Clinic Logo" class="sidebar-logo">
+        <h3 style="color: #ffffff !important; text-shadow: 0 1px 2px rgba(0,0,0,0.2);">San Lorenzo Animal Bite Center</h3>
       </div>
       <ul class="sidebar-menu">
         <li><button class="menu-btn active" onclick="showSection('dashboard')">Dashboard</button></li>
         <li><button class="menu-btn" onclick="showSection('add-record')">Add Record</button></li>
         <li><button class="menu-btn" onclick="showSection('view-patient')">View Patient</button></li>
         <li><button class="menu-btn" onclick="showSection('view-schedule')">View Schedule</button></li>
+        
       </ul>
       <div class="sidebar-bottom">
         <div class="employee-greeting">
@@ -368,46 +35,14 @@
           <button class="menu-btn sidebar-bottom-btn" onclick="showSection('settings')">Settings</button>
         </div>
       </div>
+      </ul>
     </nav>
 
     <!-- Main Content -->
     <main class="main-content">
-  {% if success %}
-    <div id="settings-toast" class="toast toast-success show" style="position:fixed;top:32px;right:32px;z-index:99999;">{{ success }}</div>
-  {% elif error %}
-    <div id="settings-toast" class="toast toast-error show" style="position:fixed;top:32px;right:32px;z-index:99999;">{{ error }}</div>
-  {% else %}
-    <div id="settings-toast" class="toast toast-success" style="display:none;position:fixed;top:32px;right:32px;z-index:99999;"></div>
-  {% endif %}
-  <script>
-    // Auto-show and hide toast for settings
-    document.addEventListener('DOMContentLoaded', function() {
-      var toast = document.getElementById('settings-toast');
-      if (toast && toast.classList.contains('show')) {
-        toast.style.opacity = 1;
-        setTimeout(function() {
-          toast.classList.remove('show');
-          toast.style.opacity = 0;
-        }, 3000);
-      }
-
-      // Only show settings tab if we're on the settings page
-      var currentPath = window.location.pathname;
-      if (currentPath === '/settings') {
-        setTimeout(function() {
-          if (typeof showSection === 'function') showSection('settings');
-        }, 100);
-      } else {
-        // For all other paths, show dashboard
-        setTimeout(function() {
-          if (typeof showSection === 'function') showSection('dashboard');
-        }, 100);
-      }
-    });
-  </script>
       <!-- Dashboard -->
-      <section id="dashboard" class="content-section {{ 'active' if active_tab != 'settings' else '' }}">
-        <h2>Dashboard</h2>
+      <section id="dashboard" class="content-section active">
+        <h2>Dashboard (Admin)</h2>
         <div class="stats-grid">
           <div class="stat-card">
             <div class="stat-icon">👤</div>
@@ -431,7 +66,7 @@
           </div>
         </div>
 
-        <!-- Analytics -->
+        <!-- Analytics Charts Section -->
         <div class="analytics-section">
           <div class="analytics-header">
             <h3>Treatment Analytics</h3>
@@ -440,471 +75,828 @@
               <select id="periodType" onchange="updateMonthlyReports()">
                 <option value="month" selected>Monthly</option>
                 <option value="year">Yearly</option>
-              </select>
-              <label for="monthSelector">View:</label>
-              <select id="monthSelector" onchange="updateMonthlyReports()">
-                <option value="weekly">This Week</option>
-                <option value="monthly" selected>This Month</option>
-                <option value="yearly">This Year</option>
-              </select>
-            </div>
-          </div>
+              <!DOCTYPE html>
+              <html lang="en">
+              <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>San Lorenzo Animal Bite Center - Admin Dashboard</title>
+                <link rel="stylesheet" href="{{ url_for('static', filename='employee-styles.css') }}">
+                <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+              </head>
+              <body>
+                <div class="dashboard-container">
+                  <!-- Sidebar -->
+                  <nav class="sidebar">
+                    <div class="sidebar-header">
+                      <img src="{{ url_for('static', filename='images/san lorenzo.jpg') }}" alt="Clinic Logo" class="sidebar-logo">
+                       <h3 class="clinic-title" style="color:#fff !important;">San Lorenzo Animal Bite Center</h3>
+                    </div>
+                    <ul class="sidebar-menu">
+                      <li><button class="menu-btn active" onclick="showSection('dashboard')">Dashboard</button></li>
+                      <li><button class="menu-btn" onclick="showSection('add-record')">Add Record</button></li>
+                      <li><button class="menu-btn" onclick="showSection('view-patient')">View Patient</button></li>
+                      <li><button class="menu-btn" onclick="showSection('view-schedule')">View Schedule</button></li>
+                    </ul>
+                    <div class="sidebar-bottom">
+                      <div class="employee-greeting">
+                        <div class="greeting-text">Hi, {{ employee_name }}!</div>
+                      </div>
+                      <div class="sidebar-bottom-actions">
+                        <a href="{{ url_for('logout') }}" class="menu-btn sidebar-bottom-btn">Logout</a>
+                        <button class="menu-btn sidebar-bottom-btn" onclick="showSection('settings')">Settings</button>
+                      </div>
+                    </div>
+                    </ul>
+                  </nav>
 
-          <!-- Monthly Summary -->
-          <div class="monthly-summary" id="monthlySummary">
-            <div class="summary-card">
-              <h4 style="color:#fff !important;">New Patients</h4>
-              <div class="summary-number" id="monthlyNewPatients">0</div>
-            </div>
-            <div class="summary-card">
-              <h4 style="color:#fff !important;">Active Treatments</h4>
-              <div class="summary-number" id="monthlyActive">0</div>
-            </div>
-            <div class="summary-card">
-              <h4 style="color:#fff !important;">Completion Rate</h4>
-              <div class="summary-number" id="monthlyRate">0%</div>
-            </div>
-          </div>
+                  <!-- Main Content -->
+                  <main class="main-content">
+                    <!-- Dashboard -->
+                    <section id="dashboard" class="content-section active">
+                      <h2>Dashboard</h2>
+                      <div class="stats-grid">
+                        <div class="stat-card">
+                          <div class="stat-icon">👤</div>
+                          <h3>Total Patients</h3>
+                          <div class="stat-number">{{ patients|length }}</div>
+                        </div>
+                        <div class="stat-card">
+                          <div class="stat-icon">📅</div>
+                          <h3>Upcoming Appointments</h3>
+                          <div class="stat-number">{{ upcoming_appointments[0]['count'] if upcoming_appointments else 0 }}</div>
+                        </div>
+                        <div class="stat-card">
+                          <div class="stat-icon">📅</div>
+                          <h3>Patients Today</h3>
+                          <div class="stat-number">{{ patients_today[0]['count'] if patients_today else 0 }}</div>
+                        </div>
+                        <div class="stat-card">
+                          <div class="stat-icon">✅</div>
+                          <h3>Completed Treatments</h3>
+                          <div class="stat-number" id="completed-count">0</div>
+                        </div>
+                      </div>
 
-          <div class="charts-grid">
-            <div class="chart-container">
-              <h4>Treatment Completion Status</h4>
-              <canvas id="completionChart" width="400" height="200"></canvas>
-            </div>
-            <div class="chart-container">
-              <h4>Daily Progress (Selected Month)</h4>
-              <canvas id="dailyProgressChart" width="400" height="200"></canvas>
-            </div>
-            <div class="chart-container">
-              <h4>Treatment Types Distribution</h4>
-              <canvas id="serviceChart" width="400" height="200"></canvas>
-            </div>
-            <div class="chart-container">
-              <h4>Weekly Completion Trends</h4>
-              <canvas id="weeklyTrendChart" width="400" height="200"></canvas>
-            </div>
-          </div>
-        </div>
-      </section>
+                      <!-- Analytics Charts Section -->
+                      <div class="analytics-section">
+                        <div class="analytics-header">
+                          <h3 style="color: #ffffff;">Treatment Analytics</h3>
+                          <div class="analytics-controls">
+                            <label for="periodType">Period:</label>
+                            <select id="periodType" onchange="updateMonthlyReports()">
+                              <option value="month" selected>Monthly</option>
+                              <option value="year">Yearly</option>
+                            </select>
+                            <label for="monthSelector">View:</label>
+                            <select id="monthSelector" onchange="updateMonthlyReports()">
+                              <option value="weekly">This Week</option>
+                              <option value="monthly" selected>This Month</option>
+                              <option value="yearly">This Year</option>
+                            </select>
+                            <button id="generateReport" onclick="testGenerateReport()" class="btn-report">📊 Generate Report</button>
+                          </div>
+                        </div>
+          
+                        <!-- Monthly Summary Cards -->
+                        <div class="monthly-summary" id="monthlySummary">
+                          <div class="summary-card">
+                            <h4 style="color:#fff !important;">New Patients</h4>
+                            <div class="summary-number" id="monthlyNewPatients">0</div>
+                          </div>
+                          
+                          <div class="summary-card">
+                            <h4 style="color:#fff !important;">Active Treatments</h4>
+                            <div class="summary-number" id="monthlyActive">0</div>
+                          </div>
+                          <div class="summary-card">
+                            <h4 style="color:#fff !important;">Completion Rate</h4>
+                            <div class="summary-number" id="monthlyRate">0%</div>
+                          </div>
+                        </div>
+                        
 
-      <!-- Add Record -->
-      <section id="add-record" class="content-section">
-        <form method="POST" action="{{ url_for('employee_dashboard') }}">
-          <div class="form-header">
-            <div class="form-tabs">
-              <button type="button" class="tab-btn active" onclick="showTab('personal-info')">Personal Information</button>
-              <button type="button" class="tab-btn" onclick="showTab('vaccine-bite-info')">Vaccine and Bite Information</button>
-              <button type="button" class="tab-btn" onclick="showTab('schedule')">Schedule</button>
-            </div>
-          </div>
+                        <div class="charts-grid">
+                          <div class="chart-container">
+                            <h4>Treatment Completion Status</h4>
+                            <canvas id="completionChart" width="400" height="200"></canvas>
+                          </div>
+                          <div class="chart-container">
+                            <h4>Daily Progress (Selected Month)</h4>
+                            <canvas id="dailyProgressChart" width="400" height="200"></canvas>
+                          </div>
+                          <div class="chart-container">
+                            <h4>Treatment Types Distribution</h4>
+                            <canvas id="serviceChart" width="400" height="200"></canvas>
+                          </div>
+                          <div class="chart-container">
+                            <h4>Weekly Completion Trends</h4>
+                            <canvas id="weeklyTrendChart" width="400" height="200"></canvas>
+                          </div>
+                        </div>
+          
+                        <!-- Monthly Report Section -->
+                        <div class="monthly-report" id="monthlyReportSection" style="display:none;">
+                          <h4>📈 Report</h4>
+                          <div class="report-content" id="reportContent"></div>
+                          <button onclick="printProfessionalReport()" class="btn-print">🖨️ Print Report</button>
+                        </div>
+                      </div>
+                    </section>
 
-          <!-- Personal Info -->
-          <div id="personal-info" class="tab-content active">
-            <div class="form-grid">
-              <div class="form-section-header"><h4>Personal Information</h4></div>
-              <div class="form-group">
-                <label>Patient Name:</label>
-                <input type="text" name="patient_name" placeholder="Enter patient's full name" required>
-              </div>
-              <div class="form-group">
-                <label>Age:</label>
-                <input type="number" name="age" min="0" max="150" placeholder="Enter age" required>
-              </div>
-              <div class="form-group">
-                <label>Gender:</label>
-                <div class="select-wrapper">
-                  <select name="gender" required>
-                    <option value="">Select gender</option>
-                    <option value="Male">Male</option>
-                    <option value="Female">Female</option>
-                    <option value="Other">Other</option>
-                  </select>
-                  <div class="select-arrow">▼</div>
-                </div>
-              </div>
-              <div class="form-group">
-                <label>Contact Number:</label>
-                <input type="tel" name="contact_number" placeholder="09XX-XXX-XXXX" required>
-              </div>
-              <div class="form-group full-width">
-                <label>Complete Address:</label>
-                <textarea name="address" rows="3" placeholder="Enter complete address including barangay, city/municipality, province" required></textarea>
-              </div>
-            </div>
-          </div>
+                    <!-- Add Record -->
+                    <section id="add-record" class="content-section">
+                      <form method="POST" action="{{ url_for('employee_dashboard') }}">
+                        <!-- Form Tabs -->
+                        <div class="form-header">
+                          <div class="form-tabs">
+                            <button
+                              type="button"
+                              class="tab-btn active"
+                              onclick="showTab('personal-info')"
+                            >
+                              Personal Information
+                            </button>
+                            <button
+                              type="button"
+                              class="tab-btn"
+                              onclick="showTab('vaccine-bite-info')"
+                            >
+                              Vaccine and Bite Information
+                            </button>
+                            <button
+                              type="button"
+                              class="tab-btn"
+                              onclick="showTab('schedule')"
+                            >
+                              Schedule
+                            </button>
+                            </div>
+                          </div>
 
-          <!-- Vaccine & Bite Info -->
-          <div id="vaccine-bite-info" class="tab-content">
-            <div class="form-grid">
-              <div class="form-section-header">
-                <h4>Service Information</h4>
-              </div>
+                        <!-- Personal Info -->
+                        <div id="personal-info" class="tab-content active">
+                          <div class="form-grid">
+                            <div class="form-section-header">
+                              <h4>Personal Information</h4>
+                            </div>
+              
+                            <div class="form-group">
+                              <label>Patient Name:</label>
+                              <input type="text" name="patient_name" placeholder="Enter patient's full name" required>
+                            </div>
+                            <div class="form-group">
+                              <label>Age:</label>
+                              <input type="number" name="age" min="0" max="150" placeholder="Enter age" required>
+                            </div>
+                            <div class="form-group">
+                              <label>Gender:</label>
+                              <div class="select-wrapper">
+                                <select name="gender" required placeholder="Select gender">
+                                  <option value="" disabled selected hidden>Select gender</option>
+                                  <option value="Male">Male</option>
+                                  <option value="Female">Female</option>
+                                  <option value="Other">Other</option>
+                                </select>
+                                <div class="select-arrow">▼</div>
+                              </div>
+                
+                            </div>
+                            <div class="form-group">
+                              <label>Contact Number:</label>
+                              <input type="tel" name="contact_number" placeholder="09XX-XXX-XXXX" required>
+                            </div>
+                             <div class="form-group">
+                                <label>Weight:</label>
+                                <input type="text" name="weight" placeholder="Enter weight in kg" required>
+                              </div>
+                            <div class="form-group">
+                              <label>Medical History & Allergies</label>
+                              <input type="text" name="medical_history_allergies" placeholder="Enter medical history and allergies" required>
+                            </div>
+                            <div class="form-group">
+                              <label>Medication (NA if Not Applicable):</label>
+                              <input type="text" name="medication" placeholder="Enter medication details" required>
+                            </div>
+                          
+                            <div class="form-group full-width">
+                              <label>Complete Address:</label>
+                              <textarea name="address" rows="3" placeholder="Enter complete address including barangay, city/municipality, province" required></textarea>
+                            </div>
+                          </div>
+                        </div>
 
-              <div class="form-group">
-                <label>Service Type:</label>
-                <div class="select-wrapper">
-                  <select name="service_type" required placeholder="Select service type">
-                    <option value="" disabled selected hidden>Select service type</option>
-                    <option value="Booster">Booster</option>
-                    <option value="Pre-Exposure Prophylaxis">Pre-Exposure Prophylaxis</option>
-                    <option value="Post-Exposure Prophylaxis">Post-Exposure Prophylaxis</option>
-                  </select>
-                  <div class="select-arrow">▼</div>
-                </div>
-              </div>
-
-              <div class="form-section-header">
-                <h4>Bite Incident Details</h4>
-              </div>
-
-              <div class="form-group">
-                <label>Date of Bite:</label>
-                <input type="date" name="date_of_bite" title="When did the bite incident occur?">
-              </div>
-              <div class="form-group">
-                <label>Bite Location on Body:</label>
-                <input type="text" name="bite_location" placeholder="e.g., left hand, right leg, face" title="Where on the body was the bite located?">
-              </div>
-              <div class="form-group">
-                <label>Place of Bite Incident:</label>
-                <input type="text" name="place_of_bite" placeholder="e.g., at home, in the street, at park" title="Where did the bite incident happen?">
-              </div>
-              <div class="form-group">
-                <label>Type of Bite:</label>
-                <div class="select-wrapper">
-                  <select name="type_of_bite" placeholder="Select bite type">
-                    <option value="" disabled selected hidden>Select bite type</option>
-                    <option value="One Bite">Single Bite</option>
-                    <option value="Multiple Bites">Multiple Bites</option>
-                    <option value="Scratch">Scratch/Laceration</option>
-                    <option value="Lick on open wound">Lick on Open Wound</option>
-                  </select>
-                  <div class="select-arrow">▼</div>
-                </div>
-              </div>
-
-              <div class="form-section-header">
-                <h4>Animal Information</h4>
-              </div>
-
-              <div class="form-group">
-                <label>Source of Bite:</label>
-                <div class="select-wrapper">
-                  <select name="source_of_bite" placeholder="Select animal type">
-                    <option value="" disabled selected hidden>Select animal type</option>
-                    <option value="Dog">Dog</option>
-                    <option value="Cat">Cat</option>
-                    <option value="Bat">Bat</option>
-                    <option value="Monkey">Monkey</option>
-                    <option value="Other">Other Animal</option>
-                  </select>
-                  <div class="select-arrow">▼</div>
-                </div>
-              </div>
-              <div class="form-group">
-                <label>Other Animal Specify:</label>
-                <input type="text" name="other_source_of_bite" placeholder="Specify if 'Other' selected above">
-              </div>
-              <div class="form-group">
-                <label>Animal Status:</label>
-                <div class="select-wrapper">
-                  <select name="source_status" placeholder="Select status">
-                    <option value="" disabled selected hidden>Select status</option>
-                    <option value="Alive">Alive & Observable</option>
-                    <option value="Dead">Dead/Killed</option>
-                    <option value="Unknown">Unknown/Lost</option>
-                  </select>
-                  <div class="select-arrow">▼</div>
-                </div>
-              </div>
-              <div class="form-group">
-                <label>Animal Ownership:</label>
-                <div class="select-wrapper">
-                  <select name="exposure" required placeholder="Select ownership type">
-                    <option value="" disabled selected hidden>Select ownership type</option>
-                    <option value="Neighbor">Neighbor</option>
-                    <option value="Stranger">Stranger</option>
-                    <option value="Family">Family</option>
-                    <option value="Other">Other</option>
-                  </select>
-                  <div class="select-arrow">▼</div>
-                </div>
-              </div>
-
-              <div class="form-section-header">
-                <h4>Vaccination History</h4>
-              </div>
-              <div class="form-group">
-                <label>Previous Rabies Vaccination Status:</label>
-                <div class="vaccination-options" style="display:flex;flex-direction:row;gap:4px;align-items:stretch;justify-content:flex-start;">
-                  <div class="radio-group" style="flex:1;display:flex;align-items:center;gap:14px;min-width:320px;max-width:420px;padding:18px 20px;border:1.5px solid transparent;border-radius:12px;background:transparent;box-sizing:border-box;">
-                    <input type="radio" id="vacc-yes" name="vaccinated" value="Yes" checked required>
-                    <label for="vacc-yes" class="radio-label" style="margin-bottom:0;width:100%;">
-                      <span class="radio-button"></span>
-                      <span class="radio-text" style="display:block;">
-                        <strong style="color: #000000;">Previously Vaccinated</strong>
-                        <small style="display:block;color: #000000;">Patient has received anti-rabies vaccine within the last 2 years</small>
-                      </span>
-                    </label>
-                  </div>
-                  <div class="radio-group" style="flex:1;display:flex;align-items:center;gap:14px;min-width:320px;max-width:420px;padding:18px 20px;border:1.5px solid transparent;border-radius:12px;background:transparent;box-sizing:border-box;">
-                    <input type="radio" id="vacc-no" name="vaccinated" value="No" required>
-                    <label for="vacc-no" class="radio-label" style="margin-bottom:0;width:100%;">
-                      <span class="radio-button"></span>
-                      <span class="radio-text" style="display:block;">
-                        <strong style="color: #000000;">Not Previously Vaccinated</strong>
-                        <small style="display:block;color: #000000;">Patient has no prior anti-rabies vaccination or unsure</small>
-                      </span>
-                    </label>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Schedule -->
-          <div id="schedule" class="tab-content schedule-section">
-            <div class="schedule-header">
-              <h3 style="color:#fff !important;">Anti-Rabies Vaccination Schedule</h3>
-              <div class="schedule-subtitle" style="color:#ddd !important;">Enter Day 0 (today's date or exposure date) to automatically calculate the full schedule</div>
-            </div>
-            <div class="schedule-grid">
-              <div class="schedule-item priority-high">
-                <div class="schedule-day">
-                  <span class="day-number">Day 0</span>
-                  <span class="day-description">Initial dose (exposure day)</span>
-                </div>
-                <input type="date" name="day0" class="schedule-input" required />
-                <div class="schedule-status">
-                  <span class="status-badge critical">Critical</span>
-                </div>
-              </div>
-
-              <div class="schedule-item priority-high">
-                <div class="schedule-day">
-                  <span class="day-number">Day 3</span>
-                  <span class="day-description">Second dose</span>
-                </div>
-                <input type="date" name="day3" class="schedule-input" />
-                <div class="schedule-status">
-                  <span class="status-badge important">Important</span>
-                </div>
-              </div>
-
-              <div class="schedule-item priority-medium">
-                <div class="schedule-day">
-                  <span class="day-number">Day 7</span>
-                  <span class="day-description">Third dose</span>
-                </div>
-                <input type="date" name="day7" class="schedule-input" />
-                <div class="schedule-status">
-                  <span class="status-badge moderate">Moderate</span>
-                </div>
-              </div>
-
-              <div class="schedule-item priority-medium">
-                <div class="schedule-day">
-                  <span class="day-number">Day 14</span>
-                  <span class="day-description">Fourth dose</span>
-                </div>
-                <input type="date" name="day14" class="schedule-input" />
-                <div class="schedule-status">
-                  <span class="status-badge moderate">Moderate</span>
-                </div>
-              </div>
-
-              <div class="schedule-item priority-low">
-                <div class="schedule-day">
-                  <span class="day-number">Day 28</span>
-                  <span class="day-description">Final dose</span>
-                </div>
-                <input type="date" name="day28" class="schedule-input" />
-                <div class="schedule-status">
-                  <span class="status-badge low">Completion</span>
-                </div>
-              </div>
-            </div>
-
-            <div class="schedule-notes">
-              <div class="note-item">
-                <strong>Note:</strong> Dates will be manually entered.
-              </div>
-              <div class="note-item">
-                <strong>Important:</strong> Strict adherence to schedule is crucial for effectiveness.
-              </div>
-            </div>
-          </div>
-
-          <div class="form-actions">
-            <button type="submit" class="btn-success" id="saveRecordBtn">Save Record</button>
-          </div>
-        </form>
-
-        <!-- Toast Notification -->
-        <div class="toast" id="notificationToast" style="display: none;">
-          <span class="toast-icon"></span>
-          <span class="toast-message"></span>
-        </div>
-      </section>
-
-      <!-- Success Message Handler -->
-      {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-          {% for category, message in messages %}
-            <script>
-              window.onload = function() {
-                const toast = document.getElementById('notificationToast');
-                if (toast) {
-                  toast.className = 'toast toast-{{ category }}';
-                  toast.querySelector('.toast-icon').textContent = '{{ "✓" if category == "success" else "✕" }}';
-                  toast.querySelector('.toast-message').textContent = '{{ message }}';
-                  toast.style.display = 'flex';
+                        <!-- Vaccine & Bite Info -->
+                        <div id="vaccine-bite-info" class="tab-content">
+                          <div class="form-grid">
+                            <div class="form-section-header">
+                              <h4>Service Information</h4>
+                            </div>
+              
+                            <div class="form-group">
+                              <label>Service Type:</label>
+                              <div class="select-wrapper">
+                                <select name="service_type" required placeholder="Select service type">
+                                  <option value="" disabled selected hidden>Select service type</option>
+                                  <option value="Booster">Booster</option>
+                                  <option value="Pre-Exposure Prophylaxis">Pre-Exposure Prophylaxis</option>
+                                  <option value="Post-Exposure Prophylaxis">Post-Exposure Prophylaxis</option>
+                                </select>
+                                <div class="select-arrow">▼</div>
+                              </div>
+                            </div>
+                             <div class="form-group">  
+                              <label>Route of Vaccine</label>
+                                  <select name="route_of_vaccine" required placeholder="Select route">
+                                    <option value="" disabled selected hidden>Select consent</option>
+                                    <option value="Yes">IM</option>
+                                    <option value="No">ID</option>
+                                    </select>
+                            </div>
+                            
                   
-                  // Add show class after a brief delay to trigger animation
-                  setTimeout(() => {
-                    toast.classList.add('show');
-                  }, 100);
+                            <div class="form-group">  
+                                 <div class="schedule-day">
+                                  <span class="day-number">Booster 1</span>
+                                </div>
+                                <input type="date" name="booster1" class="schedule-input"/>
+                                <div class="schedule-status">
+                                </div>
+                            </div>
+                            <div class="form-group">  
+                                 <div class="schedule-day">
+                                  <span class="day-number">Booster 2</span>
+                                </div>
+                                <input type="date" name="booster2" class="schedule-input"/>
+                                <div class="schedule-status">
+                                </div>
+                            </div>
+                            <div class="form-section-header">
+                              <h4>Bite Incident Details</h4>
+                            </div>
+              
+                            <div class="form-group">
+                              <label>Date of Bite:</label>
+                              <input type="date" name="date_of_bite" title="When did the bite incident occur?">
+                            </div>
+                            <div class="form-group">
+                              <label>Bite Location on Body:</label>
+                              <input type="text" name="bite_location" placeholder="e.g., left hand, right leg, face" title="Where on the body was the bite located?">
+                            </div>
+                            <div class="form-group">
+                              <label>Place of Bite Incident:</label>
+                              <input type="text" name="place_of_bite" placeholder="e.g., at home, in the street, at park" title="Where did the bite incident happen?">
+                            </div>
+                            <div class="form-group">
+                              <label>Type of Bite:</label>
+                              <div class="select-wrapper">
+                                <select name="type_of_bite" placeholder="Select bite type">
+                                  <option value="" disabled selected hidden>Select bite type</option>
+                                  <option value="One Bite">Single Bite</option>
+                                  <option value="Multiple Bites">Multiple Bites</option>
+                                  <option value="Scratch">Scratch/Laceration</option>
+                                  <option value="Lick on open wound">Lick on Open Wound</option>
+                                </select>
+                                <div class="select-arrow">▼</div>
+                              </div>
+                            </div>
+                              <div class="form-group">
+                                <label>Bite Category</label>
+                                <Select name="bite_category" required placeholder="Select bite category">
+                                  <option value="" disabled selected hidden>Select bite category</option>
+                                  <option value="Category I">CAT I</option>
+                                  <option value="Category II">CAT II</option>
+                                  <option value="Category III">CAT III</option>
+                                </Select>
+                              </div>
+              
+                            <div class="form-section-header">
+                              <h4>Animal Information</h4>
+                            </div>
+              
+                            <div class="form-group">
+                              <label>Source of Bite:</label>
+                              <div class="select-wrapper">
+                                <select name="source_of_bite" placeholder="Select animal type">
+                                  <option value="" disabled selected hidden>Select animal type</option>
+                                  <option value="Dog">Dog</option>
+                                  <option value="Cat">Cat</option>
+                                  <option value="Bat">Bat</option>
+                                  <option value="Monkey">Monkey</option>
+                                  <option value="Other">Other Animal</option>
+                                </select>
+                                <div class="select-arrow">▼</div>
+                              </div>
+                            </div>
+                            <div class="form-group">
+                              <label>Other Animal Specify:</label>
+                              <input type="text" name="other_source_of_bite" placeholder="Specify if 'Other' selected above">
+                            </div>
+                            <div class="form-group">
+                              <label>Animal Status:</label>
+                              <div class="select-wrapper">
+                                <select name="source_status" placeholder="Select status">
+                                  <option value="" disabled selected hidden>Select status</option>
+                                  <option value="Alive">Alive & Observable</option>
+                                  <option value="Dead">Dead/Killed</option>
+                                  <option value="Unknown">Unknown/Lost</option>
+                                </select>
+                                <div class="select-arrow">▼</div>
+                              </div>
+                            </div>
+                            <div class="form-group">
+                              <label>Animal Ownership:</label>
+                              <div class="select-wrapper">
+                                <select name="exposure" required placeholder="Select ownership type">
+                                  <option value="" disabled selected hidden>Select ownership type</option>
+                                  <option value="Neighbor">Neighbor</option>
+                                  <option value="Stranger">Stranger</option>
+                                  <option value="Family">Family</option>
+                                  <option value="Other">Other</option>
+                                </select>
+                                <div class="select-arrow">▼</div>
+                              </div>
+                            </div>
+                            <div class="form-group">
+                              <label>Type of Exposure</label>
+                              <Select name="type_of_exposure" required placeholder="Select type of exposure">
+                                <option value="" disabled selected hidden>Select type of exposure</option>
+                                <option value="vaccinated_pet">VACCINATED PET</option>
+                                <option value="not_vaccinated_pet">NOT VACCINATED PET</option>
+                                <option value="not_vaccinated_stray_animal">NOT VACCINATED STRAY ANIMAL</option>
+                                <option value="vaccinated_pet_of_neighbor">VACCINATED PET OF NEIGHBOR</option>
+                              </Select>
+                            </div>
 
-                  // Remove the toast after 3 seconds
-                  setTimeout(() => {
-                    toast.classList.remove('show');
-                    setTimeout(() => {
-                      toast.style.display = 'none';
-                    }, 300);
-                  }, 3000);
-                }
-              };
-            </script>
-          {% endfor %}
-        {% endif %}
-      {% endwith %}
-      </section>
+                            <div class="form-section-header">
+                              <h4>Additional Information/Other Dosage/Consent</h4>
+                            </div>
+                              <div class="form-group">
+                                <label>Additional Remarks:</label>
+                                <input type="text" name="additional_remarks" placeholder="Enter any additional information or dosage details">
+                              </div>
+                              <div class="form-group">
+                                <label>TT1</label>
+                                <input type="date" name="tt1" class="schedule-input"/>
+                              </div>
+                              <div class="form-group">
+                                <label>TT6</label>
+                                <input type="date" name="tt6" class="schedule-input"/>
+                              </div>
+                              <div class="form-group">
+                                <label>TT30</label>
+                                <input type="date" name="tt30" class="schedule-input"/>
+                              </div>
+                              <div class="form-group">
+                                <label>Anti-tetanus Toxoid Dosage</label>
+                                <input type="text" name="anti_tetanus" placeholder="Enter anti-tetanus toxoid dosage details">
+                              </div><Br>
+                              <div class="form-group">
+                                <label><b>Patient Refusal to Erig</b><Br><i> (I have been advised for ERIG administration and I hereby REFUSE the treatment.  I am FULLY AWARE of the risks and consequences for refusing to receive ERIG treatment as advised by the Staff/Nurse on Duty. Furthermore, I have been informed of the nature, benefit and purpose of ERIG administration. I, NONETHELESS, REFUSE ERIG ADMINISTRATION). </i> </label>
+                                <select name="erig_refusal" required>
+                                  <opttion value="Select">Select refusal</option>
+                                  <option value="I REFUSE TO ADMINISTER ERIG.">I REFUSE TO ADMINISTER ERIG.</option>
+                                  <option value="I ACCEPT THE ADMINISTER ERIG.">I ACCEPT THE ADMINISTER ERIG.</option>
+                                  </select>
+                              </div>
+                              <div class="form-group">  
+                              <label>I hereby consent Vaccination route for IM</label>
+                                  <select name="route_im_consent" required placeholder="Select consent">
+                                    <option value="" disabled selected hidden>Select consent</option>
+                                    <option value="Yes">YES (w/maintenance, Immunocompromised, Others)</option>
+                                    <option value="No">NO, I refuse IM ROUTE.</option>
+                                    </select>
+                            </div>
+                            <div class="form-group">
+                              <label> I consent to the treatment and vaccination.</label>
+                              <select name="consent" required>
+                                <opttion value="Select">Select consent</option>
+                                <option value="Yes">Yes, I consent</option>
+                                <option value="No">No</option>
+                              </select>
+                            </div>
 
-      <!-- View Patient -->
-      <section id="view-patient" class="content-section">
-        <h2>Patient Records</h2>
-        <div class="table-actions" style="display:flex;align-items:center;gap:12px;margin:8px 0 12px;">
-          <input id="patient-search" type="text" placeholder="Search by ID, name, date, or service" oninput="searchPatients()" style="flex:1;max-width:420px;padding:8px 10px;border:1px solid #ccc;border-radius:6px;" />
-          <button class="btn-secondary" type="button" onclick="searchPatients()">Search</button>
-          <button class="btn-ghost" type="button" onclick="clearSearch()">Clear</button>
-          <span id="results-count" style="margin-left:auto;color:#555;font-size:.95rem;">&nbsp;</span>
-        </div>
-        <div class="table-container">
-          <table class="patient-table">
-            <thead>
-              <tr>
-                <th style="color:#fff !important;">ID</th>
-                <th style="color:#fff !important;">Patient Name</th>
-                <th style="color:#fff !important;">Date of Bite</th>
-                <th style="color:#fff !important;">Service</th>
-                <th style="color:#fff !important;">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {% for p in patients %}
-              <tr data-patient-id="{{ p['id'] }}">
-                <td>{{ p['id'] }}</td>
-                <td>{{ p['patient_name'] }}</td>
-                <td>{{ p['date_of_bite']  }}</td>
-                <td>{{ p['service_type'] }}</td>
-                <td class="action-buttons">
-                  <button class="btn-view" data-patient-id="{{ p['id'] }}" title="View Details">
-                    <img src="{{ url_for('static', filename='images/icons/istockphoto-845329690-612x612-removebg-preview.png') }}" alt="View" class="action-icon">
-                  </button>
-                  <button class="btn-edit" data-patient-id="{{ p['id'] }}" title="Edit Patient">
-                    <img src="{{ url_for('static', filename='images/icons/3512833-removebg-preview.png') }}" alt="Edit" class="action-icon">
-                  </button>
-                  <button class="btn-delete" data-patient-id="{{ p['id'] }}" title="Delete Patient">
-                    <img src="{{ url_for('static', filename='images/icons/images-removebg-preview.png') }}" alt="Delete" class="action-icon">
-                  </button>
-                </td>
-              </tr>
-              {% else %}
-              <tr><td colspan="5">No patients found.</td></tr>
-              {% endfor %}
-            </tbody>
-          </table>
-        </div>
-      </section>
+                            <div class="form-section-header">
+                              <h4>Vaccination History</h4>
+                            </div>
+                            <div class="form-group">
+                              <label>Previous Rabies Vaccination Status:</label>
+                              <div class="vaccination-options" style="display:flex;flex-direction:row;gap:4px;align-items:stretch;justify-content:flex-start;">
+                                <div class="radio-group" style="flex:1;display:flex;align-items:center;gap:14px;min-width:320px;max-width:420px;padding:18px 20px;border:1.5px solid transparent;border-radius:12px;background:transparent;box-sizing:border-box;">
+                                  <input type="radio" id="vacc-yes" name="vaccinated" value="Yes" checked required>
+                                  <label for="vacc-yes" class="radio-label" style="margin-bottom:0;width:100%;">
+                                    <span class="radio-button"></span>
+                                    <span class="radio-text" style="display:block;">
+                                      <strong>Previously Vaccinated</strong>
+                                      <small style="display:block;">Patient has received anti-rabies vaccine within the last 2 years</small>
+                                    </span>
+                                  </label>
+                                </div>
+                                <div class="radio-group" style="flex:1;display:flex;align-items:center;gap:14px;min-width:320px;max-width:420px;padding:18px 20px;border:1.5px solid transparent;border-radius:12px;background:transparent;box-sizing:border-box;">
+                                  <input type="radio" id="vacc-no" name="vaccinated" value="No" required>
+                                  <label for="vacc-no" class="radio-label" style="margin-bottom:0;width:100%;">
+                                    <span class="radio-button"></span>
+                                    <span class="radio-text" style="display:block;">
+                                      <strong>Not Previously Vaccinated</strong>
+                                      <small style="display:block;">Patient has no prior anti-rabies vaccination or unsure</small>
+                                    </span>
+                                  </label>
+                                </div>
+                                
+                              </div>
+                             
+                            </div>
+                          </div>
+                        </div>
 
-      <!-- View Schedule -->
-      <section id="view-schedule" class="content-section">
-        <h2>Schedule Calendar</h2>
+                          <!-- Schedule -->
+                          <div id="schedule" class="tab-content schedule-section">
+                            <div class="schedule-header">
+                              <h3 style="color:#fff !important;">Anti-Rabies Vaccination Schedule</h3>
+                            </div>
+              
+                            <div class="schedule-grid">
+                              <div class="schedule-item priority-high">
+                                <div class="schedule-day">
+                                  <span class="day-number">Day 0</span>
+                                  <span class="day-description">Initial dose (exposure day)</span>
+                                </div>
+                                <input type="date" name="day0" class="schedule-input" required />
+                                <div class="schedule-status">
+                                  <span class="status-badge critical">Critical</span>
+                                </div>
+                              </div>
+                
+                              <div class="schedule-item priority-high">
+                                <div class="schedule-day">
+                                  <span class="day-number">Day 3</span>
+                                  <span class="day-description">Second dose</span>
+                                </div>
+                                <input type="date" name="day3" class="schedule-input" />
+                                <div class="schedule-status">
+                                  <span class="status-badge important">Important</span>
+                                </div>
+                              </div>
+                
+                              <div class="schedule-item priority-medium">
+                                <div class="schedule-day">
+                                  <span class="day-number">Day 7</span>
+                                  <span class="day-description">Third dose</span>
+                                </div>
+                                <input type="date" name="day7" class="schedule-input" />
+                                <div class="schedule-status">
+                                  <span class="status-badge moderate">Moderate</span>
+                                </div>
+                              </div>
+                
+                              <div class="schedule-item priority-medium">
+                                <div class="schedule-day">
+                                  <span class="day-number">Day 14</span>
+                                  <span class="day-description">Fourth dose</span>
+                                </div>
+                                <input type="date" name="day14" class="schedule-input" />
+                                <div class="schedule-status">
+                                  <span class="status-badge moderate">Moderate</span>
+                                </div>
+                              </div>
+                
+                              <div class="schedule-item priority-low">
+                                <div class="schedule-day">
+                                  <span class="day-number">Day 21/28</span>
+                                  <span class="day-description">Final dose</span>
+                                </div>
+                                <input type="date" name="day28" class="schedule-input" />
+                                <div class="schedule-status">
+                                  <span class="status-badge low">Completion</span>
+                                </div>
+                              </div>
+                            </div>
+                          
 
-        <div class="calendar-header">
-          <button class="calendar-nav-btn" onclick="changeMonth(-1)">‹</button>
-          <div id="calendar-month-year" style="font-weight:600;"></div>
-          <button class="calendar-nav-btn" onclick="changeMonth(1)">›</button>
-        </div>
+                            
+              <!-- Booster Schedule -->
+                         
+                            <div class="schedule-notes">
+                              <div class="note-item">
+                                <strong>Note:</strong> Dates will be manually entered.
+                              </div>
+                              <div class="note-item">
+                                <strong>Important:</strong> Strict adherence to schedule is crucial for effectiveness.
+                              </div>
+                            </div>
+                          </div>
+                        <br>
+                         
+                          
+                        <!-- Actions -->
+                        <div class="form-actions">
+                          <button type="submit" class="btn-success">Save Record</button>
+                        </div>
+                      </form>
+                    </section>
 
-        <div class="calendar-stats">
-          <div class="stat-card">
-            <h3>Today's Patients</h3>
-            <div class="stat-number">{{ patients_today[0]['count'] if patients_today else 0 }}</div>
-          </div>
-        </div>
+                    <!-- View Patient -->
+                    <section id="view-patient" class="content-section">
+                      <h2>Patient Records</h2>
+                      <!-- Search Toolbar -->
+                      <div class="table-actions" style="display:flex;align-items:center;gap:12px;margin:8px 0 12px;">
+                        <input id="patient-search" type="text" placeholder="Search by ID, name, date, or service" oninput="searchPatients()" style="flex:1;max-width:420px;padding:8px 10px;border:1px solid #ccc;border-radius:6px;" />
+                        <button class="btn-secondary" type="button" onclick="searchPatients()">Search</button>
+                        <button class="btn-ghost" type="button" onclick="clearSearch()">Clear</button>
+                        <span id="results-count" style="margin-left:auto;color:#555;font-size:.95rem;">&nbsp;</span>
+                      </div>
+                      <div class="table-container">
+                        <table class="patient-table">
+                          <thead>
+                            <tr>
+                              <th style="color:#fff !important;">ID</th>
+                              <th style="color:#fff !important;">Patient Name</th>
+                              <th style="color:#fff !important;">Date of Bite</th>
+                              <th style="color:#fff !important;">Service</th>
+                              <th style="color:#fff !important;">Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {% for p in patients %}
+                            <tr>
+                              <td>{{ p['id'] }}</td>
+                              <td>{{ p['patient_name'] }}</td>
+                              <td>{{ p['date_of_bite']  }}</td>
+                              <td>{{ p['service_type'] }}</td>
+                              <td>{{ p['medical_history_allergies'] }}</td>
+                              <td>{{ p['weight'] }}</td>
+                              <td>{{ p['medication'] }}</td>
+                          
+                              <td class="action-buttons">
+                                <button class="btn-view" data-patient-id="{{ p['id'] }}" title="View Details">
+                                  <img src="{{ url_for('static', filename='images/icons/istockphoto-845329690-612x612-removebg-preview.png') }}" alt="View" class="action-icon">
+                                </button>
+                                <button class="btn-edit" data-patient-id="{{ p['id'] }}" title="Edit Patient">
+                                  <img src="{{ url_for('static', filename='images/icons/3512833-removebg-preview.png') }}" alt="Edit" class="action-icon">
+                                </button>
+                                <button class="btn-delete" data-patient-id="{{ p['id'] }}" title="Delete Patient">
+                                  <img src="{{ url_for('static', filename='images/icons/images-removebg-preview.png') }}" alt="Delete" class="action-icon">
+                                </button>
+                              </td>
+                            </tr>
+                            {% else %}
+                            <tr><td colspan="5">No patients found.</td></tr>
+                            {% endfor %}
+                          </tbody>
+                        </table>
+                      </div>
+                    </section>
 
-        <div class="calendar-container">
-          <div class="calendar-weekdays">
-            <div class="weekday">Sun</div><div class="weekday">Mon</div><div class="weekday">Tue</div>
-            <div class="weekday">Wed</div><div class="weekday">Thu</div><div class="weekday">Fri</div><div class="weekday">Sat</div>
-          </div>
-          <div class="calendar-days" id="calendar-days"></div>
-        </div>
+                    <!-- View Schedule -->
+                    <section id="view-schedule" class="content-section">
+        
+                      <h2>Schedule Calendar</h2>
+                      <!-- Calendar Header (ADDED) -->
+                      <div class="calendar-header">
+                        <button class="calendar-nav-btn" onclick="changeMonth(-1)">‹</button>
+                        <div id="calendar-month-year" style="font-weight:600;"></div>
+                        <button class="calendar-nav-btn" onclick="changeMonth(1)">›</button>
+                      </div>
+                      <!-- Calendar Stats -->
+                      <div class="calendar-stats">
+                        <div class="stat-card">
+                          <h3>Today's Patients</h3>
+                          <div class="stat-number">{{ patients_today[0]['count'] if patients_today else 0 }}</div>
+                        </div>
+                        <!-- Calendar Grid -->
+                        <div class="calendar-container">
+                          <div class="calendar-weekdays">
+                            <div class="weekday">Sun</div>
+                            <div class="weekday">Mon</div>
+                            <div class="weekday">Tue</div>
+                            <div class="weekday">Wed</div>
+                            <div class="weekday">Thu</div>
+                            <div class="weekday">Fri</div>
+                            <div class="weekday">Sat</div>
+                          </div>
+                          <div class="calendar-days" id="calendar-days">
+                            <!-- Calendar days will be generated by JavaScript -->
+                          </div>
+                        </div>
 
-        <div class="schedule-legend">
-          <h4>Schedule Legend:</h4>
-          <div class="legend-items">
-            <div class="legend-item"><div class="legend-color day0"></div><span>Day 0 (Initial Dose)</span></div>
-            <div class="legend-item"><div class="legend-color day3"></div><span>Day 3</span></div>
-            <div class="legend-item"><div class="legend-color day7"></div><span>Day 7</span></div>
-            <div class="legend-item"><div class="legend-color day14"></div><span>Day 14</span></div>
-            <div class="legend-item"><div class="legend-color day28"></div><span>Day 28 (Final)</span></div>
-          </div>
-        </div>
+                        <!-- Schedule Legend -->
+                        <div class="schedule-legend">
+                          <h4>Schedule Legend:</h4>
+                          <div class="legend-items">
+                            <div class="legend-item">
+                              <div class="legend-color day0"></div>
+                              <span>Day 0 (Initial Dose)</span>
+                            </div>
+                            <div class="legend-item">
+                              <div class="legend-color day3"></div>
+                              <span>Day 3</span>
+                            </div>
+                            <div class="legend-item">
+                              <div class="legend-color day7"></div>
+                              <span>Day 7</span>
+                            </div>
+                            <div class="legend-item">
+                              <div class="legend-color day14"></div>
+                              <span>Day 14</span>
+                            </div>
+                            <div class="legend-item">
+                              <div class="legend-color day28"></div>
+                              <span>Day 28 (Final)</span>
+                            </div>
+                          </div>
+                        </div>
 
-        <div class="daily-schedule" id="daily-schedule">
-          <h4>Appointments for <span id="selected-date"></span></h4>
-          <div class="appointment-list" id="appointment-list">
-            <p>Select a date to view appointments</p>
-          </div>
-        </div>
+                        <!-- Daily Schedule Details -->
+                        <div class="daily-schedule" id="daily-schedule">
+                          <h4>Appointments for <span id="selected-date"></span></h4>
+                          <div class="appointment-list" id="appointment-list">
+                            <p>Select a date to view appointments</p>
+                          </div>
+                        </div>
 
-        <!-- Appointment Details Modal -->
-        <div id="appointmentModal" class="modal" style="display:none">
-          <div class="modal-content">
-            <div class="modal-header">
-              <h2 style="color:#fff !important;">Appointment Details</h2>
-              <span class="close" onclick="closeAppointmentModal()">&times;</span>
-            </div>
-            <div id="appointmentDetailsContent" class="modal-body"></div>
-          </div>
-        </div>
+                        <!-- Appointment Details Modal for Calendar (used by JS) -->
+                        <div id="appointmentModal" class="modal" style="display:none">
+                          <div class="modal-content">
+                            <div class="modal-header">
+                              <h2>Appointment Details</h2>
+                              <span class="close" onclick="closeAppointmentModal()">&times;</span>
+                            </div>
+                            <div id="appointmentDetailsContent" class="modal-body"></div>
+                          </div>
+                        </div>
 
-        <!-- Appointment Actions Modal -->
-        <div id="appointmentActionsModal" class="modal">
-          <div class="modal-content">
-            <div class="modal-header">
-              <h2>Appointment Actions</h2>
-              <span class="close" onclick="closeAppointmentModal()">&times;</span>
-            </div>
-            <div class="modal-body">
-              <div class="appointment-info">
-                <h3 id="modal-appointment-patient"></h3>
-                <p><strong>Date:</strong> <span id="modal-appointment-date"></span></p>
-                <p><strong>Service:</strong> <span id="modal-appointment-service"></span></p>
-                <p><strong>Schedule:</strong> <span id="modal-appointment-schedule"></span></p>
-              </div>
-              <div class="appointment-actions-grid">
-                <button class="action-btn view-btn" onclick="viewAppointmentDetails()">👁️ View Details</button>
-                <button class="action-btn done-btn" onclick="markAsDone()">✅ Mark as Done</button>
-                <button class="action-btn noshow-btn" onclick="markAsNoShow()">❌ Mark as No Show</button>
-                <button class="action-btn reschedule-btn" onclick="rescheduleAppointment()">📅 Reschedule</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
+                        <!-- Toast Notification (for appointment actions) -->
+                        <div id="copilot-toast" style="display:none"></div>
+
+                        <!-- Appointment Actions Modal -->
+                        <div id="appointmentActionsModal" class="modal">
+                          <div class="modal-content">
+                            <div class="modal-header">
+                              <h2>Appointment Actions</h2>
+                              <span class="close" onclick="closeAppointmentModal()">&times;</span>
+                            </div>
+                            <div class="modal-body">
+                              <div class="appointment-info">
+                                <h3 id="modal-appointment-patient"></h3>
+                                <p><strong>Date:</strong> <span id="modal-appointment-date"></span></p>
+                                <p><strong>Service:</strong> <span id="modal-appointment-service"></span></p>
+                                <p><strong>Schedule:</strong> <span id="modal-appointment-schedule"></span></p>
+                              </div>
+                              <div class="appointment-actions-grid">
+                                <button class="action-btn view-btn" onclick="viewAppointmentDetails()">
+                                  👁️ View Details
+                                </button>
+                                <button class="action-btn done-btn" onclick="markAsDone()">
+                                  ✅ Mark as Done
+                                </button>
+                                <button class="action-btn noshow-btn" onclick="markAsNoShow()">
+                                  ❌ Mark as No Show
+                                </button>
+                                <button class="action-btn reschedule-btn" onclick="rescheduleAppointment()">
+                                  📅 Reschedule
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </section>
+
+                      <!-- View Employees Section -->
+                      <section id="view-employees" class="content-section">
+                        <h2>Employee List</h2>
+                        <div class="content-card">
+                          <div class="section-header">
+                            <div class="header-actions">
+                              <div class="search-container">
+                                <i class="fas fa-search search-icon"></i>
+                                <input type="text" id="employee-search" class="search-input" placeholder="Search employees...">
+                              </div>
+                              <button onclick="refreshEmployeeList()" class="btn btn-secondary">
+                                <i class="fas fa-sync"></i> Refresh
+                              </button>
+                            </div>
+                          </div>
+
+                          <div class="table-responsive">
+                            <table class="data-table employee-table">
+                              <thead>
+                                <tr>
+                                  <th>Employee ID</th>
+                                  <th>Username</th>
+                                  <th>Display Name</th>
+                                  <th>Role</th>
+                                  <th>Last Login</th>
+                                  <th>Status</th>
+                                  <th>Actions</th>
+                                </tr>
+                              </thead>
+                              <tbody id="employee-list-body">
+                                <!-- Employee list will be loaded here -->
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      </section>
+
+                      <!-- Add Employee Account Section -->
+                      <section id="add-employee" class="content-section">
+                        <h2>Add Employee Account</h2>
+                        <div class="content-card">
+                          <div class="form-section">
+                            <div class="section-header">
+                              <h3>New Employee Information</h3>
+                              <p class="section-description">Create a new employee account by filling out the form below.</p>
+                            </div>
+                            <form id="add-employee-form" onsubmit="return handleAddEmployee(event)" autocomplete="off">
+                              <div class="form-grid two-columns">
+                                <div class="form-group">
+                                  <label for="new-employee-username">Username</label>
+                                  <input type="text" 
+                                         id="new-employee-username" 
+                                         class="form-input" 
+                                         required
+                                         autocomplete="off"
+                                         placeholder="Enter employee username"
+                                         pattern="[a-zA-Z0-9_]+"
+                                         title="Only letters, numbers, and underscore allowed">
+                                  <small class="field-hint">Choose a unique username for the employee.</small>
+                                </div>
+
+                                <div class="form-group">
+                                  <label for="new-employee-name">Display Name</label>
+                                  <input type="text" 
+                                         id="new-employee-name" 
+                                         class="form-input" 
+                                         required
+                                         autocomplete="off"
+                                         placeholder="Enter employee's full name"
+                                         pattern="[A-Za-z\s]+"
+                                         title="Only letters and spaces allowed">
+                                  <small class="field-hint">Employee's name as shown in the system.</small>
+                                </div>
+
+                                <div class="form-group">
+                                  <label for="new-employee-password">Password</label>
+                                  <div class="password-input-container">
+                                    <input type="password" 
+                                           id="new-employee-password" 
+                                           class="form-input" 
+                                           required
+                                           autocomplete="new-password"
+                                           placeholder="Enter password"
+                                           pattern=".{8,}"
+                                           title="Password must be at least 8 characters long">
+                                    <button type="button" class="toggle-password-btn" onclick="togglePasswordVisibility('new-employee-password')">
+                                      <i class="fas fa-eye"></i>
+                                    </button>
+                                  </div>
+                                  <small class="field-hint">Choose a strong password with letters, numbers, and symbols.</small>
+                                </div>
+
+                                <div class="form-group">
+                                  <label for="new-employee-confirm-password">Confirm Password</label>
+                                  <div class="password-input-container">
+                                    <input type="password" 
+                                           id="new-employee-confirm-password" 
+                                           class="form-input" 
+                                           required
+                                           autocomplete="new-password"
+                                           placeholder="Confirm password"
+                                           pattern=".{8,}"
+                                           title="Password must be at least 8 characters long">
+                                    <button type="button" class="toggle-password-btn" onclick="togglePasswordVisibility('new-employee-confirm-password')">
+                                      <i class="fas fa-eye"></i>
+                                    </button>
+                                  </div>
+                                  <small class="field-hint">Re-enter the password to confirm.</small>
+                                </div>
+
+                                <div class="form-group">
+                                  <label for="new-employee-role">Account Type</label>
+                                  <select id="new-employee-role" 
+                                         class="form-input" 
+                                         required
+                                         autocomplete="off">
+                                    <option value="">Select account type</option>
+                                    <option value="employee">Employee</option>
+                                    <option value="admin">Admin</option>
+                                  </select>
+                                  <small class="field-hint">Select the account privileges level.</small>
+                                </div>
+                              </div>
+
+                              <div class="form-actions">
+                                <button type="submit" class="btn btn-primary">
+                                  <i class="fas fa-user-plus"></i> Create Account
+                                </button>
+                                <button type="reset" class="btn btn-secondary">
+                                  <i class="fas fa-undo"></i> Clear Form
+                                </button>
+                              </div>
+                            </form>
+                          </div>
+                        </div>
+                      </section>
 
       <!-- SETTINGS (merged) -->
       <section id="settings" class="content-section {{ 'active' if active_tab == 'settings' else '' }}">
