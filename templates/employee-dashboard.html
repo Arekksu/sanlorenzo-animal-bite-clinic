@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>San Lorenzo Animal Bite Center - Admin Dashboard</title>
+  <title>San Lorenzo Animal Bite Center - Employee Dashboard</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='employee-styles.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='audit-log.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='select-styles.css') }}">
@@ -42,7 +42,6 @@
     <main class="main-content">
       <!-- Dashboard -->
       <section id="dashboard" class="content-section active">
-        <h2>Dashboard (Admin)</h2>
         <div class="stats-grid">
           <div class="stat-card">
             <div class="stat-icon">👤</div>
@@ -80,7 +79,7 @@
               <head>
                 <meta charset="UTF-8">
                 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                <title>San Lorenzo Animal Bite Center - Admin Dashboard</title>
+                <title>San Lorenzo Animal Bite Center - Employee Dashboard</title>
                 <link rel="stylesheet" href="{{ url_for('static', filename='employee-styles.css') }}">
                 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
               </head>
@@ -428,54 +427,76 @@
                               </Select>
                             </div>
 
+                            <!-- Additional Information / Other Dosage -->
                             <div class="form-section-header">
-                              <h4>Additional Information/Other Dosage/Consent</h4>
-                            </div>
-                              <div class="form-group">
-                                <label>Additional Remarks:</label>
-                                <input type="text" name="additional_remarks" placeholder="Enter any additional information or dosage details">
-                              </div>
-                              <div class="form-group">
-                                <label>TT1</label>
-                                <input type="date" name="tt1" class="schedule-input"/>
-                              </div>
-                              <div class="form-group">
-                                <label>TT6</label>
-                                <input type="date" name="tt6" class="schedule-input"/>
-                              </div>
-                              <div class="form-group">
-                                <label>TT30</label>
-                                <input type="date" name="tt30" class="schedule-input"/>
-                              </div>
-                              <div class="form-group">
-                                <label>Anti-tetanus Toxoid Dosage</label>
-                                <input type="text" name="anti_tetanus" placeholder="Enter anti-tetanus toxoid dosage details">
-                              </div><Br>
-                              <div class="form-group">
-                                <label><b>Patient Refusal to Erig</b><Br><i> (I have been advised for ERIG administration and I hereby REFUSE the treatment.  I am FULLY AWARE of the risks and consequences for refusing to receive ERIG treatment as advised by the Staff/Nurse on Duty. Furthermore, I have been informed of the nature, benefit and purpose of ERIG administration. I, NONETHELESS, REFUSE ERIG ADMINISTRATION). </i> </label>
-                                <select name="erig_refusal" required>
-                                  <opttion value="Select">Select refusal</option>
-                                  <option value="I REFUSE TO ADMINISTER ERIG.">I REFUSE TO ADMINISTER ERIG.</option>
-                                  <option value="I ACCEPT THE ADMINISTER ERIG.">I ACCEPT THE ADMINISTER ERIG.</option>
-                                  </select>
-                              </div>
-                              <div class="form-group">  
-                              <label>I hereby consent Vaccination route for IM</label>
-                                  <select name="route_im_consent" required placeholder="Select consent">
-                                    <option value="" disabled selected hidden>Select consent</option>
-                                    <option value="Yes">YES (w/maintenance, Immunocompromised, Others)</option>
-                                    <option value="No">NO, I refuse IM ROUTE.</option>
-                                    </select>
-                            </div>
-                            <div class="form-group">
-                              <label> I consent to the treatment and vaccination.</label>
-                              <select name="consent" required>
-                                <opttion value="Select">Select consent</option>
-                                <option value="Yes">Yes, I consent</option>
-                                <option value="No">No</option>
-                              </select>
+                              <h4>Additional Information/Other Dosage</h4>
                             </div>
 
+                            <div class="form-group">
+                              <label>Additional Remarks:</label>
+                              <input type="text" name="additional_remarks" placeholder="Enter any additional information or dosage details">
+                            </div>
+                            <div class="form-group">
+                              <label>TT1</label>
+                              <input type="date" name="tt1" class="schedule-input" />
+                            </div>
+                            <div class="form-group">
+                              <label>TT6</label>
+                              <input type="date" name="tt6" class="schedule-input" />
+                            </div>
+                            <div class="form-group">
+                              <label>TT30</label>
+                              <input type="date" name="tt30" class="schedule-input" />
+                            </div>
+                            <div class="form-group">
+                              <label>Anti-tetanus Toxoid Dosage</label>
+                              <input type="text" name="anti_tetanus" placeholder="Enter anti-tetanus toxoid dosage details">
+                            </div>
+
+                            <!-- Patient Consents (same look as admin) -->
+                            <div class="form-section-header">
+                              <h4>Patient Consents</h4>
+                            </div>
+
+                            <div class="consent-box">
+                              <div class="form-group">
+                                <label>
+                                  <b>Patient Refusal to Erig</b><br>
+                                  <i>
+                                    (I have been advised for ERIG administration and I hereby REFUSE the treatment.
+                                    I am FULLY AWARE of the risks and consequences for refusing to receive ERIG
+                                    treatment as advised by the Staff/Nurse on Duty. Furthermore, I have been
+                                    informed of the nature, benefit and purpose of ERIG administration.
+                                    I, NONETHELESS, REFUSE ERIG ADMINISTRATION).
+                                  </i>
+                                </label>
+                                <select name="erig_refusal" required>
+                                  <option value="" disabled selected hidden>Select refusal</option>
+                                  <option value="I REFUSE TO ADMINISTER ERIG.">I REFUSE TO ADMINISTER ERIG.</option>
+                                  <option value="I ACCEPT THE ADMINISTER ERIG.">I ACCEPT THE ADMINISTER ERIG.</option>
+                                </select>
+                              </div>
+
+                              <div class="form-group">
+                                <label>I hereby consent Vaccination route for IM:</label>
+                                <select name="route_im_consent" required>
+                                  <option value="" disabled selected hidden>Select consent</option>
+                                  <option value="Yes">YES (w/maintenance, Immunocompromised, Others)</option>
+                                  <option value="No">NO, I refuse IM ROUTE.</option>
+                                </select>
+                              </div>
+
+                              <div class="form-group">
+                                <label>I consent to the treatment and vaccination:</label>
+                                <select name="consent" required>
+                                  <option value="" disabled selected hidden>Select consent</option>
+                                  <option value="Yes">Yes, I consent</option>
+                                  <option value="No">No</option>
+                                </select>
+                              </div>
+                            </div>
+
+                            <!-- Vaccination History -->
                             <div class="form-section-header">
                               <h4>Vaccination History</h4>
                             </div>

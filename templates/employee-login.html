@@ -71,9 +71,8 @@
         });
         </script>
 
-        <!-- Toast container and script -->
+        <!-- Toast container -->
         <div id="toast-container" aria-live="polite" aria-atomic="true"></div>
-        <script id="login-server-data" type="application/json">{{ login_server_data|safe }}</script>
         <script>
             // Create and show a top-right toast. Auto-dismiss after timeout.
             function showToast(type, message, timeoutMs) {
@@ -116,14 +115,46 @@
             });
         </script>
         <style>
-            /* Toast container (top-right) */
-            #toast-container{ position:fixed; top:16px; right:16px; z-index:9999; display:flex; flex-direction:column; gap:8px; }
-            .toast{ min-width:220px; max-width:360px; padding:10px 14px; border-radius:8px; color:#fff; box-shadow:0 4px 10px rgba(0,0,0,0.12); opacity:0; transform:translateY(-8px) scale(0.98); transition:all .28s ease; }
-            .toast.visible{ opacity:1; transform:translateY(0) scale(1); }
-            .toast-success{ background:linear-gradient(180deg,#2dbb74,#1fa45a); }
-            .toast-error{ background:linear-gradient(180deg,#f36b6b,#d64545); }
+          /* Toast container (top-right) */
+          #toast-container{
+              position:fixed;
+              top:16px;
+              right:16px;
+              z-index:9999;
+              display:flex;
+              flex-direction:column;
+              gap:8px;
+          }
+          .toast{
+              min-width:220px;
+              max-width:360px;
+              padding:10px 14px;
+              border-radius:8px;
+              color:#fff;
+              box-shadow:0 4px 10px rgba(0,0,0,0.12);
+              opacity:0;
+              transform:translateY(-8px) scale(0.98);
+              transition:all .28s ease;
+          }
+          .toast.visible{
+              opacity:1;
+              transform:translateY(0) scale(1);
+          }
+          .toast-success{
+              background:linear-gradient(180deg,#2dbb74,#1fa45a);
+          }
+          .toast-error{
+              background:linear-gradient(180deg,#f36b6b,#d64545);
+          }
         </style>
-        <!-- Server-provided login result (keeps JS syntax clean) -->
-        <script id="login-server-data" type="application/json">{{ {'error': error|default(None), 'success': success|default(False), 'redirect_url': redirect_url|default('') } | tojson | safe }}</script>
+
+        <!-- ✅ SINGLE SOURCE OF TRUTH FOR SERVER DATA -->
+        <script id="login-server-data" type="application/json">
+          {{ {
+              'error': error|default(None),
+              'success': success|default(False),
+              'redirect_url': redirect_url|default('')
+          } | tojson | safe }}
+        </script>
 </body>
 </html>

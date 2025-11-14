@@ -446,6 +446,32 @@ body {
     padding: 2rem;
 }
 
+/* 🔁 FIXED: Patient Consents layout */
+.consent-box {
+    background: #f9f9f9;
+    border: 1px solid #ddd;
+    padding: 18px 20px;
+    border-radius: 10px;
+    margin-top: 10px;
+    display: grid;
+    grid-template-columns: minmax(260px, 2fr) repeat(2, minmax(220px, 1fr));
+    gap: 18px;
+    align-items: flex-start;
+}
+
+/* para hindi sila pinipilit mag full-width sa grid */
+.consent-box .form-group,
+.consent-box .form-group.full-width {
+    width: auto;
+    grid-column: auto;
+}
+
+@media (max-width: 900px) {
+    .consent-box {
+        grid-template-columns: 1fr;
+    }
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
     .nav-container {
