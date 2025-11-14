@@ -1319,28 +1319,75 @@ function toast(msg) {
 }
 
 /* ---------- Appointment Modals (guarded kung walang HTML) ---------- */
+/* ---------- Appointment Modals (gamit ang custom Employee-style modal) ---------- */
 function showAppointmentModal(a){
-  const modal = document.getElementById('appointmentModal');
-  const content = document.getElementById('appointmentDetailsContent');
-  if (!modal || !content) {
-    alert(`${a.patient}\n${a.service}\n${a.type.toUpperCase()} on ${a.date}`);
-    return;
+  // Kunin status ng appointment
+  const status = getAppointmentStatus(a.id); // 'scheduled' | 'completed' | 'absent'
+
+  let statusText = 'Scheduled';
+  let statusClass = '';
+  if (status === 'completed') {
+    statusText = 'Done';
+    statusClass = 'appt-status done';
+  } else if (status === 'absent') {
+    statusText = 'No Show';
+    statusClass = 'appt-status noshow';
   }
-  const status = getAppointmentStatus(a.id);
-  let statusLabel = '';
-  if (status === 'completed') statusLabel = '<span class="appt-status done">Done</span>';
-  else if (status === 'absent') statusLabel = '<span class="appt-status noshow">No Show</span>';
-  content.innerHTML = `
-    <div class="detail-section">
-      <h3>Appointment Details</h3>
-      <div class="detail-row"><span class="detail-label">Patient:</span><span class="detail-value">${escapeHtml(a.patient)} ${statusLabel}</span></div>
-      <div class="detail-row"><span class="detail-label">Service:</span><span class="detail-value">${escapeHtml(a.service||'')}</span></div>
-      <div class="detail-row"><span class="detail-label">Type:</span><span class="detail-value">${a.type.toUpperCase()}</span></div>
-      <div class="detail-row"><span class="detail-label">Date:</span><span class="detail-value">${a.date}</span></div>
-      <div class="detail-row"><span class="detail-label">Status:</span><span class="detail-value">${statusLabel||'Scheduled'}</span></div>
-      <div class="detail-row"><span class="detail-label">Notes:</span><span class="detail-value">Please confirm patient attendance and mark status accordingly.</span></div>
-    </div>`;
-  openModal('appointmentModal');
+
+  const statusHtml = statusClass
+    ? `<span class="${statusClass}">${statusText}</span>`
+    : statusText;
+
+  // Gawing mas readable yung date kung ISO string (YYYY-MM-DD)
+  let formattedDate = a.date;
+  try {
+    const d = new Date(a.date);
+    if (!isNaN(d)) {
+      formattedDate = d.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+    }
+  } catch (e) {
+    // fallback lang sa original a.date
+  }
+
+  // Body ng modal – pareho layout sa Employee Details (detail-grid, detail-item, etc.)
+  const modalBody = `
+    <div class="employee-details">
+      <h3>Appointment Information</h3>
+      <div class="detail-grid">
+        <div class="detail-item">
+          <label>Patient</label>
+          <span>${escapeHtml(a.patient)} ${statusHtml}</span>
+        </div>
+        <div class="detail-item">
+          <label>Service</label>
+          <span>${escapeHtml(a.service || '')}</span>
+        </div>
+        <div class="detail-item">
+          <label>Schedule Type</label>
+          <span>${a.type.toUpperCase()}</span>
+        </div>
+        <div class="detail-item">
+          <label>Date</label>
+          <span>${formattedDate}</span>
+        </div>
+        <div class="detail-item">
+          <label>Status</label>
+          <span>${statusHtml}</span>
+        </div>
+      </div>
+      <p style="margin-top:16px;font-size:13px;color:#6b7280;">
+        Notes: Please confirm patient attendance and update the status using
+        the <strong>Done</strong> or <strong>No Show</strong> buttons sa daily schedule list.
+      </p>
+    </div>
+  `;
+
+  // Gamitin yung same helper na gamit ng Employee Details
+  showModal('Appointment Details', modalBody);
 }
 function closeAppointmentModal(){ const m=document.getElementById('appointmentModal'); if(m) m.style.display='none'; }
 
