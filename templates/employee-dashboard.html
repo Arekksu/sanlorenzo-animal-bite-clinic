@@ -735,51 +735,7 @@
                           </div>
                         </div>
 
-                        <!-- Appointment Details Modal for Calendar (used by JS) -->
-                        <div id="appointmentModal" class="modal" style="display:none">
-                          <div class="modal-content">
-                            <div class="modal-header">
-                              <h2>Appointment Details</h2>
-                              <span class="close" onclick="closeAppointmentModal()">&times;</span>
-                            </div>
-                            <div id="appointmentDetailsContent" class="modal-body"></div>
-                          </div>
-                        </div>
-
-                        <!-- Toast Notification (for appointment actions) -->
                         <div id="copilot-toast" style="display:none"></div>
-
-                        <!-- Appointment Actions Modal -->
-                        <div id="appointmentActionsModal" class="modal">
-                          <div class="modal-content">
-                            <div class="modal-header">
-                              <h2>Appointment Actions</h2>
-                              <span class="close" onclick="closeAppointmentModal()">&times;</span>
-                            </div>
-                            <div class="modal-body">
-                              <div class="appointment-info">
-                                <h3 id="modal-appointment-patient"></h3>
-                                <p><strong>Date:</strong> <span id="modal-appointment-date"></span></p>
-                                <p><strong>Service:</strong> <span id="modal-appointment-service"></span></p>
-                                <p><strong>Schedule:</strong> <span id="modal-appointment-schedule"></span></p>
-                              </div>
-                              <div class="appointment-actions-grid">
-                                <button class="action-btn view-btn" onclick="viewAppointmentDetails()">
-                                  👁️ View Details
-                                </button>
-                                <button class="action-btn done-btn" onclick="markAsDone()">
-                                  ✅ Mark as Done
-                                </button>
-                                <button class="action-btn noshow-btn" onclick="markAsNoShow()">
-                                  ❌ Mark as No Show
-                                </button>
-                                <button class="action-btn reschedule-btn" onclick="rescheduleAppointment()">
-                                  📅 Reschedule
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
                       </section>
 
                       <!-- View Employees Section -->

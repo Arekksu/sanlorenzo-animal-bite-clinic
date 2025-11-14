@@ -1389,7 +1389,6 @@ function showAppointmentModal(a){
   // Gamitin yung same helper na gamit ng Employee Details
   showModal('Appointment Details', modalBody);
 }
-function closeAppointmentModal(){ const m=document.getElementById('appointmentModal'); if(m) m.style.display='none'; }
 
 /* ---------- Toast Notification ---------- */
 function showToast(message, type='success') {

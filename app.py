@@ -505,10 +505,8 @@ def patient_detail(patient_id):
             # klarong JSON ang balik, hindi plain text
             return jsonify({"ok": False, "error": "not_found"}), 404
 
-        return jsonify({
-            "ok": True,
-            "patient": dict(patient)
-        })
+        # Return the patient object directly so frontend fetches get a plain patient dict
+        return jsonify(dict(patient))
 
     except Exception as e:
         # makikita  yung real error sa terminal/logs
