@@ -81,6 +81,14 @@ def close_connection(exception):
 def home():
     return redirect(url_for('employee_login'))
 
+
+@app.route('/favicon.ico')
+def favicon():
+    """Redirect browser requests for /favicon.ico to the clinic logo in static files.
+    This prevents 404s when browsers auto-request /favicon.ico.
+    """
+    return redirect(url_for('static', filename='images/san lorenzo.jpg'))
+
 @app.route('/logout')
 def logout():
     # Log logout for audit trail

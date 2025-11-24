@@ -9,7 +9,8 @@ function updateDateTime() {
         hour: '2-digit',
         minute: '2-digit'
     };
-    document.getElementById('currentDateTime').textContent = now.toLocaleDateString('en-US', options);
+    const dtEl = document.getElementById('currentDateTime');
+    if (dtEl) dtEl.textContent = now.toLocaleDateString('en-US', options);
 }
 
 // Initialize page
@@ -19,7 +20,8 @@ document.addEventListener('DOMContentLoaded', function() {
     setInterval(updateDateTime, 60000);
     
     // Focus on employee ID field
-    document.getElementById('employeeId').focus();
+    const empEl = document.getElementById('employeeId');
+    if (empEl) empEl.focus();
 });
 
 // Handle employee login
@@ -136,37 +138,47 @@ document.addEventListener('keydown', function(event) {
         const employeeIdField = document.getElementById('employeeId');
         const passwordField = document.getElementById('password');
         
-        if (document.activeElement === employeeIdField) {
+        if (employeeIdField && passwordField && document.activeElement === employeeIdField) {
             passwordField.focus();
             event.preventDefault();
         }
     }
 });
 
-// Add some visual feedback for input fields
-document.getElementById('employeeId').addEventListener('input', function() {
-    removeErrorMessage();
-});
+// Add some visual feedback for input fields (only if elements exist)
+const employeeIdInput = document.getElementById('employeeId');
+if (employeeIdInput) {
+    employeeIdInput.addEventListener('input', function() { removeErrorMessage(); });
+}
 
-document.getElementById('password').addEventListener('input', function() {
-    removeErrorMessage();
-});
+const passwordInput = document.getElementById('password');
+if (passwordInput) {
+    passwordInput.addEventListener('input', function() { removeErrorMessage(); });
+}
 
-// Prevent form submission on disabled state
-document.querySelector('.login-form').addEventListener('submit', function(event) {
-    if (document.querySelector('.login-btn').disabled) {
-        event.preventDefault();
-    }
-});
+// Prevent form submission on disabled state (guarded)
+const loginForm = document.querySelector('.login-form');
+if (loginForm) {
+    loginForm.addEventListener('submit', function(event) {
+        const loginBtn = document.querySelector('.login-btn');
+        if (loginBtn && loginBtn.disabled) {
+            event.preventDefault();
+        }
+    });
+}
 
-// Add click handlers for demo credentials
-document.querySelector('.demo-credentials').addEventListener('click', function() {
-    document.getElementById('employeeId').value = 'admin';
-    document.getElementById('password').value = 'admin123';
-    document.getElementById('employeeId').focus();
-});
+// Add click handlers for demo credentials (guarded)
+const demoBtn = document.querySelector('.demo-credentials');
+if (demoBtn) {
+    demoBtn.addEventListener('click', function() {
+        if (employeeIdInput) employeeIdInput.value = 'admin';
+        if (passwordInput) passwordInput.value = 'admin123';
+        if (employeeIdInput) employeeIdInput.focus();
+    });
+}
 
 // Security: Clear sensitive data on page unload
 window.addEventListener('beforeunload', function() {
-    document.getElementById('password').value = '';
+    const pw = document.getElementById('password');
+    if (pw) pw.value = '';
 });
