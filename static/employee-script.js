@@ -733,6 +733,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Calendar data (real DB)
   await fetchPatientsForCalendar();
   updateCalendar();
+  // Ensure analytics charts are updated after patientsData is loaded
+  if (typeof updateMonthlyReports === 'function') {
+    try { updateMonthlyReports(); } catch (e) { console.warn('updateMonthlyReports failed after data load', e); }
+  }
 
   // Fix: Ensure required fields are focusable on submit
   const addRecordForm = document.querySelector('#add-record form');
@@ -2691,7 +2695,13 @@ function generateMonthlyReport() {
       treatmentTypes: analyzeTreatmentTypes(filteredPatients)
     };
   } else {
-    monthlyData = calculateMonthlyData(selectedMonth === 'monthly' ? 'current' : (selectedMonth === 'yearly' ? 'year-current' : selectedMonth), periodType);
+    // Ensure yearly selection uses year periodType so calculateMonthlyData
+    // treats the filter as a year instead of trying to match YYYY-MM prefixes.
+    if (selectedMonth === 'yearly') {
+      monthlyData = calculateMonthlyData('year-current', 'year');
+    } else {
+      monthlyData = calculateMonthlyData(selectedMonth === 'monthly' ? 'current' : selectedMonth, periodType);
+    }
   }
 
   const reportSection = document.getElementById('monthlyReportSection');
