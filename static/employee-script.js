@@ -1613,6 +1613,91 @@ function updateMonthlyReports() {
   updateChartsForMonth(selectedMonth, periodType);
 }
 
+// GENERATE pdf report
+function testGenerateReport() {
+    const month = document.getElementById('monthSelector')?.value || '';
+    const periodType = document.getElementById('periodType')?.value || 'month';
+
+    const newPatients   = document.getElementById("monthlyNewPatients")?.textContent || "0";
+    const completed     = document.getElementById("monthlyCompleted")?.textContent || "0";
+    const active        = document.getElementById("monthlyActive")?.textContent || "0";
+    const completionRate= document.getElementById("monthlyRate")?.textContent || "0%";
+
+    const html = `
+    <html>
+    <head>
+        <title>San Lorenzo Animal Bite Center - Report</title>
+        <style>
+            body { font-family: Arial, sans-serif; padding: 40px; }
+
+            /* Header Area */
+            .header {
+                display: flex;
+                align-items: center;
+                gap: 15px;
+                margin-bottom: 20px;
+            }
+            .header img {
+                width: 70px;
+                height: 70px;
+            }
+            .header-title {
+                color: #7b1113; /* MAROON */
+            }
+            h1 { margin: 0; font-size: 26px; }
+            h2 { margin-top: 5px; font-size: 18px; color: #7b1113; }
+
+            /* Table Styling */
+            table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+            th, td { border: 1px solid #999; padding: 8px 10px; }
+            th { background: #f4f4f4; color: #7b1113; }
+
+            /* Labels */
+            .label { font-weight: bold; color: #7b1113; }
+        </style>
+    </head>
+    <body>
+
+        <div class="header">
+            <img src="/static/images/san lorenzo.jpg" alt="Clinic Logo">
+            <div class="header-title">
+                <h1>San Lorenzo Animal Bite Center</h1>
+                <h2>Treatment Analytics Report</h2>
+            </div>
+        </div>
+
+        <p><span class="label">Month:</span> ${month}</p>
+        <p><span class="label">View:</span> ${periodType}</p>
+
+        <table>
+            <tr>
+                <th>Metric</th>
+                <th>Value</th>
+            </tr>
+            <tr><td>New Patients</td><td>${newPatients}</td></tr>
+            <tr><td>Completed Treatments</td><td>${completed}</td></tr>
+            <tr><td>Active Treatments</td><td>${active}</td></tr>
+            <tr><td>Completion Rate</td><td>${completionRate}</td></tr>
+        </table>
+
+        <p style="margin-top: 30px;">Generated on: ${new Date().toLocaleString()}</p>
+
+        <script>
+        window.onload = function() {
+            window.print();
+        }
+        <\/script>
+
+    </body>
+    </html>
+    `;
+
+    const reportWindow = window.open("", "_blank");
+    reportWindow.document.write(html);
+    reportWindow.document.close();
+}
+
+
 function calculateMonthlyData(selectedMonth, periodType = 'month') {
   let filteredPatients = patientsData;
   
