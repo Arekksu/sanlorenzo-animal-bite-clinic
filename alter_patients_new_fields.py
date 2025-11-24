@@ -12,3 +12,5 @@ conn.commit()
 conn.close()
 
 print("All new columns added to patients table.")
+
+

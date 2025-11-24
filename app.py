@@ -99,6 +99,8 @@ def logout():
     session.clear()
     return redirect(url_for('employee_login'))
 
+# update schedule
+
 @app.route('/get_employees')
 @role_required('admin')
 def get_employees():
@@ -120,6 +122,47 @@ def get_employees():
     except Exception as e:
         print(f"Error getting employees: {str(e)}")
         return jsonify({'success': False, 'message': 'Failed to retrieve employees'})
+
+# done
+@app.route("/patients/<int:patient_id>/schedule-status", methods=["POST"])
+def update_schedule_status(patient_id):
+    try:
+        # kunin JSON body (field + done)
+        data = request.get_json(force=True) or {}
+        print("Received JSON for schedule-status:", data)
+
+        field = data.get("field")
+        done  = data.get("done", 0)
+
+        # i-cast to int (0 or 1)
+        try:
+            done = int(done)
+        except ValueError:
+            done = 0
+
+        # safety: only allow specific columns
+        allowed = [
+            "day0_done", "day3_done", "day7_done", "day14_done", "day28_done",
+            "booster1_done", "booster2_done"
+        ]
+        if field not in allowed:
+            print("Invalid field:", field)
+            return jsonify(success=False, error="Invalid field"), 400
+
+        # update sa SQLite
+        conn = get_db()
+        cur = conn.cursor()
+        cur.execute(f"UPDATE patients SET {field} = ? WHERE id = ?", (done, patient_id))
+        conn.commit()
+
+        print("Updated", field, "for patient", patient_id, "=", done)
+        return jsonify(success=True), 200
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()  # lalabas sa terminal ang tunay na error
+        return jsonify(success=False, error=str(e)), 500
+
 
 @app.route('/get_employee/<int:employee_id>')
 @role_required('admin')
@@ -525,6 +568,7 @@ def patient_detail(patient_id):
             "message": str(e)
         }), 500
 
+# DAY DONE
 
 @app.route("/delete-patient/<int:patient_id>", methods=["DELETE"])
 def delete_patient(patient_id):

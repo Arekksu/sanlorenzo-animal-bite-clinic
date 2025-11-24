@@ -272,8 +272,7 @@ function openPatientDetailsModal(p){
         <h3>Incident & Service</h3>
         <div class="detail-row"><label>Service:</label><span>${show(p.service_type)}</span></div>
         <div class="detail-row"><label>Route of Vaccine:</label><span>${show(p.route_of_vaccine)}</span></div>
-        <div class="detail-row"><label>Booster 1</label><span>${show(p.booster1)}</span></div>
-        <div class="detail-row"><label>Booster 2</label><span>${show(p.booster2)}</span></div>
+      
         <div class="detail-row"><label>Date of Bite:</label><span>${show(p.date_of_bite)}</span></div>
         <div class="detail-row"><label>Bite Location:</label><span>${show(p.bite_location)}</span></div>
         <div class="detail-row"><label>Place of Bite:</label><span>${show(p.place_of_bite)}</span></div>
@@ -298,15 +297,187 @@ function openPatientDetailsModal(p){
       </div>
       <div class="detail-section">
         <h3>Schedule</h3>
-        <div class="detail-row"><label>Day 0:</label><span>${show(p.day0)}</span></div>
-        <div class="detail-row"><label>Day 3:</label><span>${show(p.day3)}</span></div>
-        <div class="detail-row"><label>Day 7:</label><span>${show(p.day7)}</span></div>
-        <div class="detail-row"><label>Day 14:</label><span>${show(p.day14)}</span></div>
-        <div class="detail-row"><label>Day 28:</label><span>${show(p.day28)}</span></div>
+
+        <div class="detail-row">
+          <button type="button"
+                  class="schedule-toggle ${p.day0_done ? 'is-done' : ''}"
+                  data-patient-id="${p.id}"
+                  data-field="day0_done"
+                  onclick="toggleScheduleStatus(this)">
+            Day 0
+          </button>
+          <span>${show(p.day0)}</span>
+        </div>
+
+        <div class="detail-row">
+          <button type="button"
+                  class="schedule-toggle ${p.day3_done ? 'is-done' : ''}"
+                  data-patient-id="${p.id}"
+                  data-field="day3_done"
+                  onclick="toggleScheduleStatus(this)">
+            Day 3
+          </button>
+          <span>${show(p.day3)}</span>
+        </div>
+
+        <div class="detail-row">
+          <button type="button"
+                  class="schedule-toggle ${p.day7_done ? 'is-done' : ''}"
+                  data-patient-id="${p.id}"
+                  data-field="day7_done"
+                  onclick="toggleScheduleStatus(this)">
+            Day 7
+          </button>
+          <span>${show(p.day7)}</span>
+        </div>
+
+        <div class="detail-row">
+          <button type="button"
+                  class="schedule-toggle ${p.day14_done ? 'is-done' : ''}"
+                  data-patient-id="${p.id}"
+                  data-field="day14_done"
+                  onclick="toggleScheduleStatus(this)">
+            Day 14
+          </button>
+          <span>${show(p.day14)}</span>
+        </div>
+
+        <div class="detail-row">
+          <button type="button"
+                  class="schedule-toggle ${p.day28_done ? 'is-done' : ''}"
+                  data-patient-id="${p.id}"
+                  data-field="day28_done"
+                  onclick="toggleScheduleStatus(this)">
+            Day 28
+          </button>
+          <span>${show(p.day28)}</span>
+        </div>
       </div>
-    </div>
+
+      <div class="detail-section">
+        <h3>Booster </h3>
+
+        <div class="detail-row">
+          <button type="button"
+                  class="schedule-toggle ${p.booster1_done ? 'is-done' : ''}"
+                  data-patient-id="${p.id}"
+                  data-field="booster1_done"
+                  onclick="toggleScheduleStatus(this)">
+            Booster 1
+          </button>
+          <span>${show(p.booster1)}</span>
+        </div>
+
+        <div class="detail-row">
+          <button type="button"
+                  class="schedule-toggle ${p.booster2_done ? 'is-done' : ''}"
+                  data-patient-id="${p.id}"
+                  data-field="booster2_done"
+                  onclick="toggleScheduleStatus(this)">
+            Booster 2
+          </button>
+          <span>${show(p.booster2)}</span>
+        </div>
+      </div>
+
+
+
   `;
   openModal('patientModal');
+}
+
+function toggleScheduleStatus(btn) {
+  const patientId = btn.dataset.patientId;
+  const field     = btn.dataset.field;
+  const willBeDone = btn.classList.contains('is-done') ? 0 : 1;  // toggle 0/1
+
+  fetch(`/patients/${patientId}/schedule-status`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      field: field,
+      done: willBeDone
+    })
+  })
+  .then(res => res.json().catch(() => {
+    throw new Error("Server did not return JSON");
+  }))
+  .then(data => {
+    if (!data.success) {
+      console.error("Server error:", data.error);
+      alert("Error updating schedule status.");
+      return;
+    }
+
+    // success – update UI
+    if (willBeDone === 1) {
+      btn.classList.add('is-done');
+    } else {
+      btn.classList.remove('is-done');
+    }
+  })
+  .catch(err => {
+    console.error("Fetch error:", err);
+    alert("Error updating schedule status.");
+  });
+}
+
+
+
+// pagkatapos mong i-set yung innerHTML
+  setTimeout(() => {
+    document.querySelectorAll('.sched-row .sched-label').forEach(el => {
+      el.addEventListener('click', () => {
+        const parent    = el.closest('.sched-row');
+        const patientId = parent.dataset.patientId;
+        const field     = parent.dataset.field;
+        const willBeDone = el.classList.contains('done') ? 0 : 1;  // toggle
+
+        fetch(`/patients/${patientId}/schedule-status`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ field: field, done: willBeDone })
+        })
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            // i-update ang UI (green / remove green)
+            if (data.done) {
+              el.classList.add('done');
+            } else {
+              el.classList.remove('done');
+            }
+          } else {
+            alert("Failed to update schedule status.");
+          }
+        })
+        .catch(err => {
+          console.error(err);
+          alert("Error updating schedule status.");
+        });
+      });
+    });
+  }, 0);
+
+function generateSchedRow(label, dateField, doneField, p) {
+  const isDone = p[doneField] == 1;  // 1 = done, 0 = not done
+
+  return `
+    <div class="detail-row sched-row"
+         data-patient-id="${p.id}"
+         data-field="${doneField}">
+      
+      <label class="sched-label ${isDone ? 'done' : ''}">
+        ${label}
+      </label>
+
+      <span>${p[dateField] ? escapeHtml(String(p[dateField])) : '—'}</span>
+    </div>
+  `;
 }
 
 // EDIT MODAL (prefill)

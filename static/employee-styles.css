@@ -1540,6 +1540,59 @@ body {
 .btn-success:active {
   transform: translateY(0);
 }
+.schedule-item {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.schedule-label {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.schedule-label.done {
+  color: #16a34a; /* green */
+}
+
+.schedule-label.done::before {
+  content: "✔ ";
+}
+
+.sched-label {
+  cursor: pointer;
+  font-weight: 600;
+  transition: 0.2s;
+}
+
+.sched-label.done {
+  color: #16a34a;           /* green */
+}
+
+.sched-label.done::before {
+  content: "✔ ";
+}
+
+.schedule-toggle {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.schedule-toggle.is-done {
+  color: #16a34a; /* green */
+}
+
+.schedule-toggle.is-done::before {
+  content: "✔ ";
+}
 
 /* =========================================================
    VIEW PATIENT (TABLE)
