@@ -1470,7 +1470,11 @@ function initializeCompletionChart(completedPatients) {
   // Replace doughnut with a horizontal bar chart (counts) for clearer employee-facing view
   const completionCtx = document.getElementById('completionChart').getContext('2d');
   const labels = ['Completed', 'In Progress', 'Not Started'];
-  const counts = [completedPatients.completed, completedPatients.inProgress, completedPatients.notStarted];
+  const counts = [
+    (completedPatients && completedPatients.completed) || 0,
+    (completedPatients && completedPatients.inProgress) || 0,
+    (completedPatients && completedPatients.notStarted) || 0
+  ];
   if (charts.completion) { charts.completion.destroy(); }
   charts.completion = new Chart(completionCtx, {
     type: 'bar',
@@ -1506,7 +1510,8 @@ function initializeDailyProgressChart() {
   charts.daily = new Chart(dailyCtx, {
     type: 'bar',
     data: {
-      labels: dailyData.days,
+      // helpers return { labels, newPatients, completed }
+      labels: dailyData.labels || dailyData.days || [],
       datasets: [{
         label: 'New Patients',
         data: dailyData.newPatients,
@@ -1536,13 +1541,17 @@ function initializeDailyProgressChart() {
 function initializeServiceChart(serviceData) {
   const serviceCtx = document.getElementById('serviceChart').getContext('2d');
   // Simpler horizontal bar chart with clear labels for employees
+  const services = (serviceData && serviceData.services) || [];
+  const counts = (serviceData && serviceData.counts) || [];
+  console.debug('initializeServiceChart:', { services, counts });
+
   charts.service = new Chart(serviceCtx, {
     type: 'bar',
     data: {
-      labels: serviceData.services,
+      labels: services,
       datasets: [{
         label: 'Patients',
-        data: serviceData.counts,
+        data: counts,
         backgroundColor: '#6f2d3f',
         borderRadius: 6,
         barThickness: 18
@@ -1567,7 +1576,8 @@ function initializeWeeklyTrendChart() {
   charts.weekly = new Chart(weeklyCtx, {
     type: 'line',
     data: {
-      labels: weeklyData.weeks,
+      // helpers return { labels, started, completed }
+      labels: weeklyData.labels || weeklyData.weeks || [],
       datasets: [{
         label: 'Patients Started',
         data: weeklyData.started,
@@ -1599,102 +1609,164 @@ function initializeWeeklyTrendChart() {
 }
 
 function updateMonthlyReports() {
-  const selectedMonth = document.getElementById('monthSelector').value;
-  const periodType = document.getElementById('periodType')?.value || 'month';
-  const monthlyData = calculateMonthlyData(selectedMonth, periodType);
-  
-  // Update summary cards
-  document.getElementById('monthlyNewPatients').textContent = monthlyData.newPatients;
-  document.getElementById('monthlyCompleted').textContent = monthlyData.completed;
-  document.getElementById('monthlyActive').textContent = monthlyData.active;
-  document.getElementById('monthlyRate').textContent = monthlyData.completionRate + '%';
-  
-  // Update charts with filtered data
-  updateChartsForMonth(selectedMonth, periodType);
+  const monthSelectorEl = document.getElementById('monthSelector');
+  const selectedMonth = monthSelectorEl ? monthSelectorEl.value : 'current';
+  const periodType = (document.getElementById('periodType') && document.getElementById('periodType').value) || 'month';
+  // Normalize semantic selector values to actual periods where possible
+  let filteredPatients = (typeof patientsData !== 'undefined' ? patientsData : []).slice();
+  const isoMonthRegex = /^\d{4}-\d{2}$/;
+
+  if (selectedMonth === 'all') {
+    // keep all
+  } else if (selectedMonth === 'weekly') {
+    // compute current week range (Sunday - Saturday)
+    const now = new Date();
+    const dayOfWeek = now.getDay(); // 0 (Sun) - 6 (Sat)
+    const start = new Date(now);
+    start.setDate(now.getDate() - dayOfWeek);
+    start.setHours(0,0,0,0);
+    const end = new Date(start);
+    end.setDate(start.getDate() + 6);
+    end.setHours(23,59,59,999);
+    const startStr = start.toISOString().slice(0,10);
+    const endStr = end.toISOString().slice(0,10);
+    filteredPatients = filteredPatients.filter(p => {
+      const d0 = p.day0 || '';
+      const d28 = p.day28 || '';
+      return (d0 >= startStr && d0 <= endStr) || (d28 >= startStr && d28 <= endStr);
+    });
+  } else if (selectedMonth === 'monthly' || selectedMonth === 'current') {
+    const monthStr = new Date().toISOString().slice(0,7);
+    filteredPatients = filteredPatients.filter(p => (p.day0 && p.day0.startsWith(monthStr)) || (p.day28 && p.day28.startsWith(monthStr)));
+  } else if (selectedMonth === 'yearly' || periodType === 'year' && selectedMonth === 'year-current') {
+    const yearStr = new Date().getFullYear().toString();
+    filteredPatients = filteredPatients.filter(p => (p.day0 && p.day0.startsWith(yearStr)) || (p.day28 && p.day28.startsWith(yearStr)));
+  } else if (isoMonthRegex.test(selectedMonth)) {
+    // ISO month like YYYY-MM
+    filteredPatients = filteredPatients.filter(p => (p.day0 && p.day0.startsWith(selectedMonth)) || (p.day28 && p.day28.startsWith(selectedMonth)));
+  } else if (periodType === 'year' && selectedMonth && selectedMonth !== 'all') {
+    // selectedMonth might be a year string
+    const year = selectedMonth === 'year-current' ? new Date().getFullYear().toString() : selectedMonth;
+    filteredPatients = filteredPatients.filter(p => (p.day0 && p.day0.startsWith(year)) || (p.day28 && p.day28.startsWith(year)));
+  } else {
+    // Fallback: if selector contains an unexpected semantic value, try to use option text as hint
+    // leave filteredPatients as-is if nothing matches
+  }
+
+  // Build monthlyData compatible object (re-use calculateMonthlyData when possible)
+  let monthlyData = null;
+  if (selectedMonth === 'weekly') {
+    // derive stats from filteredPatients
+    const today = new Date().toISOString().split('T')[0];
+    const newPatients = filteredPatients.filter(p => p.day0).length;
+    const completed = filteredPatients.filter(p => p.day28 && p.day28 <= today).length;
+    const active = filteredPatients.filter(p => (p.day0 && p.day0 <= today) && (!p.day28 || p.day28 > today)).length;
+    const overdue = filteredPatients.filter(p => {
+      if (!p.day0) return false;
+      const day0Date = new Date(p.day0);
+      const daysSinceStart = Math.floor((new Date() - day0Date) / (1000 * 60 * 60 * 24));
+      if (daysSinceStart >= 6 && (!p.day3 || p.day3 < today)) return true;
+      if (daysSinceStart >= 10 && (!p.day7 || p.day7 < today)) return true;
+      if (daysSinceStart >= 17 && (!p.day14 || p.day14 < today)) return true;
+      if (daysSinceStart >= 31 && (!p.day28 || p.day28 < today)) return true;
+      return false;
+    }).length;
+    const adherent = filteredPatients.filter(p => {
+      if (!p.day0) return false;
+      const day0Date = new Date(p.day0);
+      const daysSinceStart = Math.floor((new Date() - day0Date) / (1000 * 60 * 60 * 24));
+      let adherenceScore = 1; let totalDosesRequired = 1;
+      if (daysSinceStart >= 3) { totalDosesRequired++; if (p.day3) adherenceScore++; }
+      if (daysSinceStart >= 7) { totalDosesRequired++; if (p.day7) adherenceScore++; }
+      if (daysSinceStart >= 14) { totalDosesRequired++; if (p.day14) adherenceScore++; }
+      if (daysSinceStart >= 28) { totalDosesRequired++; if (p.day28) adherenceScore++; }
+      return adherenceScore === totalDosesRequired;
+    }).length;
+    const completionRate = newPatients > 0 ? Math.round((completed / newPatients) * 100) : 0;
+    const adherenceRate = newPatients > 0 ? Math.round((adherent / newPatients) * 100) : 0;
+    const overdueRate = newPatients > 0 ? Math.round((overdue / newPatients) * 100) : 0;
+    monthlyData = {
+      newPatients, completed, active, overdue, adherent, completionRate, adherenceRate, overdueRate,
+      demographics: analyzeDemographics(filteredPatients),
+      riskFactors: analyzeRiskFactors(filteredPatients),
+      treatmentTypes: analyzeTreatmentTypes(filteredPatients)
+    };
+  } else {
+    // For monthly/year or ISO-month cases rely on existing helper
+    monthlyData = calculateMonthlyData(selectedMonth === 'monthly' ? 'current' : (selectedMonth === 'yearly' ? 'year-current' : selectedMonth), periodType);
+  }
+
+  // Update summary cards (only if elements exist)
+  const elNew = document.getElementById('monthlyNewPatients');
+  if (elNew) elNew.textContent = monthlyData.newPatients;
+  const elCompleted = document.getElementById('monthlyCompleted');
+  if (elCompleted) elCompleted.textContent = monthlyData.completed;
+  const elActive = document.getElementById('monthlyActive');
+  if (elActive) elActive.textContent = monthlyData.active;
+  const elRate = document.getElementById('monthlyRate');
+  if (elRate) elRate.textContent = monthlyData.completionRate + '%';
+
+  // Update charts with filtered data (guarded)
+  if (typeof updateChartsForMonth === 'function') {
+    updateChartsForMonth(selectedMonth, periodType);
+  }
 }
 
 // GENERATE pdf report
 function testGenerateReport() {
-    const month = document.getElementById('monthSelector')?.value || '';
-    const periodType = document.getElementById('periodType')?.value || 'month';
+  // Instead of auto-generating a printable window, show the enhanced report in-page.
+  // This keeps the UX consistent: user clicks "Generate Report" -> report appears in the
+  // Monthly Report section. They can choose to Print using the Print button.
+  try {
+    if (typeof generateMonthlyReport === 'function') {
+      generateMonthlyReport();
+      const reportSection = document.getElementById('monthlyReportSection');
+      if (reportSection) reportSection.style.display = 'block';
+      // Scroll into view for the user
+      setTimeout(() => { reportSection?.scrollIntoView({ behavior: 'smooth' }); }, 120);
+    } else {
+      console.warn('generateMonthlyReport() not found.');
+    }
+  } catch (e) {
+    console.error('Error generating in-page report:', e);
+  }
+}
 
-    const newPatients   = document.getElementById("monthlyNewPatients")?.textContent || "0";
-    const completed     = document.getElementById("monthlyCompleted")?.textContent || "0";
-    const active        = document.getElementById("monthlyActive")?.textContent || "0";
-    const completionRate= document.getElementById("monthlyRate")?.textContent || "0%";
+// Print the currently visible professional report (opened by Generate Report)
+function printProfessionalReport() {
+  const reportContent = document.getElementById('reportContent');
+  const reportSection = document.getElementById('monthlyReportSection');
+  if (!reportContent || !reportSection || reportSection.style.display === 'none') {
+    alert('No report available to print. Please click "Generate Report" first.');
+    return;
+  }
 
-    const html = `
+  // Open a new window with the report content and trigger print
+  const w = window.open('', '_blank');
+  if (!w) {
+    alert('Popup blocked. Please allow popups for this site to print the report.');
+    return;
+  }
+  const html = `
     <html>
     <head>
-        <title>San Lorenzo Animal Bite Center - Report</title>
-        <style>
-            body { font-family: Arial, sans-serif; padding: 40px; }
-
-            /* Header Area */
-            .header {
-                display: flex;
-                align-items: center;
-                gap: 15px;
-                margin-bottom: 20px;
-            }
-            .header img {
-                width: 70px;
-                height: 70px;
-            }
-            .header-title {
-                color: #7b1113; /* MAROON */
-            }
-            h1 { margin: 0; font-size: 26px; }
-            h2 { margin-top: 5px; font-size: 18px; color: #7b1113; }
-
-            /* Table Styling */
-            table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-            th, td { border: 1px solid #999; padding: 8px 10px; }
-            th { background: #f4f4f4; color: #7b1113; }
-
-            /* Labels */
-            .label { font-weight: bold; color: #7b1113; }
-        </style>
+    <title>San Lorenzo - Monthly Report</title>
+    <meta charset="utf-8" />
+    <style>
+      body{font-family:system-ui, Arial, sans-serif; padding:20px; color:#222}
+      .enhanced-report img{max-width:120px}
+    </style>
     </head>
     <body>
-
-        <div class="header">
-            <img src="/static/images/san lorenzo.jpg" alt="Clinic Logo">
-            <div class="header-title">
-                <h1>San Lorenzo Animal Bite Center</h1>
-                <h2>Treatment Analytics Report</h2>
-            </div>
-        </div>
-
-        <p><span class="label">Month:</span> ${month}</p>
-        <p><span class="label">View:</span> ${periodType}</p>
-
-        <table>
-            <tr>
-                <th>Metric</th>
-                <th>Value</th>
-            </tr>
-            <tr><td>New Patients</td><td>${newPatients}</td></tr>
-            <tr><td>Completed Treatments</td><td>${completed}</td></tr>
-            <tr><td>Active Treatments</td><td>${active}</td></tr>
-            <tr><td>Completion Rate</td><td>${completionRate}</td></tr>
-        </table>
-
-        <p style="margin-top: 30px;">Generated on: ${new Date().toLocaleString()}</p>
-
-        <script>
-        window.onload = function() {
-            window.print();
-        }
-        <\/script>
-
+    ${reportContent.innerHTML}
     </body>
-    </html>
-    `;
-
-    const reportWindow = window.open("", "_blank");
-    reportWindow.document.write(html);
-    reportWindow.document.close();
+    </html>`;
+  w.document.open();
+  w.document.write(html);
+  w.document.close();
+  w.focus();
+  // Give the new window a short time to render before printing
+  setTimeout(() => { try { w.print(); } catch (err) { console.error(err); } }, 300);
 }
 
 
@@ -1887,9 +1959,86 @@ function analyzeTreatmentTypes(patients) {
 }
 
 function generateMonthlyReport() {
-  const selectedMonth = document.getElementById('monthSelector').value;
+  const monthSelectorEl = document.getElementById('monthSelector');
+  const selectedMonth = monthSelectorEl?.value || 'all';
   const periodType = document.getElementById('periodType')?.value || 'month';
-  const monthlyData = calculateMonthlyData(selectedMonth, periodType);
+  const optionText = monthSelectorEl ? monthSelectorEl.options[monthSelectorEl.selectedIndex].text : selectedMonth;
+  // Build filteredPatients for the selected period so report matches user selection
+  const isoMonthRegex = /^\d{4}-\d{2}$/;
+  let filteredPatients = (typeof patientsData !== 'undefined' ? patientsData : []).slice();
+
+  if (selectedMonth === 'all') {
+    // keep all
+  } else if (selectedMonth === 'weekly') {
+    const now = new Date();
+    const dayOfWeek = now.getDay();
+    const start = new Date(now);
+    start.setDate(now.getDate() - dayOfWeek);
+    start.setHours(0,0,0,0);
+    const end = new Date(start);
+    end.setDate(start.getDate() + 6);
+    end.setHours(23,59,59,999);
+    const startStr = start.toISOString().slice(0,10);
+    const endStr = end.toISOString().slice(0,10);
+    filteredPatients = filteredPatients.filter(p => {
+      const d0 = p.day0 || '';
+      const d28 = p.day28 || '';
+      return (d0 >= startStr && d0 <= endStr) || (d28 >= startStr && d28 <= endStr);
+    });
+  } else if (selectedMonth === 'monthly' || selectedMonth === 'current') {
+    const monthStr = new Date().toISOString().slice(0,7);
+    filteredPatients = filteredPatients.filter(p => (p.day0 && p.day0.startsWith(monthStr)) || (p.day28 && p.day28.startsWith(monthStr)));
+  } else if (selectedMonth === 'yearly' || (periodType === 'year' && selectedMonth === 'year-current')) {
+    const yearStr = new Date().getFullYear().toString();
+    filteredPatients = filteredPatients.filter(p => (p.day0 && p.day0.startsWith(yearStr)) || (p.day28 && p.day28.startsWith(yearStr)));
+  } else if (isoMonthRegex.test(selectedMonth)) {
+    filteredPatients = filteredPatients.filter(p => (p.day0 && p.day0.startsWith(selectedMonth)) || (p.day28 && p.day28.startsWith(selectedMonth)));
+  } else if (periodType === 'year' && selectedMonth && selectedMonth !== 'all') {
+    const year = selectedMonth === 'year-current' ? new Date().getFullYear().toString() : selectedMonth;
+    filteredPatients = filteredPatients.filter(p => (p.day0 && p.day0.startsWith(year)) || (p.day28 && p.day28.startsWith(year)));
+  }
+
+  // Compute monthlyData from filteredPatients when appropriate
+  let monthlyData = null;
+  if (selectedMonth === 'weekly') {
+    const today = new Date().toISOString().split('T')[0];
+    const newPatients = filteredPatients.filter(p => p.day0).length;
+    const completed = filteredPatients.filter(p => p.day28 && p.day28 <= today).length;
+    const active = filteredPatients.filter(p => (p.day0 && p.day0 <= today) && (!p.day28 || p.day28 > today)).length;
+    const overdue = filteredPatients.filter(p => {
+      if (!p.day0) return false;
+      const day0Date = new Date(p.day0);
+      const daysSinceStart = Math.floor((new Date() - day0Date) / (1000 * 60 * 60 * 24));
+      if (daysSinceStart >= 6 && (!p.day3 || p.day3 < today)) return true;
+      if (daysSinceStart >= 10 && (!p.day7 || p.day7 < today)) return true;
+      if (daysSinceStart >= 17 && (!p.day14 || p.day14 < today)) return true;
+      if (daysSinceStart >= 31 && (!p.day28 || p.day28 < today)) return true;
+      return false;
+    }).length;
+    const adherent = filteredPatients.filter(p => {
+      if (!p.day0) return false;
+      const day0Date = new Date(p.day0);
+      const daysSinceStart = Math.floor((new Date() - day0Date) / (1000 * 60 * 60 * 24));
+      let adherenceScore = 1; let totalDosesRequired = 1;
+      if (daysSinceStart >= 3) { totalDosesRequired++; if (p.day3) adherenceScore++; }
+      if (daysSinceStart >= 7) { totalDosesRequired++; if (p.day7) adherenceScore++; }
+      if (daysSinceStart >= 14) { totalDosesRequired++; if (p.day14) adherenceScore++; }
+      if (daysSinceStart >= 28) { totalDosesRequired++; if (p.day28) adherenceScore++; }
+      return adherenceScore === totalDosesRequired;
+    }).length;
+    const completionRate = newPatients > 0 ? Math.round((completed / newPatients) * 100) : 0;
+    const adherenceRate = newPatients > 0 ? Math.round((adherent / newPatients) * 100) : 0;
+    const overdueRate = newPatients > 0 ? Math.round((overdue / newPatients) * 100) : 0;
+    monthlyData = {
+      newPatients, completed, active, overdue, adherent, completionRate, adherenceRate, overdueRate,
+      demographics: analyzeDemographics(filteredPatients),
+      riskFactors: analyzeRiskFactors(filteredPatients),
+      treatmentTypes: analyzeTreatmentTypes(filteredPatients)
+    };
+  } else {
+    monthlyData = calculateMonthlyData(selectedMonth === 'monthly' ? 'current' : (selectedMonth === 'yearly' ? 'year-current' : selectedMonth), periodType);
+  }
+
   const reportSection = document.getElementById('monthlyReportSection');
   const reportContent = document.getElementById('reportContent');
   
@@ -1901,15 +2050,36 @@ function generateMonthlyReport() {
     } else if (selectedMonth === 'current') {
       rangeLabel = 'Current Month';
     } else {
-      rangeLabel = new Date(selectedMonth + '-01').toLocaleDateString('en', {month: 'long', year: 'numeric'});
+      // If the select value is an ISO month like '2025-11', parse it.
+      // If it's a semantic value (e.g. 'monthly', 'weekly', 'yearly'), fall back to the option's displayed text.
+      const isoMonthRegex = /^\d{4}-\d{2}$/;
+      if (isoMonthRegex.test(selectedMonth)) {
+        rangeLabel = new Date(selectedMonth + '-01').toLocaleDateString('en', {month: 'long', year: 'numeric'});
+      } else {
+        rangeLabel = optionText || selectedMonth;
+      }
     }
-
   }
 
-  // Get completed patients from the global data
-  const completedPatients = globalPatientsData.filter(p => {
-    return p.day0 && p.day3 && p.day7 && p.day14 && p.day28;
-  });
+  // Determine a report title that reflects the user's selected view
+  let reportTitle = 'Treatment Report';
+  if (selectedMonth === 'weekly') reportTitle = 'Weekly Treatment Report';
+  else if (periodType === 'year' || selectedMonth === 'yearly' || selectedMonth === 'year-current') reportTitle = 'Yearly Treatment Report';
+  else if (selectedMonth === 'monthly' || selectedMonth === 'current' || isoMonthRegex.test(selectedMonth)) reportTitle = 'Monthly Treatment Report';
+
+  // Get clinic logo from the page (fallback to a static path)
+  const sidebarLogo = document.querySelector('.sidebar-logo');
+  const logoSrc = sidebarLogo ? sidebarLogo.src : '/static/images/san%20lorenzo.jpg';
+
+  // Completed patients should be based on the filtered period
+  const completedPatients = filteredPatients.filter(p => p.day0 && p.day3 && p.day7 && p.day14 && p.day28);
+
+  // Normalize fields so templates can rely on `patient_name` and `service_type`
+  const normalizedCompleted = completedPatients.map(p => ({
+    ...p,
+    patient_name: p.patient_name || p.name || p.patientName || '',
+    service_type: p.service_type || p.service || p.serviceType || ''
+  }));
 
   // Compare with previous period (simulated data)
   const previousStats = {
@@ -1933,6 +2103,8 @@ function generateMonthlyReport() {
       .enhanced-report h2 { font-size: 1.75rem; margin: 0 0 .5rem; color:#800020; }
       .enhanced-report h3 { font-size: 1.25rem; margin: 1.5rem 0 .5rem; color:#333; border-bottom: 2px solid #800020; padding-bottom: .25rem; }
       .enhanced-report .meta { color:#555; font-size:.95rem; margin-bottom: 1.5rem; }
+      .enhanced-report .report-header { text-align: center; margin-bottom: 1rem; }
+      .enhanced-report .report-logo { display:block; margin: 0 auto 8px; width: 84px; height: 84px; object-fit:cover; border-radius: 8px; }
       .enhanced-report .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin: 1rem 0; }
       .enhanced-report .stat-card { background: #f8f9fa; border: 1px solid #dee2e6; padding: 1rem; border-radius: 8px; text-align: center; }
       .enhanced-report .stat-card strong { display: block; font-size: 1.5rem; color: #800020; margin-bottom: .25rem; }
@@ -1944,9 +2116,12 @@ function generateMonthlyReport() {
       .enhanced-report ul { margin: .5rem 0 1rem 1.5rem; }
       .enhanced-report .comparison-section { background: #f8f9fa; padding: 1rem; border-radius: 8px; margin: 1rem 0; }
     </style>
-    <div class="enhanced-report">
-      <h2>Monthly Treatment Report</h2>
-      <div class="meta">San Lorenzo Animal Bite Center — ${rangeLabel} · Generated ${new Date().toLocaleDateString('en-US', {year:'numeric',month:'long',day:'numeric',hour:'2-digit',minute:'2-digit'})}</div>
+      <div class="enhanced-report">
+      <div class="report-header">
+        <img src="${logoSrc}" alt="Clinic Logo" class="report-logo" />
+        <h2>${escapeHtml(reportTitle)}</h2>
+        <div class="meta">San Lorenzo Animal Bite Center — ${escapeHtml(rangeLabel)} · Generated ${new Date().toLocaleDateString('en-US', {year:'numeric',month:'long',day:'numeric',hour:'2-digit',minute:'2-digit'})}</div>
+      </div>
       
       <h3>Performance Overview</h3>
       <div class="stats-grid">
@@ -1983,13 +2158,13 @@ function generateMonthlyReport() {
           </tr>
         </thead>
         <tbody>
-          ${completedPatients.length > 0 ? 
-            completedPatients.map(p => `
+          ${normalizedCompleted.length > 0 ? 
+            normalizedCompleted.map(p => `
               <tr>
-                <td>${p.patient_name}</td>
-                <td>${new Date(p.day0).toLocaleDateString()}</td>
-                <td>${new Date(p.day28).toLocaleDateString()}</td>
-                <td>${p.service_type}</td>
+                <td>${escapeHtml(p.patient_name || '')}</td>
+                <td>${p.day0 ? new Date(p.day0).toLocaleDateString() : ''}</td>
+                <td>${p.day28 ? new Date(p.day28).toLocaleDateString() : ''}</td>
+                <td>${escapeHtml(p.service_type || '')}</td>
                 <td><span class="status-badge">Completed</span></td>
               </tr>
             `).join('') :
@@ -2351,53 +2526,140 @@ function exportReport() {
   }
 }
 
-function calculateDailyProgress() {
-  const currentMonth = new Date().toISOString().slice(0, 7);
-  const daysInMonth = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate();
-  
-  const days = [];
-  const newPatients = [];
-  const completed = [];
-  
+function calculateDailyProgress(selectedMonth = null, periodType = 'month') {
+  // Returns labels and counts for daily chart depending on selection
+  const isoMonthRegex = /^\d{4}-\d{2}$/;
+  let labels = [];
+  let newPatients = [];
+  let completed = [];
+
+  // Weekly view: show 7 days for the current week
+  if (selectedMonth === 'weekly') {
+    const now = new Date();
+    const dayOfWeek = now.getDay();
+    const start = new Date(now);
+    start.setDate(now.getDate() - dayOfWeek);
+    start.setHours(0,0,0,0);
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(start);
+      d.setDate(start.getDate() + i);
+      const dateStr = d.toISOString().slice(0,10);
+      labels.push(d.toLocaleDateString(undefined, {weekday: 'short', month: 'numeric', day: 'numeric'}));
+      newPatients.push(patientsData.filter(p => p.day0 === dateStr).length);
+      completed.push(patientsData.filter(p => p.day28 === dateStr).length);
+    }
+    return { labels, newPatients, completed };
+  }
+
+  // Year view: show 12 months
+  if (periodType === 'year' || selectedMonth === 'yearly' || selectedMonth === 'year-current') {
+    const year = selectedMonth === 'year-current' ? new Date().getFullYear().toString() : (selectedMonth || new Date().getFullYear().toString());
+    for (let m = 1; m <= 12; m++) {
+      const month = m.toString().padStart(2, '0');
+      const monthStr = `${year}-${month}`;
+      labels.push(new Date(year + '-' + month + '-01').toLocaleString(undefined, {month: 'short'}));
+      newPatients.push(patientsData.filter(p => p.day0 && p.day0.startsWith(monthStr)).length);
+      completed.push(patientsData.filter(p => p.day28 && p.day28.startsWith(monthStr)).length);
+    }
+    return { labels, newPatients, completed };
+  }
+
+  // Monthly or ISO month: show days of that month
+  let monthStr = null;
+  if (selectedMonth === 'monthly' || selectedMonth === 'current' || !selectedMonth) {
+    monthStr = new Date().toISOString().slice(0,7);
+  } else if (isoMonthRegex.test(selectedMonth)) {
+    monthStr = selectedMonth;
+  } else {
+    // fallback to current month
+    monthStr = new Date().toISOString().slice(0,7);
+  }
+
+  const [y, mo] = monthStr.split('-').map(s => parseInt(s,10));
+  const daysInMonth = new Date(y, mo, 0).getDate();
   for (let day = 1; day <= daysInMonth; day++) {
-    const dateStr = `${currentMonth}-${day.toString().padStart(2, '0')}`;
-    days.push(day.toString());
-    
+    const dateStr = `${monthStr}-${day.toString().padStart(2, '0')}`;
+    labels.push(day.toString());
     newPatients.push(patientsData.filter(p => p.day0 === dateStr).length);
     completed.push(patientsData.filter(p => p.day28 === dateStr).length);
   }
-  
-  return { days, newPatients, completed };
+  return { labels, newPatients, completed };
 }
 
-function calculateWeeklyTrends() {
-  const weeks = ['Week 1', 'Week 2', 'Week 3', 'Week 4'];
-  const started = [0, 0, 0, 0];
-  const completed = [0, 0, 0, 0];
-  
-  const currentMonth = new Date().toISOString().slice(0, 7);
-  
+function calculateWeeklyTrends(selectedMonth = null, periodType = 'month') {
+  // Returns labels and counts for the weekly/period trends chart.
+  const isoMonthRegex = /^\d{4}-\d{2}$/;
+  // Year view: return months as labels
+  if (periodType === 'year' || selectedMonth === 'yearly' || selectedMonth === 'year-current') {
+    const year = selectedMonth === 'year-current' ? new Date().getFullYear().toString() : (selectedMonth || new Date().getFullYear().toString());
+    const labels = [];
+    const started = [];
+    const completed = [];
+    for (let m = 1; m <= 12; m++) {
+      const month = m.toString().padStart(2, '0');
+      const monthStr = `${year}-${month}`;
+      labels.push(new Date(year + '-' + month + '-01').toLocaleString(undefined, {month: 'short'}));
+      started.push(patientsData.filter(p => p.day0 && p.day0.startsWith(monthStr)).length);
+      completed.push(patientsData.filter(p => p.day28 && p.day28.startsWith(monthStr)).length);
+    }
+    return { labels, started, completed };
+  }
+
+  // Weekly view: return 7 day labels (short)
+  if (selectedMonth === 'weekly') {
+    const now = new Date();
+    const dayOfWeek = now.getDay();
+    const start = new Date(now);
+    start.setDate(now.getDate() - dayOfWeek);
+    start.setHours(0,0,0,0);
+    const labels = [];
+    const started = [];
+    const completed = [];
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(start);
+      d.setDate(start.getDate() + i);
+      const dateStr = d.toISOString().slice(0,10);
+      labels.push(d.toLocaleDateString(undefined, {weekday: 'short'}));
+      started.push(patientsData.filter(p => p.day0 === dateStr).length);
+      completed.push(patientsData.filter(p => p.day28 === dateStr).length);
+    }
+    return { labels, started, completed };
+  }
+
+  // Monthly or ISO-month: split month into 4 weeks
+  let monthStr = null;
+  if (selectedMonth === 'monthly' || selectedMonth === 'current' || !selectedMonth) {
+    monthStr = new Date().toISOString().slice(0,7);
+  } else if (isoMonthRegex.test(selectedMonth)) {
+    monthStr = selectedMonth;
+  } else {
+    monthStr = new Date().toISOString().slice(0,7);
+  }
+  const [y, mo] = monthStr.split('-').map(s => parseInt(s,10));
+  const daysInMonth = new Date(y, mo, 0).getDate();
+  const labels = ['Week 1', 'Week 2', 'Week 3', 'Week 4'];
+  const started = [0,0,0,0];
+  const completed = [0,0,0,0];
   patientsData.forEach(patient => {
-    if (patient.day0 && patient.day0.startsWith(currentMonth)) {
+    if (patient.day0 && patient.day0.startsWith(monthStr)) {
       const day = parseInt(patient.day0.split('-')[2]);
       const week = Math.min(Math.floor((day - 1) / 7), 3);
       started[week]++;
     }
-    
-    if (patient.day28 && patient.day28.startsWith(currentMonth)) {
+    if (patient.day28 && patient.day28.startsWith(monthStr)) {
       const day = parseInt(patient.day28.split('-')[2]);
       const week = Math.min(Math.floor((day - 1) / 7), 3);
       completed[week]++;
     }
   });
-  
-  return { weeks, started, completed };
+  return { labels, started, completed };
 }
 
 function updateChartsForMonth(selectedMonth, periodType = 'month') {
   // Update charts with filtered data for selected month
   const completedPatients = calculateCompletedTreatments(selectedMonth, periodType);
   const serviceData = calculateServiceDistribution(selectedMonth, periodType);
+  console.debug('updateChartsForMonth:', { selectedMonth, periodType, completedPatientsCount: completedPatients && (completedPatients.completed + completedPatients.inProgress + completedPatients.notStarted), serviceCount: (serviceData && (serviceData.counts||[]).length) });
   
   // Update completion chart
   charts.completion.data.datasets[0].data = [
@@ -2413,16 +2675,22 @@ function updateChartsForMonth(selectedMonth, periodType = 'month') {
   charts.service.update();
   
   // Update daily progress chart
-  const dailyData = calculateDailyProgress();
-  charts.daily.data.labels = dailyData.days;
-  charts.daily.data.datasets[0].data = dailyData.newPatients;
-  charts.daily.data.datasets[1].data = dailyData.completed;
+  const dailyData = calculateDailyProgress(selectedMonth, periodType);
+  const dailyLabels = dailyData.labels || dailyData.days || [];
+  const dailyNew = dailyData.newPatients || Array(dailyLabels.length).fill(0);
+  const dailyCompleted = dailyData.completed || Array(dailyLabels.length).fill(0);
+  charts.daily.data.labels = dailyLabels;
+  charts.daily.data.datasets[0].data = dailyNew;
+  charts.daily.data.datasets[1].data = dailyCompleted;
   charts.daily.update();
   
   // Update weekly trends
-  const weeklyData = calculateWeeklyTrends();
-  charts.weekly.data.datasets[0].data = weeklyData.started;
-  charts.weekly.data.datasets[1].data = weeklyData.completed;
+  const weeklyData = calculateWeeklyTrends(selectedMonth, periodType);
+  const weeklyLabels = weeklyData.labels || weeklyData.weeks || [];
+  charts.weekly.data.labels = weeklyLabels;
+  charts.weekly.data.datasets[0].data = weeklyData.started || Array(weeklyLabels.length).fill(0);
+  charts.weekly.data.datasets[1].data = weeklyData.completed || Array(weeklyLabels.length).fill(0);
+  charts.weekly.update();
   charts.weekly.update();
 }
 
