@@ -557,22 +557,23 @@ def employee_dashboard():
             WHERE day3 >= ? OR day7 >= ? OR day14 >= ? OR day28 >= ?
         """, (today, today, today, today)).fetchone()
         
-        # Patients today (based on any scheduled appointment today)
-        patients_today = conn.execute("""
-            SELECT COUNT(*) as count FROM patients 
-            WHERE day0 = ? OR day3 = ? OR day7 = ? OR day14 = ? OR day28 = ?
-        """, (today, today, today, today, today)).fetchone()
+        # Patients today: count patients with an active treatment ('processing').
+        # Treat NULL overall_status as 'processing' for compatibility with existing records.
+        patients_today_count = conn.execute("""
+            SELECT COUNT(*) as count FROM patients
+            WHERE lower(COALESCE(overall_status, 'processing')) = 'processing'
+        """).fetchone()
 
         employee_id = session.get('employee_id')
         user = conn.execute('SELECT * FROM employees WHERE employee_id = ?', (employee_id,)).fetchone()
         return render_template("employee-dashboard.html", 
-                             patients=patients_list,
-                             patients_json=json.dumps(patients_list, default=str),
-                             upcoming_appointments=[{'count': upcoming_appointments['count'] if upcoming_appointments else 0}],
-                             patients_today=[{'count': patients_today['count'] if patients_today else 0}],
-                             employee_name=session.get('employee_name', 'User'),
-                             role=session.get('role', 'employee'),
-                             user=user)
+                     patients=patients_list,
+                     patients_json=json.dumps(patients_list, default=str),
+                     upcoming_appointments=[{'count': upcoming_appointments['count'] if upcoming_appointments else 0}],
+                     patients_today=[{'count': patients_today_count['count'] if patients_today_count else 0}],
+                     employee_name=session.get('employee_name', 'User'),
+                     role=session.get('role', 'employee'),
+                     user=user)
     finally:
         conn.close()
 
@@ -608,7 +609,8 @@ def admin_dashboard():
     patients_list = [dict(row) for row in patients]
     today = date.today().isoformat()
     upcoming_appointments = conn.execute("SELECT COUNT(*) as count FROM patients WHERE day3 >= ? OR day7 >= ? OR day14 >= ? OR day28 >= ?", (today, today, today, today)).fetchone()
-    patients_today = conn.execute("SELECT COUNT(*) as count FROM patients WHERE day0 = ? OR day3 = ? OR day7 = ? OR day14 = ? OR day28 = ?", (today, today, today, today, today)).fetchone()
+    # Patients today: count active treatments (processing). Use patients_list which already includes overall_status.
+    patients_today_count = sum(1 for p in patients_list if str(p.get('overall_status','processing')).strip().lower() == 'processing')
     # Count completed treatments from persisted overall_status
     completed_count = sum(1 for p in patients_list if str(p.get('overall_status','')).lower() == 'complete')
 
@@ -616,7 +618,7 @@ def admin_dashboard():
                            patients=patients_list,
                            patients_json=json.dumps(patients_list, default=str),
                            upcoming_appointments=[{'count': upcoming_appointments['count'] if upcoming_appointments else 0}],
-                           patients_today=[{'count': patients_today['count'] if patients_today else 0}],
+                           patients_today=[{'count': patients_today_count if patients_today_count else 0}],
                            completed_count=completed_count,
                            employee_name=session.get('employee_name', 'Admin'),
                            role='admin')

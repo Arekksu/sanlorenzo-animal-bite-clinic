@@ -3382,17 +3382,26 @@ function calculateCompletedTreatments(filterMonth = null, periodType = 'month') 
   const fields = ['day0_done','day3_done','day7_done','day14_done','day28_done','booster1_done','booster2_done'];
 
   filteredPatients.forEach(p => {
+    // Prefer persisted overall_status when present (server uses 'complete')
+    const statusStr = (p && (p.overall_status || p.overallStatus || p.overall || '')) .toString().trim().toLowerCase();
+    if (statusStr === 'complete' || statusStr === 'completed') {
+      completed++;
+      return;
+    }
+
+    // Fallback: derive from per-dose done flags
     let allDone = true;
     let anyDone = false;
 
     fields.forEach(f => {
+      // support alternate keys without underscore or with different naming
       const alt = f.replace(/_/g, '');
       const v = (p && (p[f] !== undefined ? p[f] : (p[alt] !== undefined ? p[alt] : 0))) || 0;
-      if (String(v) === '1' || String(v) === 'true') anyDone = true;
+      if (String(v) === '1' || String(v).toLowerCase() === 'true') anyDone = true;
       else allDone = false;
     });
 
-    if (allDone && filteredPatients.length > 0) completed++;
+    if (allDone) completed++;
     else if (anyDone) inProgress++;
     else notStarted++;
   });
