@@ -152,8 +152,38 @@ def update_schedule_status(patient_id):
         # update sa SQLite
         conn = get_db()
         cur = conn.cursor()
+        # Ensure overall_status column exists before we update/recompute
+        cols = [r[1] for r in cur.execute("PRAGMA table_info(patients)").fetchall()]
+        if 'overall_status' not in cols:
+            cur.execute("ALTER TABLE patients ADD COLUMN overall_status TEXT DEFAULT NULL")
+            conn.commit()
+
         cur.execute(f"UPDATE patients SET {field} = ? WHERE id = ?", (done, patient_id))
         conn.commit()
+
+        # Recompute overall_status from all done flags
+        # Use COALESCE to treat NULL as 0
+        recompute_sql = """
+            UPDATE patients
+            SET overall_status = CASE
+                WHEN COALESCE(day0_done,0)=1 AND COALESCE(day3_done,0)=1 AND COALESCE(day7_done,0)=1
+                     AND COALESCE(day14_done,0)=1 AND COALESCE(day28_done,0)=1
+                     AND COALESCE(booster1_done,0)=1 AND COALESCE(booster2_done,0)=1
+                    THEN 'complete'
+                WHEN COALESCE(day0_done,0)=1 OR COALESCE(day3_done,0)=1 OR COALESCE(day7_done,0)=1
+                     OR COALESCE(day14_done,0)=1 OR COALESCE(day28_done,0)=1
+                     OR COALESCE(booster1_done,0)=1 OR COALESCE(booster2_done,0)=1
+                    THEN 'incomplete'
+                ELSE 'processing'
+            END
+            WHERE id = ?
+        """
+        cur.execute(recompute_sql, (patient_id,))
+        conn.commit()
+
+        # Audit log
+        log_audit_trail(session.get('employee_id'), session.get('employee_name'),
+                       f"Toggled {field}={done} for patient_id={patient_id}", request.remote_addr)
 
         print("Updated", field, "for patient", patient_id, "=", done)
         return jsonify(success=True), 200
@@ -162,6 +192,40 @@ def update_schedule_status(patient_id):
         import traceback
         traceback.print_exc()  # lalabas sa terminal ang tunay na error
         return jsonify(success=False, error=str(e)), 500
+
+
+@app.route('/patients/<int:patient_id>/status', methods=['POST'])
+def update_patient_overall_status(patient_id):
+    """Update a patient's overall status (complete/incomplete/processing).
+    This will create the `overall_status` column if it's missing.
+    """
+    if 'employee_id' not in session:
+        return jsonify({'success': False, 'error': 'Unauthorized'}), 401
+    try:
+        data = request.get_json(force=True) or {}
+        status = (data.get('status') or '').strip().lower()
+        if status not in ('complete', 'incomplete', 'processing'):
+            return jsonify({'success': False, 'error': 'Invalid status value'}), 400
+
+        conn = get_db()
+        # Ensure column exists
+        cur = conn.cursor()
+        cols = [r[1] for r in cur.execute("PRAGMA table_info(patients)").fetchall()]
+        if 'overall_status' not in cols:
+            cur.execute("ALTER TABLE patients ADD COLUMN overall_status TEXT DEFAULT NULL")
+            conn.commit()
+
+        cur.execute('UPDATE patients SET overall_status = ? WHERE id = ?', (status, patient_id))
+        conn.commit()
+
+        # Audit log
+        log_audit_trail(session.get('employee_id'), session.get('employee_name'),
+                       f"Set overall_status={status} for patient_id={patient_id}", request.remote_addr)
+
+        return jsonify({'success': True}), 200
+    except Exception as e:
+        app.logger.exception('Failed to update overall status')
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 
 @app.route('/get_employee/<int:employee_id>')
@@ -518,16 +582,42 @@ def employee_dashboard():
 def admin_dashboard():
     # Provide the same data as employee_dashboard but render as admin
     conn = get_db()
-    patients = conn.execute("SELECT id, patient_name, date_of_bite, service_type, age, gender, contact_number, day0, day3, day7, day14, day28 FROM patients").fetchall()
+    patients = conn.execute("""
+        SELECT
+            id,
+            patient_name,
+            date_of_bite,
+            service_type,
+            age,
+            gender,
+            contact_number,
+            address,
+            day0, day3, day7, day14, day28,
+            booster1, booster2,
+            COALESCE(day0_done, 0)      AS day0_done,
+            COALESCE(day3_done, 0)      AS day3_done,
+            COALESCE(day7_done, 0)      AS day7_done,
+            COALESCE(day14_done, 0)     AS day14_done,
+            COALESCE(day28_done, 0)     AS day28_done,
+            COALESCE(booster1_done, 0)  AS booster1_done,
+            COALESCE(booster2_done, 0)  AS booster2_done,
+            COALESCE(overall_status, 'processing') AS overall_status
+        FROM patients
+    """).fetchall()
+
     patients_list = [dict(row) for row in patients]
     today = date.today().isoformat()
     upcoming_appointments = conn.execute("SELECT COUNT(*) as count FROM patients WHERE day3 >= ? OR day7 >= ? OR day14 >= ? OR day28 >= ?", (today, today, today, today)).fetchone()
     patients_today = conn.execute("SELECT COUNT(*) as count FROM patients WHERE day0 = ? OR day3 = ? OR day7 = ? OR day14 = ? OR day28 = ?", (today, today, today, today, today)).fetchone()
+    # Count completed treatments from persisted overall_status
+    completed_count = sum(1 for p in patients_list if str(p.get('overall_status','')).lower() == 'complete')
+
     return render_template('admin-dashboard.html',
                            patients=patients_list,
                            patients_json=json.dumps(patients_list, default=str),
                            upcoming_appointments=[{'count': upcoming_appointments['count'] if upcoming_appointments else 0}],
                            patients_today=[{'count': patients_today['count'] if patients_today else 0}],
+                           completed_count=completed_count,
                            employee_name=session.get('employee_name', 'Admin'),
                            role='admin')
 
@@ -547,7 +637,9 @@ def patient_detail(patient_id):
                 exposure, type_of_exposure,
                 additional_remarks, tt1, tt6, tt30, anti_tetanus,
                 vaccinated, erig_refusal,
-                day0, day3, day7, day14, day28
+                day0, day3, day7, day14, day28,
+                day0_done, day3_done, day7_done, day14_done, day28_done,
+                booster1_done, booster2_done
             FROM patients
             WHERE id = ?
         """, (patient_id,)).fetchone()
@@ -620,7 +712,10 @@ def api_patients():
         exposure, type_of_exposure,
         additional_remarks, tt1, tt6, tt30, anti_tetanus,
         vaccinated,
-        day0, day3, day7, day14, day28
+        day0, day3, day7, day14, day28,
+        day0_done, day3_done, day7_done, day14_done, day28_done,
+        booster1_done, booster2_done,
+        overall_status
     FROM patients
     """).fetchall()
 

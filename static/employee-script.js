@@ -1,3 +1,110 @@
+// Update patient status in the Patient Records table
+function updatePatientTableStatuses() {
+  // This function assumes you have access to patient data and their schedule/booster status
+  // For demo, we'll use localStorage to check status as in the modal logic
+  document.querySelectorAll('#patient-table-body tr[data-patient-id]').forEach(row => {
+    const patientId = row.getAttribute('data-patient-id');
+    // List of all schedule/booster fields to check (should match your backend fields)
+    const fields = [
+      'day0_done','day3_done','day7_done','day14_done','day28_done',
+      'booster1_done','booster2_done'
+    ];
+    let allDone = true, anyDone = false;
+    for (const field of fields) {
+      // preferred source: data-* attributes on the row (dataset keys are camelCased)
+      const datasetKey = field.replace(/_/g, '-');
+      const datasetProp = datasetKey.split('-').map((s,i)=> i===0? s : s.charAt(0).toUpperCase()+s.slice(1)).join('');
+      let existsInDataset = false;
+      let val;
+      if (row.dataset && Object.prototype.hasOwnProperty.call(row.dataset, datasetProp)){
+        existsInDataset = true;
+        val = row.dataset[datasetProp];
+      }
+      if (!existsInDataset) {
+        // fallback to localStorage keys used elsewhere
+        val = localStorage.getItem(`patient_${patientId}_${field}`);
+      }
+      if (String(val) === '1' || String(val) === 'true') anyDone = true;
+      else allDone = false;
+    }
+    // Prefer persisted overall_status on the row if available
+    let status = (row.dataset && row.dataset.overallStatus) ? String(row.dataset.overallStatus).trim() : '';
+    if (!status) {
+      status = 'Processing';
+      if (allDone) status = 'Complete';
+      else if (anyDone) status = 'Incomplete';
+    } else {
+      // Normalize casing
+      status = String(status).charAt(0).toUpperCase() + String(status).slice(1).toLowerCase();
+    }
+    // Update cell
+    const cell = row.querySelector('.patient-status-cell .status-label');
+    if (cell) {
+      cell.textContent = status;
+      cell.className = 'status-label status-' + status.toLowerCase();
+    }
+  });
+}
+
+// Run on page load and after any modal update
+document.addEventListener('DOMContentLoaded', function() {
+  updatePatientTableStatuses();
+});
+// Show Complete/Incomplete button based on patient status in Patient Details modal
+function updatePatientStatusButtons() {
+  const modal = document.getElementById('patientModal');
+  if (!modal) return;
+  // Use modal.dataset.overallStatus (set during open) as authoritative for the button highlight
+  const completeBtn = document.getElementById('mark-complete-btn');
+  const incompleteBtn = document.getElementById('mark-incomplete-btn');
+  const current = (modal.dataset.overallStatus || '').toLowerCase() || '';
+  if (completeBtn && incompleteBtn) {
+    completeBtn.style.display = 'inline-block';
+    incompleteBtn.style.display = 'inline-block';
+    // Reset styles
+    completeBtn.style.opacity = '1';
+    incompleteBtn.style.opacity = '1';
+    completeBtn.classList.remove('active');
+    incompleteBtn.classList.remove('active');
+    // Highlight whichever matches current status; both remain clickable
+    if (current === 'complete') {
+      completeBtn.classList.add('active');
+    } else if (current === 'incomplete') {
+      incompleteBtn.classList.add('active');
+    }
+  }
+}
+
+// Attach event listeners for modal open and toggling
+document.addEventListener('DOMContentLoaded', function() {
+  if (document.getElementById('patientModal')) {
+    updatePatientStatusButtons();
+    document.getElementById('patientModal').addEventListener('click', function(e) {
+      if (e.target.classList.contains('schedule-toggle')) {
+        setTimeout(updatePatientStatusButtons, 200);
+      }
+    });
+    // Attach click handlers for Complete / Incomplete buttons (always clickable)
+    const completeBtn = document.getElementById('mark-complete-btn');
+    const incompleteBtn = document.getElementById('mark-incomplete-btn');
+    if (completeBtn) {
+      completeBtn.addEventListener('click', function(){
+        const modal = document.getElementById('patientModal');
+        const pid = modal?.dataset?.patientId;
+        if (!pid) return alert('Patient id missing');
+        markPatientOverallStatus(pid, 'complete');
+      });
+    }
+    if (incompleteBtn) {
+      incompleteBtn.addEventListener('click', function(){
+        const modal = document.getElementById('patientModal');
+        const pid = modal?.dataset?.patientId;
+        if (!pid) return alert('Patient id missing');
+        markPatientOverallStatus(pid, 'incomplete');
+      });
+    }
+  }
+});
 // Vaccination radio button border color logic
 document.addEventListener('DOMContentLoaded', function() {
   const radios = document.querySelectorAll('.vaccination-options input[type="radio"]');
@@ -88,12 +195,37 @@ async function reloadPatientTableFromAPI(){
     const payload=await res.json();
     const patients=payload.patients || payload;
 
-    tbody.innerHTML = patients.map(p=>`
-      <tr>
+    tbody.innerHTML = patients.map(p=>{
+      // Prefer explicit overall_status from API when present, otherwise compute from done flags
+      let statusText = (p.overall_status || '') && String(p.overall_status).trim() ? String(p.overall_status).trim() : '';
+      if (!statusText) {
+        const fields = ['day0_done','day3_done','day7_done','day14_done','day28_done','booster1_done','booster2_done'];
+        let allDone = true, anyDone = false;
+        fields.forEach(f=>{
+          const v = (p[f] !== undefined) ? p[f] : (p[f.replace(/_/g,'')] || 0);
+          if (String(v) === '1' || String(v) === 'true') anyDone = true;
+          else allDone = false;
+        });
+        statusText = allDone ? 'Complete' : (anyDone ? 'Incomplete' : 'Processing');
+      } else {
+        // Normalize casing
+        statusText = String(statusText).charAt(0).toUpperCase() + String(statusText).slice(1).toLowerCase();
+      }
+      return `
+      <tr data-patient-id="${p.id}"
+          data-overall-status="${(p.overall_status||'').toString().toLowerCase()}"
+          data-day0-done="${p.day0_done||0}"
+          data-day3-done="${p.day3_done||0}"
+          data-day7-done="${p.day7_done||0}"
+          data-day14-done="${p.day14_done||0}"
+          data-day28-done="${p.day28_done||0}"
+          data-booster1-done="${p.booster1_done||0}"
+          data-booster2-done="${p.booster2_done||0}">
         <td>${p.id}</td>
         <td>${escapeHtml(p.patient_name||'')}</td>
         <td>${p.date_of_bite || ''}</td>
         <td>${escapeHtml(p.service_type||'')}</td>
+        <td class="patient-status-cell"><span class="status-label status-${statusText.toLowerCase()}">${statusText}</span></td>
         <td class="actions-cell">
           <button class="btn-view"  data-patient-id="${p.id}" title="View">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
@@ -117,9 +249,11 @@ async function reloadPatientTableFromAPI(){
           </button>
         </td>
       </tr>
-    `).join('');
+    `}).join('');
 
     wirePatientRowActions();
+    // Re-apply the current status filter after rebuilding rows
+    if (typeof applyPatientStatusFilter === 'function') applyPatientStatusFilter(currentStatusFilter);
   }catch(err){
     console.error(err);
     tbody.innerHTML = `<tr><td colspan="5">Failed to load patients.</td></tr>`;
@@ -272,7 +406,6 @@ function openPatientDetailsModal(p){
         <h3>Incident & Service</h3>
         <div class="detail-row"><label>Service:</label><span>${show(p.service_type)}</span></div>
         <div class="detail-row"><label>Route of Vaccine:</label><span>${show(p.route_of_vaccine)}</span></div>
-      
         <div class="detail-row"><label>Date of Bite:</label><span>${show(p.date_of_bite)}</span></div>
         <div class="detail-row"><label>Bite Location:</label><span>${show(p.bite_location)}</span></div>
         <div class="detail-row"><label>Place of Bite:</label><span>${show(p.place_of_bite)}</span></div>
@@ -282,21 +415,13 @@ function openPatientDetailsModal(p){
         <div class="detail-row"><label>Source Status:</label><span>${show(p.source_status)}</span></div>
         <div class="detail-row"><label>Exposure:</label><span>${show(p.exposure)}</span></div>
         <div class="detail-row"><label>Type of Exposure</label><span>${show(p.type_of_exposure)}</span></div>
-        
-
         <div class="detail-row"><label>Additional Remarks: </label><span>${show(p.additional_remarks)}</span></div>
-        <div class="detail-row"><label>TT1</label><span>${show(p.tt1)}</span></div>
-        <div class="detail-row"><label>TT6</label><span>${show(p.tt6)}</span></div>
-        <div class="detail-row"><label>TT30</label><span>${show(p.tt30)}</span></div>
-        <div class="detail-row"><label>Anti-tetanus Toxoid Dosage</label><span>${show(p.anti_tetanus)}</span></div>
-        
-        <div class="detail-row"><label>Patient Refusal of Erig Administration</label><span>${show(p.erig_refusal)}</span></div>
-        <div class="detail-row"><label>Vaccincation Route for IM</label><span>${show(p.route_im_consent)}</span></div>
-         <div class="detail-row"><label>Treatment and Vaccination</label><span>${show(p.consent)}</span></div>
-        
       </div>
       <div class="detail-section">
         <h3>Schedule</h3>
+  <div class="detail-row"><label>TT1</label><span>${show(p.tt1)}</span></div>
+  <div class="detail-row"><label>TT6</label><span>${show(p.tt6)}</span></div>
+  <div class="detail-row"><label>TT30</label><span>${show(p.tt30)}</span></div>
 
         <div class="detail-row">
           <button type="button"
@@ -355,7 +480,7 @@ function openPatientDetailsModal(p){
       </div>
 
       <div class="detail-section">
-        <h3>Booster </h3>
+        <h3>Booster and Consents</h3>
 
         <div class="detail-row">
           <button type="button"
@@ -367,7 +492,6 @@ function openPatientDetailsModal(p){
           </button>
           <span>${show(p.booster1)}</span>
         </div>
-
         <div class="detail-row">
           <button type="button"
                   class="schedule-toggle ${p.booster2_done ? 'is-done' : ''}"
@@ -378,12 +502,38 @@ function openPatientDetailsModal(p){
           </button>
           <span>${show(p.booster2)}</span>
         </div>
+        <div class="detail-row"><label>Anti-tetanus Toxoid Dosage</label><span>${show(p.anti_tetanus)}</span></div>
+        <div class="detail-row"><label>Patient Refusal of Erig Administration</label><span>${show(p.erig_refusal)}</span></div>
+        <div class="detail-row"><label>Vaccincation Route for IM</label><span>${show(p.route_im_consent)}</span></div>
+        <div class="detail-row"><label>Treatment and Vaccination</label><span>${show(p.consent)}</span></div>
       </div>
 
 
 
   `;
   openModal('patientModal');
+  // store patient id + overall status on modal for later actions
+  try {
+    const modal = document.getElementById('patientModal');
+    if (modal) {
+      modal.dataset.patientId = p.id;
+      // prefer explicit overall_status from server, else compute from fields
+      modal.dataset.overallStatus = (p.overall_status || '').toString() || '';
+      if (!modal.dataset.overallStatus) {
+        // compute from schedule/booster flags
+        const fields = ['day0_done','day3_done','day7_done','day14_done','day28_done','booster1_done','booster2_done'];
+        let allDone = true, anyDone = false;
+        fields.forEach(f=>{
+          const v = p[f] || 0;
+          if (String(v) === '1' || String(v) === 'true') anyDone = true;
+          else allDone = false;
+        });
+        modal.dataset.overallStatus = allDone ? 'complete' : (anyDone ? 'incomplete' : 'processing');
+      }
+      // update buttons UI
+      updatePatientStatusButtons();
+    }
+  } catch (e) { console.warn('Failed to set modal dataset', e); }
 }
 
 function toggleScheduleStatus(btn) {
@@ -569,6 +719,7 @@ let currentDate = new Date();
 let selectedDate = null;
 let patientsData = [];       // for calendar
 let allPatientsRows = [];    // for table filtering/sorting
+let currentStatusFilter = 'all'; // 'all' | 'complete' | 'incomplete' | 'processing'
 
 /* ---------- INIT ---------- */
 document.addEventListener('DOMContentLoaded', async () => {
@@ -1087,27 +1238,60 @@ async function reloadPatientTableFromAPI() {
       return;
     }
 
-    tbody.innerHTML = patients.map(p => `
-      <tr>
+    tbody.innerHTML = patients.map(p => {
+      // Prefer explicit overall_status from API when present, otherwise compute from done flags
+      let statusText = (p.overall_status || '') && String(p.overall_status).trim() ? String(p.overall_status).trim() : '';
+      if (!statusText) {
+        const fields = ['day0_done','day3_done','day7_done','day14_done','day28_done','booster1_done','booster2_done'];
+        let allDone = true, anyDone = false;
+        fields.forEach(f=>{
+          const v = (p[f] !== undefined) ? p[f] : (p[f.replace(/_/g,'')] || 0);
+          if (String(v) === '1' || String(v) === 'true') anyDone = true;
+          else allDone = false;
+        });
+        statusText = allDone ? 'Complete' : (anyDone ? 'Incomplete' : 'Processing');
+      } else {
+        statusText = String(statusText).charAt(0).toUpperCase() + String(statusText).slice(1).toLowerCase();
+      }
+      return `
+      <tr data-patient-id="${p.id}"
+          data-overall-status="${(p.overall_status||'').toString().toLowerCase()}"
+          data-day0-done="${p.day0_done||0}"
+          data-day3-done="${p.day3_done||0}"
+          data-day7-done="${p.day7_done||0}"
+          data-day14-done="${p.day14_done||0}"
+          data-day28-done="${p.day28_done||0}"
+          data-booster1-done="${p.booster1_done||0}"
+          data-booster2-done="${p.booster2_done||0}">
         <td>${p.id}</td>
-        <td>${escapeHtml(p.patient_name)}</td>
+        <td>${escapeHtml(p.patient_name||'')}</td>
         <td>${p.date_of_bite || ''}</td>
-        <td>${escapeHtml(p.service_type || '')}</td>
+        <td>${escapeHtml(p.service_type||'')}</td>
+        <td class="patient-status-cell"><span class="status-label status-${statusText.toLowerCase()}">${statusText}</span></td>
         <td class="actions-cell">
-          <button class="btn-view" data-patient-id="${p.id}" title="View">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"></path><circle cx="12" cy="12" r="3"></circle>
+          <button class="btn-view"  data-patient-id="${p.id}" title="View">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"></path><circle cx="12" cy="12" r="3"></circle>
+            </svg>
           </button>
           <button class="btn-edit" data-patient-id="${p.id}" title="Edit">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 3a2.828 2.828 0 1 1 4 4L7 21H3v-4L17 3z"></path>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M17 3a2.828 2.828 0 1 1 4 4L7 21H3v-4L17 3z"></path>
             </svg>
           </button>
           <button class="btn-delete" data-patient-id="${p.id}" title="Delete">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path><path d="M10 11v6"></path><path d="M14 11v6"></path><path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"></path>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="3 6 5 6 21 6"></polyline>
+              <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path>
+              <path d="M10 11v6M14 11v6M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"></path>
             </svg>
           </button>
         </td>
       </tr>
-    `).join('');
+    `}).join('');
 
     // refresh cache for search/sort
     allPatientsRows = Array.from(tbody.querySelectorAll('tr'));
@@ -1115,6 +1299,10 @@ async function reloadPatientTableFromAPI() {
 
     // wire actions
     wirePatientRowActions();
+    // ensure status badges are up-to-date
+    if (typeof updatePatientTableStatuses === 'function') updatePatientTableStatuses();
+    // re-apply status filter after reload
+    if (typeof applyPatientStatusFilter === 'function') applyPatientStatusFilter(currentStatusFilter);
 
   } catch (err) {
     console.error('reloadPatientTableFromAPI failed:', err);
@@ -1167,6 +1355,55 @@ function updateResultsCount(count, term=''){
   if (!el) return;
   el.textContent = term ? `Found ${count} result${count!==1?'s':''} for "${term}"`
                         : `Showing ${count} patient${count!==1?'s':''}`;
+}
+
+// Apply a status filter (All / Complete / Incomplete / Processing)
+function applyPatientStatusFilter(filter) {
+  currentStatusFilter = filter || 'all';
+  filterPatientTableByStatus(currentStatusFilter);
+}
+
+function filterPatientTableByStatus(filter) {
+  const q = (document.getElementById('patient-search')?.value || '').toLowerCase().trim();
+  let count = 0;
+  allPatientsRows.forEach(row => {
+    // Determine search match
+    let matchSearch = true;
+    if (q) {
+      const cells = row.cells;
+      const id = (cells[0]?.textContent || '').toLowerCase();
+      const name = (cells[1]?.textContent || '').toLowerCase();
+      const date = (cells[2]?.textContent || '').toLowerCase();
+      const service = (cells[3]?.textContent || '').toLowerCase();
+      matchSearch = !q || id.includes(q) || name.includes(q) || date.includes(q) || service.includes(q);
+    }
+
+    // Determine status match (prefer dataset attributes; fallback to status label text)
+    let statusText = '';
+    const statusLabel = row.querySelector('.patient-status-cell .status-label');
+    if (statusLabel) statusText = (statusLabel.textContent || '').toLowerCase();
+    // fallback: use dataset heuristics
+    if (!statusText) {
+      const ds = row.dataset;
+      const keys = ['day0Done','day3Done','day7Done','day14Done','day28Done','booster1Done','booster2Done'];
+      let any = false, all = true;
+      keys.forEach(k => {
+        const v = ds[k];
+        if (String(v) === '1' || String(v) === 'true') any = true;
+        else all = false;
+      });
+      if (all) statusText = 'complete';
+      else if (any) statusText = 'incomplete';
+      else statusText = 'processing';
+    }
+
+    const matchStatus = (filter === 'all') || (statusText === filter);
+
+    const visible = matchSearch && matchStatus;
+    row.style.display = visible ? '' : 'none';
+    if (visible) count++;
+  });
+  updateResultsCount(count, q);
 }
 
 /* 4) Row Actions (view/edit/delete) */
@@ -1252,24 +1489,80 @@ async function viewPatientDetails(patientId){
 /* ====================================================================== */
 
 async function fetchPatientsForCalendar() {
-  try{
+  try {
     const res = await fetch('/api/patients');
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
-    patientsData = (data.patients||[]).map(p => ({
+    const src = (data && (data.patients || data)) || [];
+    patientsData = src.map(p => ({
       id: p.id,
-      name: p.patient_name,
-      service: p.service_type,
-      dateBite: p.date_of_bite,
-      day0: p.day0,
-      day3: p.day3,
-      day7: p.day7,
-      day14: p.day14,
-      day28: p.day28
+      name: p.patient_name || p.name || '',
+      service: p.service_type || p.service || '',
+      dateBite: p.date_of_bite || p.dateBite || '',
+      day0: p.day0 || null,
+      day3: p.day3 || null,
+      day7: p.day7 || null,
+      day14: p.day14 || null,
+      day28: p.day28 || null,
+      overall_status: p.overall_status ? String(p.overall_status).trim().toLowerCase() : (p.status ? String(p.status).trim().toLowerCase() : null),
+      day0_done: p.day0_done || 0,
+      day3_done: p.day3_done || 0,
+      day7_done: p.day7_done || 0,
+      day14_done: p.day14_done || 0,
+      day28_done: p.day28_done || 0,
+      booster1_done: p.booster1_done || 0,
+      booster2_done: p.booster2_done || 0
     }));
-  }catch(err){
+    // if API returned empty, fall back to embedded server data
+    if ((!patientsData || patientsData.length === 0) && window.__INITIAL_PATIENTS && window.__INITIAL_PATIENTS.length) {
+      console.warn('API returned no patients — falling back to embedded initial patients');
+      patientsData = (window.__INITIAL_PATIENTS || []).map(p => ({
+        id: p.id,
+        name: p.patient_name || p.name || '',
+        service: p.service_type || p.service || '',
+        dateBite: p.date_of_bite || p.dateBite || '',
+        day0: p.day0 || null,
+        day3: p.day3 || null,
+        day7: p.day7 || null,
+        day14: p.day14 || null,
+        day28: p.day28 || null,
+        overall_status: p.overall_status ? String(p.overall_status).trim().toLowerCase() : null,
+        day0_done: p.day0_done || 0,
+        day3_done: p.day3_done || 0,
+        day7_done: p.day7_done || 0,
+        day14_done: p.day14_done || 0,
+        day28_done: p.day28_done || 0,
+        booster1_done: p.booster1_done || 0,
+        booster2_done: p.booster2_done || 0
+      }));
+    }
+  } catch (err) {
     console.error('fetchPatientsForCalendar failed:', err);
-    patientsData = [];
+    // Fallback to embedded initial data from server-side rendering
+    if (window.__INITIAL_PATIENTS && window.__INITIAL_PATIENTS.length) {
+      console.warn('Using embedded initial patients due to fetch error');
+      patientsData = (window.__INITIAL_PATIENTS || []).map(p => ({
+        id: p.id,
+        name: p.patient_name || p.name || '',
+        service: p.service_type || p.service || '',
+        dateBite: p.date_of_bite || p.dateBite || '',
+        day0: p.day0 || null,
+        day3: p.day3 || null,
+        day7: p.day7 || null,
+        day14: p.day14 || null,
+        day28: p.day28 || null,
+        overall_status: p.overall_status ? String(p.overall_status).trim().toLowerCase() : null,
+        day0_done: p.day0_done || 0,
+        day3_done: p.day3_done || 0,
+        day7_done: p.day7_done || 0,
+        day14_done: p.day14_done || 0,
+        day28_done: p.day28_done || 0,
+        booster1_done: p.booster1_done || 0,
+        booster2_done: p.booster2_done || 0
+      }));
+    } else {
+      patientsData = [];
+    }
   }
 }
 
@@ -1366,8 +1659,6 @@ function updateDailySchedule(date){
         </div>
         <div class="appointment-actions">
           <button class="btn-view-appointment" data-appointment='${encodeHtmlAttr(JSON.stringify(a))}'>View</button>
-          <button class="btn-mark-done" data-appointment-id="${a.id}">Done</button>
-          <button class="btn-mark-absent" data-appointment-id="${a.id}">No Show</button>
         </div>
       </div>
     `;
@@ -1590,133 +1881,362 @@ window.searchPatients = searchPatients;
 /*                          ANALYTICS CHARTS                            */
 /* ====================================================================== */
 
-let charts = {}; // Store chart instances for updates
+// ======================= ANALYTICS DASHBOARD (CLEAN) =======================
 
-function initializeAnalyticsCharts() {
-  console.log('Starting chart initialization...');
-  
-  // Check if we're on the dashboard section
-  const dashboardSection = document.getElementById('dashboard');
-  if (!dashboardSection || !dashboardSection.classList.contains('active')) {
-    console.log('Dashboard section not active, skipping chart initialization');
-    return;
-  }
-  
-  // Calculate treatment completion statistics
-  const completedPatients = calculateCompletedTreatments();
-  const serviceData = calculateServiceDistribution();
-  
-  console.log('Chart data calculated:', { completedPatients, serviceData });
-  
-  // Update completed count
-  const completedCountEl = document.getElementById('completed-count');
-  if (completedCountEl) {
-    completedCountEl.textContent = completedPatients.completed;
-  }
-  
-  // Initialize all charts
-  try {
-    initializeCompletionChart(completedPatients);
-    initializeDailyProgressChart();
-    initializeServiceChart(serviceData);
-    initializeWeeklyTrendChart();
-    console.log('All charts initialized successfully');
-  } catch (error) {
-    console.error('Error initializing charts:', error);
-  }
-  
-  // Add loaded class to all chart containers for smooth animation
-  setTimeout(() => {
-    document.querySelectorAll('.chart-container').forEach(container => {
-      container.classList.add('loaded');
-    });
-    console.log('Added loaded class to chart containers');
-  }, 100);
-  
-  // Update monthly summary for current month
-  updateMonthlyReports();
+// Shared chart registry (para isang lugar lang lahat ng Chart instances)
+const charts = {
+  completion: null,
+  daily: null,
+  service: null,
+  weekly: null,
+};
+
+// optional support for older code na gumagamit ng ANALYTICS.charts
+window.ANALYTICS = window.ANALYTICS || {};
+window.ANALYTICS.charts = charts;
+
+// Raw patients from backend (embedded sa HTML: window.__INITIAL_PATIENTS)
+const RAW_PATIENTS = Array.isArray(window.__INITIAL_PATIENTS)
+  ? window.__INITIAL_PATIENTS
+  : [];
+
+// ---------- helpers ----------
+
+function parseDate(str) {
+  if (!str) return null;
+  const d = new Date(str);
+  return Number.isNaN(d.getTime()) ? null : d;
 }
 
-function initializeCompletionChart(completedPatients) {
-  // Replace doughnut with a horizontal bar chart (counts) for clearer employee-facing view
-  const completionCtx = document.getElementById('completionChart').getContext('2d');
-  const labels = ['Completed', 'In Progress', 'Not Started'];
-  const counts = [
-    (completedPatients && completedPatients.completed) || 0,
-    (completedPatients && completedPatients.inProgress) || 0,
-    (completedPatients && completedPatients.notStarted) || 0
-  ];
-  if (charts.completion) { charts.completion.destroy(); }
-  charts.completion = new Chart(completionCtx, {
+// range ng data depende sa view (weekly / monthly / yearly)
+function getViewRange(view) {
+  const today = new Date();
+  const y = today.getFullYear();
+  const m = today.getMonth();
+
+  if (view === 'weekly') {
+    const start = new Date(today);
+    const dow = start.getDay(); // 0 (Sun) – 6 (Sat)
+    start.setDate(start.getDate() - dow);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(start);
+    end.setDate(start.getDate() + 6);
+    end.setHours(23, 59, 59, 999);
+    return { start, end };
+  }
+
+  if (view === 'yearly') {
+    const start = new Date(y, 0, 1, 0, 0, 0, 0);
+    const end = new Date(y, 11, 31, 23, 59, 59, 999);
+    return { start, end };
+  }
+
+  // default: current month
+  const start = new Date(y, m, 1, 0, 0, 0, 0);
+  const end = new Date(y, m + 1, 0, 23, 59, 59, 999);
+  return { start, end };
+}
+
+function patientsInRange(view) {
+  const { start, end } = getViewRange(view);
+  return RAW_PATIENTS.filter(p => {
+    const bite = parseDate(p.date_of_bite || p.day0);
+    if (!bite) return false;
+    return bite >= start && bite <= end;
+  });
+}
+
+// basic classification ng treatment status
+function treatmentStatus(p) {
+  const doseKeys = ['day0', 'day3', 'day7', 'day14', 'day28', 'booster1', 'booster2'];
+  const anyDose = doseKeys.some(k => parseDate(p[k]));
+  if (!anyDose) return 'notStarted';
+
+  const finalDose = parseDate(p.day28 || p.booster2);
+  const today = new Date();
+  if (finalDose && finalDose <= today) return 'completed';
+  return 'inProgress';
+}
+
+// ---------- computations for stats / charts ----------
+
+function calculateCompletedTreatments(view) {
+  const pts = patientsInRange(view);
+  let completed = 0, inProgress = 0, notStarted = 0;
+
+  pts.forEach(p => {
+    const status = treatmentStatus(p);
+    if (status === 'completed') completed++;
+    else if (status === 'notStarted') notStarted++;
+    else inProgress++;
+  });
+
+  return { completed, inProgress, notStarted };
+}
+
+function calculateServiceDistribution(view) {
+  const pts = patientsInRange(view);
+  const map = {};
+  pts.forEach(p => {
+    const key = p.service_type || 'Unknown';
+    map[key] = (map[key] || 0) + 1;
+  });
+
+  const services = Object.keys(map);
+  const counts = services.map(s => map[s]);
+
+  return { services, counts };
+}
+
+function calculateDailyProgress(view) {
+  const { start, end } = getViewRange(view);
+  const labels = [];
+  const newCounts = [];
+  const completedCounts = [];
+
+  if (view === 'yearly') {
+    // months: Jan–Dec
+    const year = start.getFullYear();
+    for (let m = 0; m < 12; m++) {
+      const label = new Date(year, m, 1).toLocaleString('en', { month: 'short' });
+      labels.push(label);
+      newCounts.push(0);
+      completedCounts.push(0);
+    }
+
+    RAW_PATIENTS.forEach(p => {
+      const bite = parseDate(p.date_of_bite || p.day0);
+      const done = parseDate(p.day28 || p.booster2);
+      if (bite && bite >= start && bite <= end) newCounts[bite.getMonth()]++;
+      if (done && done >= start && done <= end) completedCounts[done.getMonth()]++;
+    });
+  } else {
+    // weekly or monthly – per day
+    const keys = [];
+    const cursor = new Date(start);
+    while (cursor <= end) {
+      const key = cursor.toISOString().slice(0, 10);
+      keys.push(key);
+      labels.push(cursor.getDate()); // day-of-month
+      newCounts.push(0);
+      completedCounts.push(0);
+      cursor.setDate(cursor.getDate() + 1);
+    }
+
+    RAW_PATIENTS.forEach(p => {
+      const bite = parseDate(p.date_of_bite || p.day0);
+      const done = parseDate(p.day28 || p.booster2);
+      if (bite && bite >= start && bite <= end) {
+        const idx = keys.indexOf(bite.toISOString().slice(0, 10));
+        if (idx !== -1) newCounts[idx]++;
+      }
+      if (done && done >= start && done <= end) {
+        const idx = keys.indexOf(done.toISOString().slice(0, 10));
+        if (idx !== -1) completedCounts[idx]++;
+      }
+    });
+  }
+
+  return { labels, newPatients: newCounts, completed: completedCounts };
+}
+
+function calculateWeeklyTrends(view) {
+  const pts = patientsInRange(view);
+  let labels = [];
+  let started = [];
+  let completed = [];
+
+  if (view === 'yearly') {
+    labels = ['Q1', 'Q2', 'Q3', 'Q4'];
+    started = [0, 0, 0, 0];
+    completed = [0, 0, 0, 0];
+    const { start, end } = getViewRange(view);
+
+    pts.forEach(p => {
+      const bite = parseDate(p.date_of_bite || p.day0);
+      const done = parseDate(p.day28 || p.booster2);
+      if (bite && bite >= start && bite <= end) {
+        const q = Math.floor(bite.getMonth() / 3);
+        started[q]++;
+      }
+      if (done && done >= start && done <= end) {
+        const q = Math.floor(done.getMonth() / 3);
+        completed[q]++;
+      }
+    });
+  } else {
+    // 4 weeks bucket para sa kasalukuyang buwan/week view
+    labels = ['Week 1', 'Week 2', 'Week 3', 'Week 4'];
+    started = [0, 0, 0, 0];
+    completed = [0, 0, 0, 0];
+    const { start, end } = getViewRange(view);
+
+    pts.forEach(p => {
+      const bite = parseDate(p.date_of_bite || p.day0);
+      const done = parseDate(p.day28 || p.booster2);
+      if (bite && bite >= start && bite <= end) {
+        const w = Math.min(3, Math.floor((bite.getDate() - 1) / 7));
+        started[w]++;
+      }
+      if (done && done >= start && done <= end) {
+        const w = Math.min(3, Math.floor((done.getDate() - 1) / 7));
+        completed[w]++;
+      }
+    });
+  }
+
+  return { labels, started, completed };
+}
+
+function calculateSummary(view) {
+  const inRange = patientsInRange(view);
+  const completedStats = calculateCompletedTreatments(view);
+  const total = completedStats.completed + completedStats.inProgress + completedStats.notStarted;
+  const completionRate = total
+    ? Math.round((completedStats.completed / total) * 100)
+    : 0;
+
+  return {
+    newPatients: inRange.length,
+    activeTreatments: completedStats.inProgress + completedStats.notStarted,
+    completionRate,
+  };
+}
+
+// ---------- chart creation helpers ----------
+
+function destroyExistingChart(canvasId, key) {
+  if (window.Chart && Chart.getChart) {
+    const existing = Chart.getChart(canvasId);
+    if (existing) existing.destroy();
+  }
+  if (charts[key]) {
+    try { charts[key].destroy(); } catch (e) {}
+    charts[key] = null;
+  }
+}
+
+function makeChart(canvasId, key, config) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas || !window.Chart) return null;
+
+  destroyExistingChart(canvasId, key);
+
+  const chart = new Chart(canvas, config);
+  charts[key] = chart;
+
+  // siguraduhin hindi “overstretched”
+  const parent = canvas.parentElement;
+  if (parent) {
+    parent.style.position = 'relative';
+    parent.style.minHeight = parent.style.minHeight || '220px';
+  }
+  canvas.style.display = 'block';
+  canvas.style.width = '100%';
+  canvas.style.height = canvas.style.height || '220px';
+
+  return chart;
+}
+
+// ---------- initialize & update charts ----------
+
+function getCurrentView() {
+  const sel = document.getElementById('monthSelector');
+  const val = sel ? sel.value : 'monthly';
+  if (val === 'weekly' || val === 'yearly') return val;
+  return 'monthly';
+}
+
+function buildCompletionChart(view) {
+  const stats = calculateCompletedTreatments(view);
+  const maxVal = Math.max(stats.completed, stats.inProgress, stats.notStarted, 1);
+
+  makeChart('completionChart', 'completion', {
     type: 'bar',
     data: {
-      labels: labels,
+      labels: ['Completed', 'In Progress', 'Not Started'],
       datasets: [{
         label: 'Patients',
-        data: counts,
+        data: [stats.completed, stats.inProgress, stats.notStarted],
         backgroundColor: ['#28a745', '#ffc107', '#dc3545'],
-        borderRadius: 6
-      }]
+        borderRadius: 6,
+      }],
     },
     options: {
       indexAxis: 'y',
       responsive: true,
+      maintainAspectRatio: false,
       plugins: {
         legend: { display: false },
-        tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: ${ctx.parsed.x ?? ctx.parsed}` } }
+        tooltip: {
+          callbacks: {
+            label: t => `${t.dataset.label}: ${t.parsed.x ?? t.parsed}`,
+          },
+        },
       },
       scales: {
-        x: { beginAtZero: true, ticks: { precision:0 }, grid: { color: 'rgba(0,0,0,0.04)' } },
-        y: { grid: { display: false }, ticks: { font: { size: 12 } } }
-      }
-    }
+        x: {
+          beginAtZero: true,
+          max: maxVal,
+          ticks: { precision: 0 },
+          grid: { color: 'rgba(0,0,0,0.04)' },
+        },
+        y: {
+          grid: { display: false },
+          ticks: { font: { size: 12 } },
+        },
+      },
+    },
   });
 }
 
-function initializeDailyProgressChart() {
-  // Use a grouped bar chart for daily progress — easier for employees to read exact counts per day
-  const dailyCtx = document.getElementById('dailyProgressChart').getContext('2d');
-  const dailyData = calculateDailyProgress();
-  if (charts.daily) { charts.daily.destroy(); }
-  charts.daily = new Chart(dailyCtx, {
+function buildDailyProgressChart(view) {
+  const daily = calculateDailyProgress(view);
+
+  makeChart('dailyProgressChart', 'daily', {
     type: 'bar',
     data: {
-      // helpers return { labels, newPatients, completed }
-      labels: dailyData.labels || dailyData.days || [],
-      datasets: [{
-        label: 'New Patients',
-        data: dailyData.newPatients,
-        backgroundColor: '#b02a37',
-        barPercentage: 0.7,
-        categoryPercentage: 0.8
-      }, {
-        label: 'Completed Treatments',
-        data: dailyData.completed,
-        backgroundColor: '#2f9e44',
-        barPercentage: 0.7,
-        categoryPercentage: 0.8
-      }]
+      labels: daily.labels,
+      datasets: [
+        {
+          label: 'New Patients',
+          data: daily.newPatients,
+          backgroundColor: '#b02a37',
+          barPercentage: 0.7,
+          categoryPercentage: 0.8,
+        },
+        {
+          label: 'Completed Treatments',
+          data: daily.completed,
+          backgroundColor: '#2f9e44',
+          barPercentage: 0.7,
+          categoryPercentage: 0.8,
+        },
+      ],
     },
     options: {
       responsive: true,
-      plugins: { legend: { position: 'bottom' }, tooltip: { mode: 'index', intersect: false } },
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'bottom' },
+        tooltip: { mode: 'index', intersect: false },
+      },
       interaction: { mode: 'index', axis: 'x', intersect: false },
       scales: {
         x: { grid: { display: false }, ticks: { maxRotation: 0, autoSkip: true } },
-        y: { beginAtZero: true, ticks: { precision: 0 }, grid: { color: 'rgba(0,0,0,0.04)' } }
-      }
-    }
+        y: { beginAtZero: true, ticks: { precision: 0 }, grid: { color: 'rgba(0,0,0,0.04)' } },
+      },
+    },
   });
 }
 
-function initializeServiceChart(serviceData) {
-  const serviceCtx = document.getElementById('serviceChart').getContext('2d');
-  // Simpler horizontal bar chart with clear labels for employees
-  const services = (serviceData && serviceData.services) || [];
-  const counts = (serviceData && serviceData.counts) || [];
-  console.debug('initializeServiceChart:', { services, counts });
+function buildServiceChart(view) {
+  const stats = calculateServiceDistribution(view);
+  const services = stats.services.length ? stats.services : ['No data'];
+  const counts = stats.counts.length ? stats.counts : [0];
+  const maxSvc = Math.max(...counts, 1);
 
-  charts.service = new Chart(serviceCtx, {
+  makeChart('serviceChart', 'service', {
     type: 'bar',
     data: {
       labels: services,
@@ -1725,163 +2245,117 @@ function initializeServiceChart(serviceData) {
         data: counts,
         backgroundColor: '#6f2d3f',
         borderRadius: 6,
-        barThickness: 18
-      }]
+        barThickness: 18,
+      }],
     },
     options: {
-      indexAxis: 'y', // horizontal bars
+      indexAxis: 'y',
       responsive: true,
-      plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: ${ctx.parsed.x || ctx.parsed}` } } },
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: t => `${t.dataset.label}: ${t.parsed.x ?? t.parsed}`,
+          },
+        },
+      },
       scales: {
-        x: { beginAtZero: true, ticks: { precision:0 }, grid: { color: 'rgba(0,0,0,0.04)' } },
-        y: { ticks: { font: { size: 12 } }, grid: { display: false } }
-      }
-    }
+        x: {
+          beginAtZero: true,
+          max: maxSvc,
+          ticks: { precision: 0 },
+          grid: { color: 'rgba(0,0,0,0.04)' },
+        },
+        y: { ticks: { font: { size: 12 } }, grid: { display: false } },
+      },
+    },
   });
 }
 
-function initializeWeeklyTrendChart() {
-  const weeklyCtx = document.getElementById('weeklyTrendChart').getContext('2d');
-  const weeklyData = calculateWeeklyTrends();
-  // Use a simple line chart for weekly trends so employees can see progress over weeks
-  charts.weekly = new Chart(weeklyCtx, {
+function buildWeeklyTrendChart(view) {
+  const weekly = calculateWeeklyTrends(view);
+
+  makeChart('weeklyTrendChart', 'weekly', {
     type: 'line',
     data: {
-      // helpers return { labels, started, completed }
-      labels: weeklyData.labels || weeklyData.weeks || [],
-      datasets: [{
-        label: 'Patients Started',
-        data: weeklyData.started,
-        borderColor: '#f59f00',
-        backgroundColor: 'rgba(245,159,0,0.08)',
-        tension: 0.2,
-        pointRadius: 4,
-        fill: true
-      }, {
-        label: 'Treatments Completed',
-        data: weeklyData.completed,
-        borderColor: '#198754',
-        backgroundColor: 'rgba(25,135,84,0.08)',
-        tension: 0.2,
-        pointRadius: 4,
-        fill: true
-      }]
+      labels: weekly.labels,
+      datasets: [
+        {
+          label: 'Patients Started',
+          data: weekly.started,
+          borderColor: '#f59f00',
+          backgroundColor: 'rgba(245,159,0,0.08)',
+          tension: 0.2,
+          pointRadius: 4,
+          fill: true,
+        },
+        {
+          label: 'Treatments Completed',
+          data: weekly.completed,
+          borderColor: '#198754',
+          backgroundColor: 'rgba(25,135,84,0.08)',
+          tension: 0.2,
+          pointRadius: 4,
+          fill: true,
+        },
+      ],
     },
     options: {
       responsive: true,
-      plugins: { legend: { position: 'bottom' }, tooltip: { mode: 'index', intersect: false } },
-      interaction: { mode: 'nearest', axis: 'x', intersect: false },
+      maintainAspectRatio: false,
+      plugins: { legend: { position: 'bottom' } },
       scales: {
         x: { grid: { display: false } },
-        y: { beginAtZero: true, ticks: { precision:0 }, grid: { color: 'rgba(0,0,0,0.04)' } }
-      }
-    }
+        y: { beginAtZero: true, ticks: { precision: 0 }, grid: { color: 'rgba(0,0,0,0.04)' } },
+      },
+    },
   });
 }
 
+// Main updater for summary cards + charts
 function updateMonthlyReports() {
-  const monthSelectorEl = document.getElementById('monthSelector');
-  const selectedMonth = monthSelectorEl ? monthSelectorEl.value : 'current';
-  const periodType = (document.getElementById('periodType') && document.getElementById('periodType').value) || 'month';
-  // Normalize semantic selector values to actual periods where possible
-  let filteredPatients = (typeof patientsData !== 'undefined' ? patientsData : []).slice();
-  const isoMonthRegex = /^\d{4}-\d{2}$/;
+  const view = getCurrentView();
+  const summary = calculateSummary(view);
 
-  if (selectedMonth === 'all') {
-    // keep all
-  } else if (selectedMonth === 'weekly') {
-    // compute current week range (Sunday - Saturday)
-    const now = new Date();
-    const dayOfWeek = now.getDay(); // 0 (Sun) - 6 (Sat)
-    const start = new Date(now);
-    start.setDate(now.getDate() - dayOfWeek);
-    start.setHours(0,0,0,0);
-    const end = new Date(start);
-    end.setDate(start.getDate() + 6);
-    end.setHours(23,59,59,999);
-    const startStr = start.toISOString().slice(0,10);
-    const endStr = end.toISOString().slice(0,10);
-    filteredPatients = filteredPatients.filter(p => {
-      const d0 = p.day0 || '';
-      const d28 = p.day28 || '';
-      return (d0 >= startStr && d0 <= endStr) || (d28 >= startStr && d28 <= endStr);
-    });
-  } else if (selectedMonth === 'monthly' || selectedMonth === 'current') {
-    const monthStr = new Date().toISOString().slice(0,7);
-    filteredPatients = filteredPatients.filter(p => (p.day0 && p.day0.startsWith(monthStr)) || (p.day28 && p.day28.startsWith(monthStr)));
-  } else if (selectedMonth === 'yearly' || periodType === 'year' && selectedMonth === 'year-current') {
-    const yearStr = new Date().getFullYear().toString();
-    filteredPatients = filteredPatients.filter(p => (p.day0 && p.day0.startsWith(yearStr)) || (p.day28 && p.day28.startsWith(yearStr)));
-  } else if (isoMonthRegex.test(selectedMonth)) {
-    // ISO month like YYYY-MM
-    filteredPatients = filteredPatients.filter(p => (p.day0 && p.day0.startsWith(selectedMonth)) || (p.day28 && p.day28.startsWith(selectedMonth)));
-  } else if (periodType === 'year' && selectedMonth && selectedMonth !== 'all') {
-    // selectedMonth might be a year string
-    const year = selectedMonth === 'year-current' ? new Date().getFullYear().toString() : selectedMonth;
-    filteredPatients = filteredPatients.filter(p => (p.day0 && p.day0.startsWith(year)) || (p.day28 && p.day28.startsWith(year)));
-  } else {
-    // Fallback: if selector contains an unexpected semantic value, try to use option text as hint
-    // leave filteredPatients as-is if nothing matches
-  }
+  const newEl  = document.getElementById('monthlyNewPatients');
+  const actEl  = document.getElementById('monthlyActive');
+  const rateEl = document.getElementById('monthlyRate');
 
-  // Build monthlyData compatible object (re-use calculateMonthlyData when possible)
-  let monthlyData = null;
-  if (selectedMonth === 'weekly') {
-    // derive stats from filteredPatients
-    const today = new Date().toISOString().split('T')[0];
-    const newPatients = filteredPatients.filter(p => p.day0).length;
-    const completed = filteredPatients.filter(p => p.day28 && p.day28 <= today).length;
-    const active = filteredPatients.filter(p => (p.day0 && p.day0 <= today) && (!p.day28 || p.day28 > today)).length;
-    const overdue = filteredPatients.filter(p => {
-      if (!p.day0) return false;
-      const day0Date = new Date(p.day0);
-      const daysSinceStart = Math.floor((new Date() - day0Date) / (1000 * 60 * 60 * 24));
-      if (daysSinceStart >= 6 && (!p.day3 || p.day3 < today)) return true;
-      if (daysSinceStart >= 10 && (!p.day7 || p.day7 < today)) return true;
-      if (daysSinceStart >= 17 && (!p.day14 || p.day14 < today)) return true;
-      if (daysSinceStart >= 31 && (!p.day28 || p.day28 < today)) return true;
-      return false;
-    }).length;
-    const adherent = filteredPatients.filter(p => {
-      if (!p.day0) return false;
-      const day0Date = new Date(p.day0);
-      const daysSinceStart = Math.floor((new Date() - day0Date) / (1000 * 60 * 60 * 24));
-      let adherenceScore = 1; let totalDosesRequired = 1;
-      if (daysSinceStart >= 3) { totalDosesRequired++; if (p.day3) adherenceScore++; }
-      if (daysSinceStart >= 7) { totalDosesRequired++; if (p.day7) adherenceScore++; }
-      if (daysSinceStart >= 14) { totalDosesRequired++; if (p.day14) adherenceScore++; }
-      if (daysSinceStart >= 28) { totalDosesRequired++; if (p.day28) adherenceScore++; }
-      return adherenceScore === totalDosesRequired;
-    }).length;
-    const completionRate = newPatients > 0 ? Math.round((completed / newPatients) * 100) : 0;
-    const adherenceRate = newPatients > 0 ? Math.round((adherent / newPatients) * 100) : 0;
-    const overdueRate = newPatients > 0 ? Math.round((overdue / newPatients) * 100) : 0;
-    monthlyData = {
-      newPatients, completed, active, overdue, adherent, completionRate, adherenceRate, overdueRate,
-      demographics: analyzeDemographics(filteredPatients),
-      riskFactors: analyzeRiskFactors(filteredPatients),
-      treatmentTypes: analyzeTreatmentTypes(filteredPatients)
-    };
-  } else {
-    // For monthly/year or ISO-month cases rely on existing helper
-    monthlyData = calculateMonthlyData(selectedMonth === 'monthly' ? 'current' : (selectedMonth === 'yearly' ? 'year-current' : selectedMonth), periodType);
-  }
+  if (newEl)  newEl.textContent  = summary.newPatients;
+  if (actEl)  actEl.textContent  = summary.activeTreatments;
+  if (rateEl) rateEl.textContent = `${summary.completionRate}%`;
 
-  // Update summary cards (only if elements exist)
-  const elNew = document.getElementById('monthlyNewPatients');
-  if (elNew) elNew.textContent = monthlyData.newPatients;
-  const elCompleted = document.getElementById('monthlyCompleted');
-  if (elCompleted) elCompleted.textContent = monthlyData.completed;
-  const elActive = document.getElementById('monthlyActive');
-  if (elActive) elActive.textContent = monthlyData.active;
-  const elRate = document.getElementById('monthlyRate');
-  if (elRate) elRate.textContent = monthlyData.completionRate + '%';
-
-  // Update charts with filtered data (guarded)
-  if (typeof updateChartsForMonth === 'function') {
-    updateChartsForMonth(selectedMonth, periodType);
-  }
+  buildCompletionChart(view);
+  buildDailyProgressChart(view);
+  buildServiceChart(view);
+  buildWeeklyTrendChart(view);
 }
+
+// Initializer (once lang) when dashboard is loaded
+document.addEventListener('DOMContentLoaded', () => {
+  if (!document.getElementById('completionChart')) return;
+  if (!window.Chart) {
+    console.warn('Chart.js not available – skipping analytics.');
+    return;
+  }
+
+  updateMonthlyReports();
+
+  const monthSel  = document.getElementById('monthSelector');
+  const periodSel = document.getElementById('periodType');
+  if (monthSel)  monthSel.addEventListener('change', updateMonthlyReports);
+  if (periodSel) periodSel.addEventListener('change', updateMonthlyReports);
+});
+
+// expose for other scripts if needed
+window.updateMonthlyReports = updateMonthlyReports;
+
+// Backwards-compatible initializer expected by older code
+function initializeAnalyticsCharts() {
+  try { updateMonthlyReports(); } catch (e) { console.warn('initializeAnalyticsCharts failed', e); }
+}
+window.initializeAnalyticsCharts = initializeAnalyticsCharts;
 
 // GENERATE pdf report
 function testGenerateReport() {
@@ -1978,17 +2452,20 @@ function calculateMonthlyData(selectedMonth, periodType = 'month') {
   
   const today = new Date().toISOString().split('T')[0];
   
-  // Calculate completed treatments (patients who have reached or passed day 28)
-  const completed = filteredPatients.filter(p => {
-    return p.day28 && p.day28 <= today;
-  }).length;
-  
-  // Calculate active treatments (patients who started but haven't completed)
-  const active = filteredPatients.filter(p => {
-    const started = p.day0 && p.day0 <= today;
-    const notCompleted = !p.day28 || p.day28 > today;
-    return started && notCompleted;
-  }).length;
+  // Calculate completed and active treatments (prefer persisted overall_status)
+  let completed = 0;
+  let active = 0;
+  filteredPatients.forEach(p => {
+    const status = (p.overall_status || '').toString().trim().toLowerCase();
+    if (status === 'complete') {
+      completed++;
+    } else if (status === 'incomplete') {
+      if (p.day0 && p.day0 <= today) active++;
+    } else {
+      if (p.day28 && p.day28 <= today) completed++;
+      else if (p.day0 && p.day0 <= today) active++;
+    }
+  });
   
   // Calculate overdue patients (missed appointments)
   const overdue = filteredPatients.filter(p => {
@@ -2040,14 +2517,18 @@ function calculateMonthlyData(selectedMonth, periodType = 'month') {
   const riskFactors = analyzeRiskFactors(filteredPatients);
   const treatmentTypes = analyzeTreatmentTypes(filteredPatients);
   
-  const completionRate = newPatients > 0 ? Math.round((completed / newPatients) * 100) : 0;
+  // Use patients with Day 0 as denominator to count who actually started treatment
+  const started = filteredPatients.filter(p => p.day0).length;
+  const activeFromStarted = Math.max(0, started - completed);
+  const completionRate = started > 0 ? Math.round((completed / started) * 100) : 0;
   const adherenceRate = newPatients > 0 ? Math.round((adherent / newPatients) * 100) : 0;
   const overdueRate = newPatients > 0 ? Math.round((overdue / newPatients) * 100) : 0;
   
   return {
     newPatients,
     completed,
-    active,
+    // Ensure active reflects patients who started but not yet completed
+    active: activeFromStarted,
     overdue,
     adherent,
     completionRate,
@@ -2197,7 +2678,10 @@ function generateMonthlyReport() {
       if (daysSinceStart >= 28) { totalDosesRequired++; if (p.day28) adherenceScore++; }
       return adherenceScore === totalDosesRequired;
     }).length;
-    const completionRate = newPatients > 0 ? Math.round((completed / newPatients) * 100) : 0;
+    // Count patients who actually started (have Day 0) and compute active accordingly
+    const started = filteredPatients.filter(p => p.day0).length;
+    const activeFromStarted = Math.max(0, started - completed);
+    const completionRate = started > 0 ? Math.round((completed / started) * 100) : 0;
     const adherenceRate = newPatients > 0 ? Math.round((adherent / newPatients) * 100) : 0;
     const overdueRate = newPatients > 0 ? Math.round((overdue / newPatients) * 100) : 0;
     monthlyData = {
@@ -2830,101 +3314,118 @@ function updateChartsForMonth(selectedMonth, periodType = 'month') {
   // Update charts with filtered data for selected month
   const completedPatients = calculateCompletedTreatments(selectedMonth, periodType);
   const serviceData = calculateServiceDistribution(selectedMonth, periodType);
-  console.debug('updateChartsForMonth:', { selectedMonth, periodType, completedPatientsCount: completedPatients && (completedPatients.completed + completedPatients.inProgress + completedPatients.notStarted), serviceCount: (serviceData && (serviceData.counts||[]).length) });
-  
-  // Update completion chart
-  charts.completion.data.datasets[0].data = [
-    completedPatients.completed, 
-    completedPatients.inProgress, 
-    completedPatients.notStarted
-  ];
-  charts.completion.update();
-  
+  console.log('updateChartsForMonth:', { selectedMonth, periodType, completedPatientsCount: completedPatients && (completedPatients.completed + completedPatients.inProgress + completedPatients.notStarted), serviceCount: (serviceData && (serviceData.counts||[]).length) });
+
+  // Update completion chart (guard if chart instances exist)
+  if (charts.completion) {
+    charts.completion.data.datasets[0].data = [
+      Number(completedPatients.completed) || 0,
+      Number(completedPatients.inProgress) || 0,
+      Number(completedPatients.notStarted) || 0
+    ];
+    try { charts.completion.update(); } catch(e) { console.warn('completion update failed', e); }
+  }
+
   // Update service chart
-  charts.service.data.labels = serviceData.services;
-  charts.service.data.datasets[0].data = serviceData.counts;
-  charts.service.update();
+  if (charts.service) {
+    charts.service.data.labels = serviceData.services || [];
+    charts.service.data.datasets[0].data = (serviceData.counts || []).map(c => Number(c) || 0);
+    try { charts.service.update(); } catch(e) { console.warn('service update failed', e); }
+  }
   
   // Update daily progress chart
   const dailyData = calculateDailyProgress(selectedMonth, periodType);
   const dailyLabels = dailyData.labels || dailyData.days || [];
   const dailyNew = dailyData.newPatients || Array(dailyLabels.length).fill(0);
   const dailyCompleted = dailyData.completed || Array(dailyLabels.length).fill(0);
-  charts.daily.data.labels = dailyLabels;
-  charts.daily.data.datasets[0].data = dailyNew;
-  charts.daily.data.datasets[1].data = dailyCompleted;
-  charts.daily.update();
-  
+  if (charts.daily) {
+    charts.daily.data.labels = dailyLabels;
+    charts.daily.data.datasets[0].data = (dailyNew || []).map(n => Number(n) || 0);
+    charts.daily.data.datasets[1].data = (dailyCompleted || []).map(n => Number(n) || 0);
+    try { charts.daily.update(); } catch (e) { console.warn('daily update failed', e); }
+  }
+
   // Update weekly trends
   const weeklyData = calculateWeeklyTrends(selectedMonth, periodType);
   const weeklyLabels = weeklyData.labels || weeklyData.weeks || [];
-  charts.weekly.data.labels = weeklyLabels;
-  charts.weekly.data.datasets[0].data = weeklyData.started || Array(weeklyLabels.length).fill(0);
-  charts.weekly.data.datasets[1].data = weeklyData.completed || Array(weeklyLabels.length).fill(0);
-  charts.weekly.update();
-  charts.weekly.update();
+  if (charts.weekly) {
+    charts.weekly.data.labels = weeklyLabels;
+    charts.weekly.data.datasets[0].data = (weeklyData.started || []).map(n => Number(n) || 0);
+    charts.weekly.data.datasets[1].data = (weeklyData.completed || []).map(n => Number(n) || 0);
+    try { charts.weekly.update(); } catch (e) { console.warn('weekly update failed', e); }
+  }
 }
 
 function calculateCompletedTreatments(filterMonth = null, periodType = 'month') {
+  // Use patientsData by default. Keep signature compatible with callers.
+  let filteredPatients = patientsData || [];
+
+  // Normalise common semantic values so callers can pass 'monthly'/'yearly' or 'current'
+  if (filterMonth && filterMonth !== 'all') {
+    // if caller passed 'yearly', treat as current year
+    if (filterMonth === 'yearly') filterMonth = 'year-current';
+    if (filterMonth === 'monthly') filterMonth = 'current';
+
+    if (periodType === 'year' || String(filterMonth).startsWith('year-') || filterMonth === 'year-current') {
+      const yearStr = filterMonth === 'year-current' ? new Date().getFullYear().toString() : filterMonth.replace(/^year-/, '');
+      filteredPatients = filteredPatients.filter(p => (p.day0 && p.day0.startsWith(yearStr)) || (p.day28 && p.day28.startsWith(yearStr)));
+    } else {
+      const monthStr = filterMonth === 'current' ? new Date().toISOString().slice(0, 7) : filterMonth;
+      filteredPatients = filteredPatients.filter(p => (p.day0 && p.day0.startsWith(monthStr)) || (p.day28 && p.day28.startsWith(monthStr)));
+    }
+  }
+
   let completed = 0;
   let inProgress = 0;
   let notStarted = 0;
-  
-  let filteredPatients = patientsData;
-  if (filterMonth && filterMonth !== 'all') {
-    if (periodType === 'year') {
-      const yearStr = filterMonth === 'year-current' ? new Date().getFullYear().toString() : filterMonth;
-      filteredPatients = patientsData.filter(p => (p.day0 && p.day0.startsWith(yearStr)) || (p.day28 && p.day28.startsWith(yearStr)));
-    } else {
-      const monthStr = filterMonth === 'current' ? new Date().toISOString().slice(0, 7) : filterMonth;
-      filteredPatients = patientsData.filter(p => 
-        (p.day0 && p.day0.startsWith(monthStr)) ||
-        (p.day28 && p.day28.startsWith(monthStr))
-      );
-    }
-  }
-  
-  filteredPatients.forEach(patient => {
-    const today = new Date().toISOString().split('T')[0];
-    const day28Date = patient.day28;
-    
-    if (day28Date && day28Date <= today) {
-      completed++;
-    } else if (patient.day0 && patient.day0 <= today) {
-      inProgress++;
-    } else {
-      notStarted++;
-    }
+
+  const fields = ['day0_done','day3_done','day7_done','day14_done','day28_done','booster1_done','booster2_done'];
+
+  filteredPatients.forEach(p => {
+    let allDone = true;
+    let anyDone = false;
+
+    fields.forEach(f => {
+      const alt = f.replace(/_/g, '');
+      const v = (p && (p[f] !== undefined ? p[f] : (p[alt] !== undefined ? p[alt] : 0))) || 0;
+      if (String(v) === '1' || String(v) === 'true') anyDone = true;
+      else allDone = false;
+    });
+
+    if (allDone && filteredPatients.length > 0) completed++;
+    else if (anyDone) inProgress++;
+    else notStarted++;
   });
-  
+
   return { completed, inProgress, notStarted };
 }
 
 function calculateServiceDistribution(filterMonth = null, periodType = 'month') {
-  let filteredPatients = patientsData;
+  let filteredPatients = patientsData || [];
+  // Normalize semantic filters
   if (filterMonth && filterMonth !== 'all') {
-    if (periodType === 'year') {
-      const yearStr = filterMonth === 'year-current' ? new Date().getFullYear().toString() : filterMonth;
-      filteredPatients = patientsData.filter(p => (p.day0 && p.day0.startsWith(yearStr)) || (p.day28 && p.day28.startsWith(yearStr)));
+    if (filterMonth === 'yearly') filterMonth = 'year-current';
+    if (filterMonth === 'monthly') filterMonth = 'current';
+
+    if (periodType === 'year' || String(filterMonth).startsWith('year-') || filterMonth === 'year-current') {
+      const yearStr = filterMonth === 'year-current' ? new Date().getFullYear().toString() : filterMonth.replace(/^year-/, '');
+      filteredPatients = filteredPatients.filter(p => (p.day0 && p.day0.startsWith(yearStr)) || (p.day28 && p.day28.startsWith(yearStr)));
     } else {
       const monthStr = filterMonth === 'current' ? new Date().toISOString().slice(0, 7) : filterMonth;
-      filteredPatients = patientsData.filter(p => 
-        (p.day0 && p.day0.startsWith(monthStr)) ||
-        (p.day28 && p.day28.startsWith(monthStr))
-      );
+      filteredPatients = filteredPatients.filter(p => (p.day0 && p.day0.startsWith(monthStr)) || (p.day28 && p.day28.startsWith(monthStr)));
     }
   }
-  
+
   const serviceCounts = {};
-  
-  filteredPatients.forEach(patient => {
-    const service = patient.service || 'Unknown';
+  filteredPatients.forEach(p => {
+    const svc = (p.service_type || p.service || 'Unknown');
+    const service = (svc === null || svc === undefined) ? 'Unknown' : String(svc).trim();
+    if (!service) return;
     serviceCounts[service] = (serviceCounts[service] || 0) + 1;
   });
-  
+
   const services = Object.keys(serviceCounts);
-  const counts = Object.values(serviceCounts);
-  
+  const counts = services.map(s => serviceCounts[s]);
   return { services, counts };
 }
 
@@ -3174,3 +3675,58 @@ function showNotification(message, type = 'info') {
         setTimeout(() => document.body.removeChild(notification), 300);
     }, 4000);
 }
+
+// Mark patient overall status (complete/incomplete) — try server first, fallback to client update
+async function markPatientOverallStatus(patientId, status) {
+  // normalize
+  status = (status||'').toString().toLowerCase();
+  const modal = document.getElementById('patientModal');
+
+  // optimistic UI update function
+  function applyClientUpdate() {
+    // update modal dataset
+    if (modal) modal.dataset.overallStatus = status;
+    // find table row and update status label
+    const row = document.querySelector(`#patient-table-body tr[data-patient-id='${patientId}']`);
+    if (row) {
+      const label = row.querySelector('.patient-status-cell .status-label');
+      if (label) {
+        label.textContent = (status === 'complete') ? 'Complete' : (status === 'incomplete' ? 'Incomplete' : 'Processing');
+        label.className = 'status-label status-' + ((status === 'complete') ? 'complete' : ((status === 'incomplete') ? 'incomplete' : 'processing'));
+      }
+      // also write a dataset marker so future reloads/fallback logic can detect manual status
+      row.dataset.manualStatus = status;
+    }
+    // update buttons highlight
+    updatePatientStatusButtons();
+    // ensure filters reflect the change
+    if (typeof applyPatientStatusFilter === 'function') applyPatientStatusFilter(currentStatusFilter);
+  }
+
+  // Attempt server update; if endpoint missing or fails, fallback to client-only behavior
+  try {
+    const res = await fetch(`/patients/${patientId}/status`, {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ status: status })
+    });
+    if (!res.ok) {
+      // try alternate endpoint used elsewhere
+      throw new Error(`HTTP ${res.status}`);
+    }
+    const data = await res.json().catch(()=>({}));
+    if (data && data.success) {
+      applyClientUpdate();
+      showToast('Patient status updated', 'success');
+      return;
+    }
+    // if server didn't confirm success, fallback
+    console.warn('Server did not confirm status update, falling back to client update', data);
+    applyClientUpdate();
+    showToast('Patient status updated (local only)', 'warning');
+  } catch (err) {
+    console.warn('Status endpoint unavailable or failed:', err);
+    applyClientUpdate();
+    showToast('Patient status updated (local only)', 'warning');
+  }
+}
+

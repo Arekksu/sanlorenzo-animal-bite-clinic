@@ -8,8 +8,42 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='audit-log.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='select-styles.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='print-styles.css') }}">
+  <style>
+    .analytics-section {
+      border-radius: 16px;
+      padding: 1.5rem 1.5rem 2rem;
+      margin-top: 1.5rem;
+    }
+
+    .charts-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 16px;
+    }
+
+    .chart-container {
+      position: relative;
+      background: #ffffff;
+      border-radius: 12px;
+      padding: 12px 16px 16px;
+      box-shadow: 0 1px 2px rgba(15,23,42,0.06);
+      min-height: 230px;
+    }
+
+    /* Para hindi sobrang taas / stretch yung chart */
+    .chart-container canvas {
+      display: block;
+      width: 100% !important;
+      max-height: 220px;
+    }
+  </style>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="{{ url_for('static', filename='report-generator.js') }}"></script>
+  <script>
+    // Embed initial patients data from server so frontend charts work even
+    // if the /api/patients endpoint is temporarily unavailable.
+    window.__INITIAL_PATIENTS = {{ patients|tojson | safe }};
+  </script>
 </head>
 <body>
   <div class="dashboard-container">
@@ -61,7 +95,7 @@
           <div class="stat-card">
             <div class="stat-icon">✅</div>
             <h3>Completed Treatments</h3>
-            <div class="stat-number" id="completed-count">0</div>
+            <div class="stat-number" id="completed-count">{{ completed_count if completed_count is not none else 0 }}</div>
           </div>
         </div>
 
@@ -524,31 +558,60 @@
       <!-- View Patient -->
       <section id="view-patient" class="content-section">
         <h2>Patient Records</h2>
-        <div class="table-actions" style="display:flex;align-items:center;gap:12px;margin:8px 0 12px;">
-          <input id="patient-search" type="text" placeholder="Search by ID, name, date, or service" oninput="searchPatients()" style="flex:1;max-width:420px;padding:8px 10px;border:1px solid #ccc;border-radius:6px;" />
+        <div class="table-actions" style="display:flex;align-items:center;gap:12px;margin:8px 0 12px;flex-wrap:wrap;">
+          <input id="patient-search" type="text" placeholder="Search by ID, name, date, or service" oninput="searchPatients()" style="flex:1;min-width:220px;max-width:420px;padding:8px 10px;border:1px solid #ccc;border-radius:6px;" />
           <button class="btn-secondary" type="button" onclick="searchPatients()">Search</button>
           <button class="btn-ghost" type="button" onclick="clearSearch()">Clear</button>
+          <label for="patient-status-filter" style="margin-left:6px;font-weight:600;color:#333;">Status:</label>
+          <select id="patient-status-filter" onchange="applyPatientStatusFilter(this.value)" class="status-filter-select" style="padding:8px;border-radius:6px;border:1px solid #ccc;background:#fff;">
+            <option value="all">All</option>
+            <option value="complete">Complete</option>
+            <option value="incomplete">Incomplete</option>
+            <option value="processing">Processing</option>
+          </select>
           <span id="results-count" style="margin-left:auto;color:#555;font-size:.95rem;">&nbsp;</span>
         </div>
         <div class="table-container">
           <table class="patient-table">
+            <colgroup>
+              <col style="width:6%">
+              <col style="width:28%">
+              <col style="width:16%">
+              <col style="width:20%">
+              <col style="width:12%">
+              <col style="width:18%">
+            </colgroup>
             <thead>
               <tr>
                 <th style="color:#fff !important;">ID</th>
                 <th style="color:#fff !important;">Patient Name</th>
                 <th style="color:#fff !important;">Date of Bite</th>
                 <th style="color:#fff !important;">Service</th>
+                <th style="color:#fff !important;">Status</th>
                 <th style="color:#fff !important;">Actions</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody id="patient-table-body">
               {% for p in patients %}
-              <tr>
+                {% set row_status = (p.get('overall_status') or 'processing') | lower %}
+                <tr data-patient-id="{{ p['id'] }}"
+                  data-overall-status="{{ row_status }}"
+                  data-day0-done="{{ p.get('day0_done', 0) }}"
+                  data-day3-done="{{ p.get('day3_done', 0) }}"
+                  data-day7-done="{{ p.get('day7_done', 0) }}"
+                  data-day14-done="{{ p.get('day14_done', 0) }}"
+                  data-day28-done="{{ p.get('day28_done', 0) }}"
+                  data-booster1-done="{{ p.get('booster1_done', 0) }}"
+                  data-booster2-done="{{ p.get('booster2_done', 0) }}">
                 <td>{{ p['id'] }}</td>
                 <td>{{ p['patient_name'] }}</td>
                 <td>{{ p['date_of_bite'] }}</td>
                 <td>{{ p['service_type'] }}</td>
-                <td class="action-buttons">
+                <td class="patient-status-cell">
+                  {% set status = row_status %}
+                  <span class="status-label status-{{ status }}">{{ status|capitalize }}</span>
+                </td>
+                <td class="actions-cell">
                   <button class="btn-view" data-patient-id="{{ p['id'] }}" title="View Details">
                     <img src="{{ url_for('static', filename='images/icons/istockphoto-845329690-612x612-removebg-preview.png') }}" alt="View" class="action-icon">
                   </button>
@@ -561,7 +624,7 @@
                 </td>
               </tr>
               {% else %}
-              <tr><td colspan="5">No patients found.</td></tr>
+              <tr><td colspan="6">No patients found.</td></tr>
               {% endfor %}
             </tbody>
           </table>
@@ -862,6 +925,15 @@
         <span class="close" onclick="closeModal('patientModal')">&times;</span>
       </div>
       <div id="patientModalBody" class="modal-body"></div>
+      <div class="modal-footer" style="padding: 16px 32px 8px 32px; text-align: left;">
+        <div style="font-size: 1rem; color: #800020; background: #fff8f0; border-radius: 6px; padding: 10px 16px; margin-top: 12px;">
+          <strong>Note:</strong> Click the items in the <b>Schedule</b> and <b>Booster and Consents</b> sections if the scheduled dates are completed or if the patient has already received their booster. This will help keep the records up to date.
+        </div>
+        <div id="patient-status-buttons" style="margin-top: 18px; display: flex; gap: 12px; align-items: center;">
+          <button id="mark-complete-btn" type="button" style="background: #2ecc40; color: #fff; border: none; border-radius: 5px; padding: 8px 22px; font-size: 1.1rem; font-weight: 600; cursor: pointer; display: none;">Complete</button>
+          <button id="mark-incomplete-btn" type="button" style="background: #ff4136; color: #fff; border: none; border-radius: 5px; padding: 8px 22px; font-size: 1.1rem; font-weight: 600; cursor: pointer; display: none;">Incomplete</button>
+        </div>
+      </div>
     </div>
   </div>
 
