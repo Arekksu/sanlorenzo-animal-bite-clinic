@@ -496,7 +496,8 @@ def employee_dashboard():
                 exposure, type_of_exposure,
                 additional_remarks, tt1, tt6, tt30, anti_tetanus,
                 vaccinated,
-                day0, day3, day7, day14, day28
+                day0, day3, day7, day14, day28,
+                status
             ) VALUES (
                 ?, ?, ?, ?, ?,
                 ?, ?, ?, ?,
@@ -508,19 +509,23 @@ def employee_dashboard():
                 ?, ?,
                 ?, ?, ?, ?, ?,
                 ?,
-                ?, ?, ?, ?, ?
+                ?, ?, ?, ?, ?,
+                'Processing'
             )
         """, data)
             conn.commit()
-            
+
+            # Update analytics
+            update_treatment_completion_status()
+            update_treatment_type_distribution()
+
             # Log to audit trail
             log_audit_trail(
                 session['employee_id'],
                 session['employee_name'],
                 f"Added new patient record: {request.form['patient_name']}",
-                request.remote_addr
-            )
-            
+                request.remote_addr)
+
             flash('Record added successfully!', 'success')
             if session.get('role') == 'admin':
                 return redirect(url_for('admin_dashboard'))
@@ -1213,6 +1218,35 @@ def log_audit_trail(employee_id, employee_name, action, ip_address):
         if not isinstance(e, sqlite3.OperationalError) or 'database is locked' not in str(e):
             raise
 
+def update_treatment_completion_status():
+    conn = get_db()
+    # Query to count patients by status
+    status_counts = conn.execute("""
+        SELECT status, COUNT(*) as count
+        FROM patients
+        GROUP BY status
+    """).fetchall()
+
+    # Update analytics data (example: store in a global variable or database table)
+    treatment_completion_data = {row['status']: row['count'] for row in status_counts}
+    # Example: global variable or cache
+    global treatment_completion_status
+    treatment_completion_status = treatment_completion_data
+
+def update_treatment_type_distribution():
+    conn = get_db()
+    # Query to count patients by service type
+    type_counts = conn.execute("""
+        SELECT service_type, COUNT(*) as count
+        FROM patients
+        GROUP BY service_type
+    """).fetchall()
+
+    # Update analytics data (example: store in a global variable or database table)
+    treatment_type_data = {row['service_type']: row['count'] for row in type_counts}
+    # Example: global variable or cache
+    global treatment_type_distribution
+    treatment_type_distribution = treatment_type_data
 
 if __name__ == "__main__":
     app.run(debug=True, port=5001)
