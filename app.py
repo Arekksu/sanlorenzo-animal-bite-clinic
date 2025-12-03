@@ -496,7 +496,8 @@ def employee_dashboard():
                 exposure, type_of_exposure,
                 additional_remarks, tt1, tt6, tt30, anti_tetanus,
                 vaccinated,
-                day0, day3, day7, day14, day28
+                day0, day3, day7, day14, day28,
+                status
             ) VALUES (
                 ?, ?, ?, ?, ?,
                 ?, ?, ?, ?,
@@ -508,19 +509,23 @@ def employee_dashboard():
                 ?, ?,
                 ?, ?, ?, ?, ?,
                 ?,
-                ?, ?, ?, ?, ?
+                ?, ?, ?, ?, ?,
+                'Processing'
             )
         """, data)
             conn.commit()
-            
+
+            # Update analytics
+            update_treatment_completion_status()
+            update_treatment_type_distribution()
+
             # Log to audit trail
             log_audit_trail(
                 session['employee_id'],
                 session['employee_name'],
                 f"Added new patient record: {request.form['patient_name']}",
-                request.remote_addr
-            )
-            
+                request.remote_addr)
+
             flash('Record added successfully!', 'success')
             if session.get('role') == 'admin':
                 return redirect(url_for('admin_dashboard'))
@@ -557,22 +562,23 @@ def employee_dashboard():
             WHERE day3 >= ? OR day7 >= ? OR day14 >= ? OR day28 >= ?
         """, (today, today, today, today)).fetchone()
         
-        # Patients today (based on any scheduled appointment today)
-        patients_today = conn.execute("""
-            SELECT COUNT(*) as count FROM patients 
-            WHERE day0 = ? OR day3 = ? OR day7 = ? OR day14 = ? OR day28 = ?
-        """, (today, today, today, today, today)).fetchone()
+        # Patients today: count patients with an active treatment ('processing').
+        # Treat NULL overall_status as 'processing' for compatibility with existing records.
+        patients_today_count = conn.execute("""
+            SELECT COUNT(*) as count FROM patients
+            WHERE lower(COALESCE(overall_status, 'processing')) = 'processing'
+        """).fetchone()
 
         employee_id = session.get('employee_id')
         user = conn.execute('SELECT * FROM employees WHERE employee_id = ?', (employee_id,)).fetchone()
         return render_template("employee-dashboard.html", 
-                             patients=patients_list,
-                             patients_json=json.dumps(patients_list, default=str),
-                             upcoming_appointments=[{'count': upcoming_appointments['count'] if upcoming_appointments else 0}],
-                             patients_today=[{'count': patients_today['count'] if patients_today else 0}],
-                             employee_name=session.get('employee_name', 'User'),
-                             role=session.get('role', 'employee'),
-                             user=user)
+                     patients=patients_list,
+                     patients_json=json.dumps(patients_list, default=str),
+                     upcoming_appointments=[{'count': upcoming_appointments['count'] if upcoming_appointments else 0}],
+                     patients_today=[{'count': patients_today_count['count'] if patients_today_count else 0}],
+                     employee_name=session.get('employee_name', 'User'),
+                     role=session.get('role', 'employee'),
+                     user=user)
     finally:
         conn.close()
 
@@ -608,7 +614,8 @@ def admin_dashboard():
     patients_list = [dict(row) for row in patients]
     today = date.today().isoformat()
     upcoming_appointments = conn.execute("SELECT COUNT(*) as count FROM patients WHERE day3 >= ? OR day7 >= ? OR day14 >= ? OR day28 >= ?", (today, today, today, today)).fetchone()
-    patients_today = conn.execute("SELECT COUNT(*) as count FROM patients WHERE day0 = ? OR day3 = ? OR day7 = ? OR day14 = ? OR day28 = ?", (today, today, today, today, today)).fetchone()
+    # Patients today: count active treatments (processing). Use patients_list which already includes overall_status.
+    patients_today_count = sum(1 for p in patients_list if str(p.get('overall_status','processing')).strip().lower() == 'processing')
     # Count completed treatments from persisted overall_status
     completed_count = sum(1 for p in patients_list if str(p.get('overall_status','')).lower() == 'complete')
 
@@ -616,7 +623,7 @@ def admin_dashboard():
                            patients=patients_list,
                            patients_json=json.dumps(patients_list, default=str),
                            upcoming_appointments=[{'count': upcoming_appointments['count'] if upcoming_appointments else 0}],
-                           patients_today=[{'count': patients_today['count'] if patients_today else 0}],
+                           patients_today=[{'count': patients_today_count if patients_today_count else 0}],
                            completed_count=completed_count,
                            employee_name=session.get('employee_name', 'Admin'),
                            role='admin')
@@ -1211,6 +1218,35 @@ def log_audit_trail(employee_id, employee_name, action, ip_address):
         if not isinstance(e, sqlite3.OperationalError) or 'database is locked' not in str(e):
             raise
 
+def update_treatment_completion_status():
+    conn = get_db()
+    # Query to count patients by status
+    status_counts = conn.execute("""
+        SELECT status, COUNT(*) as count
+        FROM patients
+        GROUP BY status
+    """).fetchall()
+
+    # Update analytics data (example: store in a global variable or database table)
+    treatment_completion_data = {row['status']: row['count'] for row in status_counts}
+    # Example: global variable or cache
+    global treatment_completion_status
+    treatment_completion_status = treatment_completion_data
+
+def update_treatment_type_distribution():
+    conn = get_db()
+    # Query to count patients by service type
+    type_counts = conn.execute("""
+        SELECT service_type, COUNT(*) as count
+        FROM patients
+        GROUP BY service_type
+    """).fetchall()
+
+    # Update analytics data (example: store in a global variable or database table)
+    treatment_type_data = {row['service_type']: row['count'] for row in type_counts}
+    # Example: global variable or cache
+    global treatment_type_distribution
+    treatment_type_distribution = treatment_type_data
 
 if __name__ == "__main__":
     app.run(debug=True, port=5001)

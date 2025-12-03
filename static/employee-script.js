@@ -787,6 +787,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Calendar data (real DB)
   await fetchPatientsForCalendar();
   updateCalendar();
+  // Ensure analytics charts are updated after patientsData is loaded
+  if (typeof updateMonthlyReports === 'function') {
+    try { updateMonthlyReports(); } catch (e) { console.warn('updateMonthlyReports failed after data load', e); }
+  }
 
   // Fix: Ensure required fields are focusable on submit
   const addRecordForm = document.querySelector('#add-record form');
@@ -2002,11 +2006,17 @@ function patientsInRange(view) {
 
 // basic classification ng treatment status
 function treatmentStatus(p) {
+  // 1) Prefer explicit overall_status coming from the backend
+  const rawStatus = (p && (p.overall_status || p.overallStatus || p.overall || '')).toString().trim().toLowerCase();
+  if (rawStatus === 'complete' || rawStatus === 'completed') return 'completed';
+  if (rawStatus === 'incomplete' || rawStatus === 'processing' || rawStatus === 'in-progress') return 'inProgress';
+
+  // 2) Fallback: existing date-based logic for older records or missing overall_status
   const doseKeys = ['day0', 'day3', 'day7', 'day14', 'day28', 'booster1', 'booster2'];
-  const anyDose = doseKeys.some(k => parseDate(p[k]));
+  const anyDose = doseKeys.some(k => parseDate(p && p[k]));
   if (!anyDose) return 'notStarted';
 
-  const finalDose = parseDate(p.day28 || p.booster2);
+  const finalDose = parseDate(p && (p.day28 || p.booster2));
   const today = new Date();
   if (finalDose && finalDose <= today) return 'completed';
   return 'inProgress';
@@ -2043,53 +2053,60 @@ function calculateServiceDistribution(view) {
 }
 
 function calculateDailyProgress(view) {
+  // YEARLY: group by month (Jan–Dec)
+  if (view === 'yearly') {
+    const pts = patientsInRange('yearly'); // already filtered for this year
+    const labels = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const newCounts = Array(12).fill(0);
+    const completedCounts = Array(12).fill(0);
+
+    pts.forEach(p => {
+      const bite = parseDate(p.date_of_bite || p.day0);
+      const done = parseDate(p.day28 || p.booster2);
+
+      if (bite) {
+        const m = bite.getMonth();
+        newCounts[m]++;
+      }
+      if (done && treatmentStatus(p) === 'completed') {
+        const m = done.getMonth();
+        completedCounts[m]++;
+      }
+    });
+
+    return { labels, newPatients: newCounts, completed: completedCounts };
+  }
+
+  // WEEKLY / MONTHLY: per-day logic (existing behavior)
   const { start, end } = getViewRange(view);
   const labels = [];
   const newCounts = [];
   const completedCounts = [];
 
-  if (view === 'yearly') {
-    // months: Jan–Dec
-    const year = start.getFullYear();
-    for (let m = 0; m < 12; m++) {
-      const label = new Date(year, m, 1).toLocaleString('en', { month: 'short' });
-      labels.push(label);
-      newCounts.push(0);
-      completedCounts.push(0);
-    }
-
-    RAW_PATIENTS.forEach(p => {
-      const bite = parseDate(p.date_of_bite || p.day0);
-      const done = parseDate(p.day28 || p.booster2);
-      if (bite && bite >= start && bite <= end) newCounts[bite.getMonth()]++;
-      if (done && done >= start && done <= end) completedCounts[done.getMonth()]++;
-    });
-  } else {
-    // weekly or monthly – per day
-    const keys = [];
-    const cursor = new Date(start);
-    while (cursor <= end) {
-      const key = cursor.toISOString().slice(0, 10);
-      keys.push(key);
-      labels.push(cursor.getDate()); // day-of-month
-      newCounts.push(0);
-      completedCounts.push(0);
-      cursor.setDate(cursor.getDate() + 1);
-    }
-
-    RAW_PATIENTS.forEach(p => {
-      const bite = parseDate(p.date_of_bite || p.day0);
-      const done = parseDate(p.day28 || p.booster2);
-      if (bite && bite >= start && bite <= end) {
-        const idx = keys.indexOf(bite.toISOString().slice(0, 10));
-        if (idx !== -1) newCounts[idx]++;
-      }
-      if (done && done >= start && done <= end) {
-        const idx = keys.indexOf(done.toISOString().slice(0, 10));
-        if (idx !== -1) completedCounts[idx]++;
-      }
-    });
+  const keys = [];
+  const cursor = new Date(start);
+  while (cursor <= end) {
+    const key = cursor.toISOString().slice(0, 10);
+    keys.push(key);
+    labels.push(cursor.getDate()); // day-of-month
+    newCounts.push(0);
+    completedCounts.push(0);
+    cursor.setDate(cursor.getDate() + 1);
   }
+
+  RAW_PATIENTS.forEach(p => {
+    const bite = parseDate(p.date_of_bite || p.day0);
+    const done = parseDate(p.day28 || p.booster2);
+
+    if (bite && bite >= start && bite <= end) {
+      const idx = keys.indexOf(bite.toISOString().slice(0, 10));
+      if (idx !== -1) newCounts[idx]++;
+    }
+    if (done && done >= start && done <= end) {
+      const idx = keys.indexOf(done.toISOString().slice(0, 10));
+      if (idx !== -1) completedCounts[idx]++;
+    }
+  });
 
   return { labels, newPatients: newCounts, completed: completedCounts };
 }
@@ -2100,44 +2117,48 @@ function calculateWeeklyTrends(view) {
   let started = [];
   let completed = [];
 
+  // YEARLY: show trend per month (Jan–Dec)
   if (view === 'yearly') {
-    labels = ['Q1', 'Q2', 'Q3', 'Q4'];
-    started = [0, 0, 0, 0];
-    completed = [0, 0, 0, 0];
-    const { start, end } = getViewRange(view);
+    labels = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    started = Array(12).fill(0);
+    completed = Array(12).fill(0);
 
     pts.forEach(p => {
       const bite = parseDate(p.date_of_bite || p.day0);
       const done = parseDate(p.day28 || p.booster2);
-      if (bite && bite >= start && bite <= end) {
-        const q = Math.floor(bite.getMonth() / 3);
-        started[q]++;
-      }
-      if (done && done >= start && done <= end) {
-        const q = Math.floor(done.getMonth() / 3);
-        completed[q]++;
-      }
-    });
-  } else {
-    // 4 weeks bucket para sa kasalukuyang buwan/week view
-    labels = ['Week 1', 'Week 2', 'Week 3', 'Week 4'];
-    started = [0, 0, 0, 0];
-    completed = [0, 0, 0, 0];
-    const { start, end } = getViewRange(view);
 
-    pts.forEach(p => {
-      const bite = parseDate(p.date_of_bite || p.day0);
-      const done = parseDate(p.day28 || p.booster2);
-      if (bite && bite >= start && bite <= end) {
-        const w = Math.min(3, Math.floor((bite.getDate() - 1) / 7));
-        started[w]++;
+      if (bite) {
+        const m = bite.getMonth();
+        started[m]++;
       }
-      if (done && done >= start && done <= end) {
-        const w = Math.min(3, Math.floor((done.getDate() - 1) / 7));
-        completed[w]++;
+      if (done && treatmentStatus(p) === 'completed') {
+        const m = done.getMonth();
+        completed[m]++;
       }
     });
+
+    return { labels, started, completed };
   }
+
+  // WEEKLY / MONTHLY: 4-week buckets (existing behavior)
+  labels = ['Week 1', 'Week 2', 'Week 3', 'Week 4'];
+  started = [0, 0, 0, 0];
+  completed = [0, 0, 0, 0];
+  const { start, end } = getViewRange(view);
+
+  pts.forEach(p => {
+    const bite = parseDate(p.date_of_bite || p.day0);
+    const done = parseDate(p.day28 || p.booster2);
+
+    if (bite && bite >= start && bite <= end) {
+      const w = Math.min(3, Math.floor((bite.getDate() - 1) / 7));
+      started[w]++;
+    }
+    if (done && done >= start && done <= end) {
+      const w = Math.min(3, Math.floor((done.getDate() - 1) / 7));
+      completed[w]++;
+    }
+  });
 
   return { labels, started, completed };
 }
@@ -2745,7 +2766,13 @@ function generateMonthlyReport() {
       treatmentTypes: analyzeTreatmentTypes(filteredPatients)
     };
   } else {
-    monthlyData = calculateMonthlyData(selectedMonth === 'monthly' ? 'current' : (selectedMonth === 'yearly' ? 'year-current' : selectedMonth), periodType);
+    // Ensure yearly selection uses year periodType so calculateMonthlyData
+    // treats the filter as a year instead of trying to match YYYY-MM prefixes.
+    if (selectedMonth === 'yearly') {
+      monthlyData = calculateMonthlyData('year-current', 'year');
+    } else {
+      monthlyData = calculateMonthlyData(selectedMonth === 'monthly' ? 'current' : selectedMonth, periodType);
+    }
   }
 
   const reportSection = document.getElementById('monthlyReportSection');
@@ -3242,7 +3269,29 @@ function calculateDailyProgress(selectedMonth = null, periodType = 'month') {
   let newPatients = [];
   let completed = [];
 
-  // Weekly view: show 7 days for the current week
+  // --- YEAR VIEW (12 months) ---
+  if (periodType === 'year' || selectedMonth === 'yearly' || selectedMonth === 'year-current') {
+    // Kunin tamang year:
+    //  - kung value ay "2025", gamitin yun
+    //  - kung "yearly" / "year-current" / undefined, gamitin current year
+    let yearStr;
+    if (selectedMonth && /^\d{4}$/.test(selectedMonth)) {
+      yearStr = selectedMonth;
+    } else {
+      yearStr = new Date().getFullYear().toString();
+    }
+
+    for (let m = 1; m <= 12; m++) {
+      const month = m.toString().padStart(2, '0');
+      const monthStr = `${yearStr}-${month}`;
+      labels.push(new Date(yearStr + '-' + month + '-01').toLocaleString(undefined, { month: 'short' }));
+      newPatients.push(patientsData.filter(p => p.day0 && p.day0.startsWith(monthStr)).length);
+      completed.push(patientsData.filter(p => p.day28 && p.day28.startsWith(monthStr)).length);
+    }
+    return { labels, newPatients, completed };
+  }
+
+  // --- WEEKLY VIEW (7 days ng current week) ---
   if (selectedMonth === 'weekly') {
     const now = new Date();
     const dayOfWeek = now.getDay();
@@ -3253,27 +3302,14 @@ function calculateDailyProgress(selectedMonth = null, periodType = 'month') {
       const d = new Date(start);
       d.setDate(start.getDate() + i);
       const dateStr = d.toISOString().slice(0,10);
-      labels.push(d.toLocaleDateString(undefined, {weekday: 'short', month: 'numeric', day: 'numeric'}));
+      labels.push(d.toLocaleDateString(undefined, { weekday: 'short', month: 'numeric', day: 'numeric' }));
       newPatients.push(patientsData.filter(p => p.day0 === dateStr).length);
       completed.push(patientsData.filter(p => p.day28 === dateStr).length);
     }
     return { labels, newPatients, completed };
   }
 
-  // Year view: show 12 months
-  if (periodType === 'year' || selectedMonth === 'yearly' || selectedMonth === 'year-current') {
-    const year = selectedMonth === 'year-current' ? new Date().getFullYear().toString() : (selectedMonth || new Date().getFullYear().toString());
-    for (let m = 1; m <= 12; m++) {
-      const month = m.toString().padStart(2, '0');
-      const monthStr = `${year}-${month}`;
-      labels.push(new Date(year + '-' + month + '-01').toLocaleString(undefined, {month: 'short'}));
-      newPatients.push(patientsData.filter(p => p.day0 && p.day0.startsWith(monthStr)).length);
-      completed.push(patientsData.filter(p => p.day28 && p.day28.startsWith(monthStr)).length);
-    }
-    return { labels, newPatients, completed };
-  }
-
-  // Monthly or ISO month: show days of that month
+  // --- MONTHLY VIEW (days ng month) ---
   let monthStr = null;
   if (selectedMonth === 'monthly' || selectedMonth === 'current' || !selectedMonth) {
     monthStr = new Date().toISOString().slice(0,7);
@@ -3296,25 +3332,32 @@ function calculateDailyProgress(selectedMonth = null, periodType = 'month') {
 }
 
 function calculateWeeklyTrends(selectedMonth = null, periodType = 'month') {
-  // Returns labels and counts for the weekly/period trends chart.
   const isoMonthRegex = /^\d{4}-\d{2}$/;
-  // Year view: return months as labels
+
+  // --- YEAR VIEW: 12 months as trend points ---
   if (periodType === 'year' || selectedMonth === 'yearly' || selectedMonth === 'year-current') {
-    const year = selectedMonth === 'year-current' ? new Date().getFullYear().toString() : (selectedMonth || new Date().getFullYear().toString());
+    let yearStr;
+    if (selectedMonth && /^\d{4}$/.test(selectedMonth)) {
+      yearStr = selectedMonth;
+    } else {
+      yearStr = new Date().getFullYear().toString();
+    }
+
     const labels = [];
     const started = [];
     const completed = [];
+
     for (let m = 1; m <= 12; m++) {
       const month = m.toString().padStart(2, '0');
-      const monthStr = `${year}-${month}`;
-      labels.push(new Date(year + '-' + month + '-01').toLocaleString(undefined, {month: 'short'}));
+      const monthStr = `${yearStr}-${month}`;
+      labels.push(new Date(yearStr + '-' + month + '-01').toLocaleString(undefined, { month: 'short' }));
       started.push(patientsData.filter(p => p.day0 && p.day0.startsWith(monthStr)).length);
       completed.push(patientsData.filter(p => p.day28 && p.day28.startsWith(monthStr)).length);
     }
     return { labels, started, completed };
   }
 
-  // Weekly view: return 7 day labels (short)
+  // --- WEEKLY VIEW: 7 days of current week ---
   if (selectedMonth === 'weekly') {
     const now = new Date();
     const dayOfWeek = now.getDay();
@@ -3328,14 +3371,14 @@ function calculateWeeklyTrends(selectedMonth = null, periodType = 'month') {
       const d = new Date(start);
       d.setDate(start.getDate() + i);
       const dateStr = d.toISOString().slice(0,10);
-      labels.push(d.toLocaleDateString(undefined, {weekday: 'short'}));
+      labels.push(d.toLocaleDateString(undefined, { weekday: 'short' }));
       started.push(patientsData.filter(p => p.day0 === dateStr).length);
       completed.push(patientsData.filter(p => p.day28 === dateStr).length);
     }
     return { labels, started, completed };
   }
 
-  // Monthly or ISO-month: split month into 4 weeks
+  // --- MONTHLY VIEW: 4 week buckets in selected month ---
   let monthStr = null;
   if (selectedMonth === 'monthly' || selectedMonth === 'current' || !selectedMonth) {
     monthStr = new Date().toISOString().slice(0,7);
@@ -3344,30 +3387,32 @@ function calculateWeeklyTrends(selectedMonth = null, periodType = 'month') {
   } else {
     monthStr = new Date().toISOString().slice(0,7);
   }
+
   const [y, mo] = monthStr.split('-').map(s => parseInt(s,10));
-  const daysInMonth = new Date(y, mo, 0).getDate();
   const labels = ['Week 1', 'Week 2', 'Week 3', 'Week 4'];
   const started = [0,0,0,0];
   const completed = [0,0,0,0];
-  patientsData.forEach(patient => {
-    if (patient.day0 && patient.day0.startsWith(monthStr)) {
-      const day = parseInt(patient.day0.split('-')[2]);
+
+  (patientsData || []).forEach(p => {
+    if (p.day0 && p.day0.startsWith(monthStr)) {
+      const day = parseInt(p.day0.split('-')[2], 10);
       const week = Math.min(Math.floor((day - 1) / 7), 3);
       started[week]++;
     }
-    if (patient.day28 && patient.day28.startsWith(monthStr)) {
-      const day = parseInt(patient.day28.split('-')[2]);
+    if (p.day28 && p.day28.startsWith(monthStr)) {
+      const day = parseInt(p.day28.split('-')[2], 10);
       const week = Math.min(Math.floor((day - 1) / 7), 3);
       completed[week]++;
     }
   });
+
   return { labels, started, completed };
 }
 
 function updateChartsForMonth(selectedMonth, periodType = 'month') {
   // Update charts with filtered data for selected month
-  const completedPatients = calculateCompletedTreatments(selectedMonth, periodType);
-  const serviceData = calculateServiceDistribution(selectedMonth, periodType);
+  const completedPatients = calculateCompletedTreatmentsByMonth(selectedMonth, periodType);
+  const serviceData = calculateServiceDistributionByMonth(selectedMonth, periodType);
   console.log('updateChartsForMonth:', { selectedMonth, periodType, completedPatientsCount: completedPatients && (completedPatients.completed + completedPatients.inProgress + completedPatients.notStarted), serviceCount: (serviceData && (serviceData.counts||[]).length) });
 
   // Update completion chart (guard if chart instances exist)
@@ -3410,7 +3455,7 @@ function updateChartsForMonth(selectedMonth, periodType = 'month') {
   }
 }
 
-function calculateCompletedTreatments(filterMonth = null, periodType = 'month') {
+function calculateCompletedTreatmentsByMonth(filterMonth = null, periodType = 'month') {
   // Use patientsData by default. Keep signature compatible with callers.
   let filteredPatients = patientsData || [];
 
@@ -3436,17 +3481,26 @@ function calculateCompletedTreatments(filterMonth = null, periodType = 'month') 
   const fields = ['day0_done','day3_done','day7_done','day14_done','day28_done','booster1_done','booster2_done'];
 
   filteredPatients.forEach(p => {
+    // Prefer persisted overall_status when present (server uses 'complete')
+    const statusStr = (p && (p.overall_status || p.overallStatus || p.overall || '')) .toString().trim().toLowerCase();
+    if (statusStr === 'complete' || statusStr === 'completed') {
+      completed++;
+      return;
+    }
+
+    // Fallback: derive from per-dose done flags
     let allDone = true;
     let anyDone = false;
 
     fields.forEach(f => {
+      // support alternate keys without underscore or with different naming
       const alt = f.replace(/_/g, '');
       const v = (p && (p[f] !== undefined ? p[f] : (p[alt] !== undefined ? p[alt] : 0))) || 0;
-      if (String(v) === '1' || String(v) === 'true') anyDone = true;
+      if (String(v) === '1' || String(v).toLowerCase() === 'true') anyDone = true;
       else allDone = false;
     });
 
-    if (allDone && filteredPatients.length > 0) completed++;
+    if (allDone) completed++;
     else if (anyDone) inProgress++;
     else notStarted++;
   });
@@ -3454,7 +3508,7 @@ function calculateCompletedTreatments(filterMonth = null, periodType = 'month') 
   return { completed, inProgress, notStarted };
 }
 
-function calculateServiceDistribution(filterMonth = null, periodType = 'month') {
+function calculateServiceDistributionByMonth(filterMonth = null, periodType = 'month') {
   let filteredPatients = patientsData || [];
   // Normalize semantic filters
   if (filterMonth && filterMonth !== 'all') {
