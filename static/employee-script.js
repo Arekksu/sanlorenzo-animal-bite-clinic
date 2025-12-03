@@ -224,7 +224,6 @@ async function reloadPatientTableFromAPI(){
         <td>${p.id}</td>
         <td>${escapeHtml(p.patient_name||'')}</td>
         <td>${p.date_of_bite || ''}</td>
-        <td>${escapeHtml(p.service_type||'')}</td>
         <td class="patient-status-cell"><span class="status-label status-${statusText.toLowerCase()}">${statusText}</span></td>
         <td class="actions-cell">
           <button class="btn-view"  data-patient-id="${p.id}" title="View">
@@ -775,6 +774,10 @@ let patientsData = [];       // for calendar
 let allPatientsRows = [];    // for table filtering/sorting
 let currentStatusFilter = 'all'; // 'all' | 'complete' | 'incomplete' | 'processing'
 
+// Pagination for patient list
+let patientCurrentPage = 1;
+const patientPageSize = 11; // 11 patients per page
+
 /* ---------- INIT ---------- */
 document.addEventListener('DOMContentLoaded', async () => {
   updateCurrentDate();
@@ -1276,7 +1279,10 @@ function initializeViewPatientSection() {
   allPatientsRows = Array.from(tbody.querySelectorAll('tr')).filter(
     r => r.querySelectorAll('td').length > 0 && r.textContent.trim() !== 'No patients found.'
   );
+  // reset pagination
+  patientCurrentPage = 1;
   updateResultsCount(allPatientsRows.length);
+  updatePatientPagination();
 }
 
 /* 2) Real data fetch from /api/patients (hindi na gagamit ng patientDatabase) */
@@ -1324,7 +1330,6 @@ async function reloadPatientTableFromAPI() {
         <td>${p.id}</td>
         <td>${escapeHtml(p.patient_name||'')}</td>
         <td>${p.date_of_bite || ''}</td>
-        <td>${escapeHtml(p.service_type||'')}</td>
         <td class="patient-status-cell"><span class="status-label status-${statusText.toLowerCase()}">${statusText}</span></td>
         <td class="actions-cell">
           <button class="btn-view"  data-patient-id="${p.id}" title="View">
@@ -1361,6 +1366,9 @@ async function reloadPatientTableFromAPI() {
     if (typeof updatePatientTableStatuses === 'function') updatePatientTableStatuses();
     // re-apply status filter after reload
     if (typeof applyPatientStatusFilter === 'function') applyPatientStatusFilter(currentStatusFilter);
+    // update pagination after loading data
+    patientCurrentPage = 1;
+    updatePatientPagination();
 
   } catch (err) {
     console.error('reloadPatientTableFromAPI failed:', err);
@@ -1373,28 +1381,27 @@ function searchPatients() {
   const tbody = document.querySelector('#view-patient .patient-table tbody');
   if (!tbody || allPatientsRows.length === 0) return;
 
-  let count = 0;
+  // Just update highlights, let pagination handle visibility
   allPatientsRows.forEach(row => {
     const cells = row.cells;
-    if (cells.length >= 4) {
-      const id = cells[0].textContent.toLowerCase();
-      const name = cells[1].textContent.toLowerCase();
-      const date = cells[2].textContent.toLowerCase();
-      const service = cells[3].textContent.toLowerCase();
-
-      const match = !q || id.includes(q) || name.includes(q) || date.includes(q) || service.includes(q);
-      row.style.display = match ? '' : 'none';
-      count += match ? 1 : 0;
-
-      // highlight name/service kapag may query
-      removeHighlight(cells[1]); removeHighlight(cells[3]);
-      if (q && match) {
-        highlightSearchTerm(cells[1], q);
-        highlightSearchTerm(cells[3], q);
+    if (cells.length >= 3) {
+      // highlight name kapag may query
+      removeHighlight(cells[1]);
+      if (q) {
+        const id = (cells[0].textContent || '').toLowerCase();
+        const name = (cells[1].textContent || '').toLowerCase();
+        const date = (cells[2].textContent || '').toLowerCase();
+        const match = id.includes(q) || name.includes(q) || date.includes(q);
+        if (match) {
+          highlightSearchTerm(cells[1], q);
+        }
       }
     }
   });
-  updateResultsCount(count, q);
+  
+  // refresh pagination after filtering (pagination will handle visibility)
+  patientCurrentPage = 1;
+  updatePatientPagination();
 }
 function clearSearch(){ const i=document.getElementById('patient-search'); if(i){i.value='';} searchPatients(); }
 
@@ -1422,46 +1429,115 @@ function applyPatientStatusFilter(filter) {
 }
 
 function filterPatientTableByStatus(filter) {
+  // Just update the current filter, let pagination handle visibility
+  currentStatusFilter = filter;
+  // refresh pagination after filtering (pagination will handle visibility)
+  patientCurrentPage = 1;
+  updatePatientPagination();
+}
+
+/* ---------- PATIENT TABLE PAGINATION (client-side) ---------- */
+function updatePatientPagination() {
+  const container = document.getElementById('patient-pagination');
+  if (!container) return;
+
+  // Get all rows that should be visible (not filtered out by search/status)
+  let visibleRows = [];
   const q = (document.getElementById('patient-search')?.value || '').toLowerCase().trim();
-  let count = 0;
+  const statusFilter = currentStatusFilter || 'all';
+  
   allPatientsRows.forEach(row => {
-    // Determine search match
-    let matchSearch = true;
+    let shouldShow = true;
+    
+    // Apply search filter
     if (q) {
       const cells = row.cells;
-      const id = (cells[0]?.textContent || '').toLowerCase();
-      const name = (cells[1]?.textContent || '').toLowerCase();
-      const date = (cells[2]?.textContent || '').toLowerCase();
-      const service = (cells[3]?.textContent || '').toLowerCase();
-      matchSearch = !q || id.includes(q) || name.includes(q) || date.includes(q) || service.includes(q);
+      if (cells.length >= 3) {
+        const id = (cells[0].textContent || '').toLowerCase();
+        const name = (cells[1].textContent || '').toLowerCase();
+        const date = (cells[2].textContent || '').toLowerCase();
+        shouldShow = id.includes(q) || name.includes(q) || date.includes(q);
+      } else {
+        shouldShow = false;
+      }
     }
-
-    // Determine status match (prefer dataset attributes; fallback to status label text)
-    let statusText = '';
-    const statusLabel = row.querySelector('.patient-status-cell .status-label');
-    if (statusLabel) statusText = (statusLabel.textContent || '').toLowerCase();
-    // fallback: use dataset heuristics
-    if (!statusText) {
-      const ds = row.dataset;
-      const keys = ['day0Done','day3Done','day7Done','day14Done','day28Done','booster1Done','booster2Done'];
-      let any = false, all = true;
-      keys.forEach(k => {
-        const v = ds[k];
-        if (String(v) === '1' || String(v) === 'true') any = true;
-        else all = false;
-      });
-      if (all) statusText = 'complete';
-      else if (any) statusText = 'incomplete';
-      else statusText = 'processing';
+    
+    // Apply status filter
+    if (shouldShow && statusFilter !== 'all') {
+      const statusLabel = row.querySelector('.patient-status-cell .status-label');
+      const statusText = statusLabel ? (statusLabel.textContent || '').toLowerCase() : 'processing';
+      shouldShow = (statusText === statusFilter);
     }
-
-    const matchStatus = (filter === 'all') || (statusText === filter);
-
-    const visible = matchSearch && matchStatus;
-    row.style.display = visible ? '' : 'none';
-    if (visible) count++;
+    
+    if (shouldShow) {
+      visibleRows.push(row);
+    }
   });
-  updateResultsCount(count, q);
+
+  const total = visibleRows.length;
+  const totalPages = Math.max(1, Math.ceil(total / patientPageSize));
+  if (patientCurrentPage > totalPages) patientCurrentPage = totalPages;
+
+  // Hide all rows first
+  allPatientsRows.forEach(r => r.style.display = 'none');
+
+  // Show only current page rows
+  const start = (patientCurrentPage - 1) * patientPageSize;
+  const end = start + patientPageSize;
+  visibleRows.forEach((row, idx) => {
+    if (idx >= start && idx < end) {
+      row.style.display = '';
+    }
+  });
+
+  // render pagination controls
+  renderPatientPaginationControls(container, totalPages, total);
+}
+
+function renderPatientPaginationControls(container, totalPages, totalRows = 0) {
+  container.innerHTML = '';
+  const info = document.createElement('div');
+  info.style.fontSize = '0.95rem';
+  info.style.color = '#333';
+  info.style.marginRight = '12px';
+  
+  const start = totalRows > 0 ? ((patientCurrentPage - 1) * patientPageSize + 1) : 0;
+  const end = Math.min(patientCurrentPage * patientPageSize, totalRows);
+  info.textContent = totalRows > 0 ? `Showing ${start}-${end} of ${totalRows} patients (Page ${patientCurrentPage} of ${totalPages})` : 'No patients found';
+  container.appendChild(info);
+
+  const prev = document.createElement('button');
+  prev.className = 'btn-ghost';
+  prev.textContent = '‹ Prev';
+  prev.disabled = patientCurrentPage <= 1;
+  prev.onclick = () => { if (patientCurrentPage>1) { patientCurrentPage--; updatePatientPagination(); } };
+  container.appendChild(prev);
+
+  // simple page buttons (show up to 7 pages compactly)
+  const maxButtons = 7;
+  let startPage = 1;
+  let endPage = totalPages;
+  if (totalPages > maxButtons) {
+    const half = Math.floor(maxButtons/2);
+    startPage = Math.max(1, patientCurrentPage - half);
+    endPage = Math.min(totalPages, startPage + maxButtons - 1);
+    if (endPage - startPage < maxButtons - 1) startPage = Math.max(1, endPage - maxButtons + 1);
+  }
+
+  for (let p = startPage; p <= endPage; p++) {
+    const btn = document.createElement('button');
+    btn.className = p === patientCurrentPage ? 'btn-secondary' : 'btn-ghost';
+    btn.textContent = String(p);
+    btn.onclick = (() => { const page = p; return () => { patientCurrentPage = page; updatePatientPagination(); }; })();
+    container.appendChild(btn);
+  }
+
+  const next = document.createElement('button');
+  next.className = 'btn-ghost';
+  next.textContent = 'Next ›';
+  next.disabled = patientCurrentPage >= totalPages;
+  next.onclick = () => { if (patientCurrentPage < totalPages) { patientCurrentPage++; updatePatientPagination(); } };
+  container.appendChild(next);
 }
 
 /* 4) Row Actions (view/edit/delete) */

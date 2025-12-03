@@ -559,7 +559,7 @@
       <section id="view-patient" class="content-section">
         <h2>Patient Records</h2>
         <div class="table-actions" style="display:flex;align-items:center;gap:12px;margin:8px 0 12px;flex-wrap:wrap;">
-          <input id="patient-search" type="text" placeholder="Search by ID, name, date, or service" oninput="searchPatients()" style="flex:1;min-width:220px;max-width:420px;padding:8px 10px;border:1px solid #ccc;border-radius:6px;" />
+          <input id="patient-search" type="text" placeholder="Search by ID, name, or date" oninput="searchPatients()" style="flex:1;min-width:220px;max-width:420px;padding:8px 10px;border:1px solid #ccc;border-radius:6px;" />
           <button class="btn-secondary" type="button" onclick="searchPatients()">Search</button>
           <button class="btn-ghost" type="button" onclick="clearSearch()">Clear</button>
           <label for="patient-status-filter" style="margin-left:6px;font-weight:600;color:#333;">Status:</label>
@@ -575,18 +575,16 @@
           <table class="patient-table">
             <colgroup>
               <col style="width:6%">
-              <col style="width:28%">
-              <col style="width:16%">
-              <col style="width:20%">
-              <col style="width:12%">
+              <col style="width:36%">
               <col style="width:18%">
+              <col style="width:12%">
+              <col style="width:28%">
             </colgroup>
             <thead>
               <tr>
                 <th style="color:#fff !important;">ID</th>
                 <th style="color:#fff !important;">Patient Name</th>
                 <th style="color:#fff !important;">Date of Bite</th>
-                <th style="color:#fff !important;">Service</th>
                 <th style="color:#fff !important;">Status</th>
                 <th style="color:#fff !important;">Actions</th>
               </tr>
@@ -606,7 +604,6 @@
                 <td>{{ p['id'] }}</td>
                 <td>{{ p['patient_name'] }}</td>
                 <td>{{ p['date_of_bite'] }}</td>
-                <td>{{ p['service_type'] }}</td>
                 <td class="patient-status-cell">
                   {% set status = row_status %}
                   <span class="status-label status-{{ status }}">{{ status|capitalize }}</span>
@@ -624,11 +621,12 @@
                 </td>
               </tr>
               {% else %}
-              <tr><td colspan="6">No patients found.</td></tr>
+              <tr><td colspan="5">No patients found.</td></tr>
               {% endfor %}
             </tbody>
           </table>
         </div>
+        <div id="patient-pagination" style="margin-top:12px; display:flex; justify-content:center; gap:8px; align-items:center;"></div>
       </section>
 
       <!-- View Schedule -->
@@ -921,7 +919,7 @@
   <div id="patientModal" class="modal" style="display:none">
     <div class="modal-content">
       <div class="modal-header">
-        <h2>Patient Details</h2>
+        <h2 style="color: white !important; color: #ffffff !important;">Patient Details</h2>
         <span class="close" onclick="closeModal('patientModal')">&times;</span>
       </div>
       <div id="patientModalBody" class="modal-body"></div>
@@ -939,76 +937,209 @@
 
   <!-- EDIT PATIENT MODAL -->
   <div id="editPatientModal" class="modal" style="display:none">
-    <div class="modal-content">
+    <div class="modal-content" style="max-width: 95%; width: 1400px; max-height: 90vh; overflow-y: auto;">
       <div class="modal-header">
-        <h2>Edit Patient</h2>
+        <h2 style="color: white !important; color: #ffffff !important;">Edit Patient Information</h2>
         <span class="close" onclick="closeModal('editPatientModal')">&times;</span>
       </div>
       <div class="modal-body">
         <form id="editPatientForm" onsubmit="return submitEditPatient(event)" method="POST">
           <input type="hidden" id="edit_patient_id" name="id">
 
-          <div class="form-grid">
+          <!-- Patient Basic Information -->
+          <div class="form-section-header" style="margin-top: 0;">
+            <h4 style="color: #800020; margin-bottom: 15px; border-bottom: 2px solid #800020; padding-bottom: 5px;">
+              👤 Patient Information
+            </h4>
+          </div>
+          <div class="form-grid" style="grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 25px;">
             <div class="form-group">
-              <label for="edit_patient_name">Patient Name</label>
-              <input id="edit_patient_name" name="patient_name" type="text" required>
+              <label for="edit_patient_name">Full Name <span style="color: red;">*</span></label>
+              <input id="edit_patient_name" name="patient_name" type="text" placeholder="Enter patient's full name" required>
             </div>
             <div class="form-group">
-              <label for="edit_date_of_bite">Date of Bite</label>
-              <input id="edit_date_of_bite" name="date_of_bite" type="date">
-            </div>
-            <div class="form-group">
-              <label for="edit_service_type">Service</label>
-              <input id="edit_service_type" name="service_type" type="text">
-            </div>
-            <div class="form-group">
-              <label for="edit_contact_number">Contact</label>
-              <input id="edit_contact_number" name="contact_number" type="text">
+              <label for="edit_contact_number">Contact Number</label>
+              <input id="edit_contact_number" name="contact_number" type="tel" placeholder="09XX-XXX-XXXX">
             </div>
             <div class="form-group">
               <label for="edit_age">Age</label>
-              <input id="edit_age" name="age" type="number" min="0">
+              <input id="edit_age" name="age" type="number" min="0" max="150" placeholder="Enter age">
             </div>
             <div class="form-group">
               <label for="edit_gender">Gender</label>
               <select id="edit_gender" name="gender">
-                <option value=""></option>
-                <option>Male</option>
-                <option>Female</option>
+                <option value="">Select gender</option>
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+                <option value="Other">Other</option>
               </select>
             </div>
-            <div class="form-group full-width">
-              <label for="edit_address">Address</label>
-              <input id="edit_address" name="address" type="text">
+            <div class="form-group">
+              <label for="edit_weight">Weight (kg)</label>
+              <input id="edit_weight" name="weight" type="number" step="0.1" min="0" placeholder="Enter weight">
             </div>
+            <div class="form-group">
+              <label for="edit_vaccinated">Previous Vaccination</label>
+              <select id="edit_vaccinated" name="vaccinated">
+                <option value="">Select status</option>
+                <option value="Yes">Previously Vaccinated</option>
+                <option value="No">Not Previously Vaccinated</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group" style="margin-bottom: 25px;">
+            <label for="edit_address">Complete Address</label>
+            <textarea id="edit_address" name="address" rows="2" placeholder="Enter complete address including barangay, city/municipality, province"></textarea>
+          </div>
 
+          <!-- Medical Information -->
+          <div class="form-section-header">
+            <h4 style="color: #800020; margin-bottom: 15px; border-bottom: 2px solid #800020; padding-bottom: 5px;">
+              🏥 Medical Information
+            </h4>
+          </div>
+          <div class="form-grid" style="grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 25px;">
             <div class="form-group">
-              <label for="edit_bite_location">Bite Location</label>
-              <input id="edit_bite_location" name="bite_location" type="text">
+              <label for="edit_medical_history">Medical History & Allergies</label>
+              <textarea id="edit_medical_history" name="medical_history" rows="2" placeholder="Enter medical history and known allergies"></textarea>
             </div>
             <div class="form-group">
-              <label for="edit_place_of_bite">Place of Bite</label>
-              <input id="edit_place_of_bite" name="place_of_bite" type="text">
+              <label for="edit_medication">Current Medication</label>
+              <textarea id="edit_medication" name="medication" rows="2" placeholder="Enter current medications (write 'None' if not applicable)"></textarea>
             </div>
-            <div class="form-group">
-              <label for="edit_source_of_bite">Source of Bite</label>
-              <input id="edit_source_of_bite" name="source_of_bite" type="text">
-            </div>
-            <div class="form-group">
-              <label for="edit_type_of_bite">Type of Bite</label>
-              <input id="edit_type_of_bite" name="type_of_bite" type="text">
-            </div>
-            <div class="form-group">
-              <label for="edit_source_status">Source Status</label>
-              <input id="edit_source_status" name="source_status" type="text">
-            </div>
-            <div class="form-group">
-              <label for="edit_exposure">Exposure</label>
-              <input id="edit_exposure" name="exposure" type="text">
-            </div>
+          </div>
 
+          <!-- Bite Incident Details -->
+          <div class="form-section-header">
+            <h4 style="color: #800020; margin-bottom: 15px; border-bottom: 2px solid #800020; padding-bottom: 5px;">
+              🐕 Bite Incident Information
+            </h4>
+          </div>
+          <div class="form-grid" style="grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 25px;">
             <div class="form-group">
-              <label for="edit_day0">Day 0</label>
+              <label for="edit_date_of_bite">When did the bite occur?</label>
+              <input id="edit_date_of_bite" name="date_of_bite" type="date">
+            </div>
+            <div class="form-group">
+              <label for="edit_bite_location">Where on the body was the bite?</label>
+              <input id="edit_bite_location" name="bite_location" type="text" placeholder="e.g., left hand, right leg, face">
+            </div>
+            <div class="form-group">
+              <label for="edit_place_of_bite">Where did the incident happen?</label>
+              <input id="edit_place_of_bite" name="place_of_bite" type="text" placeholder="e.g., at home, in the street, at park">
+            </div>
+            <div class="form-group">
+              <label for="edit_source_of_bite">What animal caused the bite?</label>
+              <select id="edit_source_of_bite" name="source_of_bite">
+                <option value="">Select animal</option>
+                <option value="Dog">Dog</option>
+                <option value="Cat">Cat</option>
+                <option value="Bat">Bat</option>
+                <option value="Monkey">Monkey</option>
+                <option value="Other">Other Animal</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="edit_other_source">If other animal, specify:</label>
+              <input id="edit_other_source" name="other_source" type="text" placeholder="Specify the animal type">
+            </div>
+            <div class="form-group">
+              <label for="edit_type_of_bite">Type of injury</label>
+              <select id="edit_type_of_bite" name="type_of_bite">
+                <option value="">Select type</option>
+                <option value="One Bite">Single Bite</option>
+                <option value="Multiple Bites">Multiple Bites</option>
+                <option value="Scratch">Scratch/Laceration</option>
+                <option value="Lick on open wound">Lick on Open Wound</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="edit_bite_category">Severity Category</label>
+              <select id="edit_bite_category" name="bite_category">
+                <option value="">Select category</option>
+                <option value="Category I">Category I (Minor)</option>
+                <option value="Category II">Category II (Moderate)</option>
+                <option value="Category III">Category III (Severe)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="edit_source_status">Animal Status</label>
+              <select id="edit_source_status" name="source_status">
+                <option value="">Select status</option>
+                <option value="Alive">Alive & Observable</option>
+                <option value="Dead">Dead/Killed</option>
+                <option value="Unknown">Unknown/Lost</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="edit_exposure">Animal Ownership</label>
+              <select id="edit_exposure" name="exposure">
+                <option value="">Select ownership</option>
+                <option value="Family">Own Pet</option>
+                <option value="Neighbor">Neighbor's Pet</option>
+                <option value="Stranger">Unknown Owner</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="edit_type_of_exposure">Vaccination Status of Animal</label>
+              <select id="edit_type_of_exposure" name="type_of_exposure">
+                <option value="">Select status</option>
+                <option value="vaccinated_pet">Vaccinated Pet</option>
+                <option value="not_vaccinated_pet">Not Vaccinated Pet</option>
+                <option value="not_vaccinated_stray_animal">Stray Animal</option>
+                <option value="vaccinated_pet_of_neighbor">Neighbor's Vaccinated Pet</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Treatment Information -->
+          <div class="form-section-header">
+            <h4 style="color: #800020; margin-bottom: 15px; border-bottom: 2px solid #800020; padding-bottom: 5px;">
+              💉 Treatment & Service Information
+            </h4>
+          </div>
+          <div class="form-grid" style="grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 25px;">
+            <div class="form-group">
+              <label for="edit_service_type">Type of Treatment</label>
+              <select id="edit_service_type" name="service_type">
+                <option value="">Select treatment type</option>
+                <option value="Post-Exposure Prophylaxis">Post-Exposure Treatment</option>
+                <option value="Pre-Exposure Prophylaxis">Pre-Exposure Prevention</option>
+                <option value="Booster">Booster Shot</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="edit_route_of_vaccine">Vaccine Route</label>
+              <select id="edit_route_of_vaccine" name="route_of_vaccine">
+                <option value="">Select route</option>
+                <option value="IM">IM (Intramuscular)</option>
+                <option value="ID">ID (Intradermal)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="edit_consent">Patient Consent</label>
+              <select id="edit_consent" name="consent">
+                <option value="">Select consent status</option>
+                <option value="Yes">Yes, consents to treatment</option>
+                <option value="No">No, refuses treatment</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="edit_route_imc">IM Route Consent</label>
+              <input id="edit_route_imc" name="route_imc" type="text" placeholder="IM route consent details">
+            </div>
+          </div>
+
+          <!-- Vaccination Schedule -->
+          <div class="form-section-header">
+            <h4 style="color: #800020; margin-bottom: 15px; border-bottom: 2px solid #800020; padding-bottom: 5px;">
+              📅 Vaccination Schedule
+            </h4>
+          </div>
+          <div class="form-grid" style="grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 25px;">
+            <div class="form-group">
+              <label for="edit_day0">Day 0 (Initial)</label>
               <input id="edit_day0" name="day0" type="date">
             </div>
             <div class="form-group">
@@ -1024,91 +1155,85 @@
               <input id="edit_day14" name="day14" type="date">
             </div>
             <div class="form-group">
-              <label for="edit_day28">Day 28</label>
+              <label for="edit_day28">Day 28 (Final)</label>
               <input id="edit_day28" name="day28" type="date">
             </div>
           </div>
-           <div class="form-group">
-              <label for="edit_other_source">Other Source of Bite</label>
-              <input id="edit_other_source" name="other_source" type="text">
-            </div>
-            <div class="form-group">
-              <label for="edit_vaccinated">Vaccinated</label>
-              <input id="edit_vaccinated" name="vaccinated" type="text">
-            </div>
 
+          <!-- Additional Treatments -->
+          <div class="form-section-header">
+            <h4 style="color: #800020; margin-bottom: 15px; border-bottom: 2px solid #800020; padding-bottom: 5px;">
+              🩹 Additional Treatments
+            </h4>
+          </div>
+          <div class="form-grid" style="grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 25px;">
             <div class="form-group">
-              <label for="edit_weight">Weight (kg)</label>
-              <input id="edit_weight" name="weight" type="number" step="0.01" min="0">
-            </div>
-            <div class="form-group full-width">
-              <label for="edit_medical_history">Medical History</label>
-              <input id="edit_medical_history" name="medical_history" type="text">
-            </div>
-            <div class="form-group full-width">
-              <label for="edit_medication">Medication</label>
-              <input id="edit_medication" name="medication" type="text">
-            </div>
-            <div class="form-group">
-              <label for="edit_consent">Consent</label>
-              <input id="edit_consent" name="consent" type="text">
-            </div>
-
-            <div class="form-group">
-              <label for="edit_route_of_vaccine">Route of Vaccine</label>
-              <input id="edit_route_of_vaccine" name="route_of_vaccine" type="text">
-            </div>
-            <div class="form-group">
-              <label for="edit_route_imc">Route IMC</label>
-              <input id="edit_route_imc" name="route_imc" type="text">
-            </div>
-
-            <div class="form-group">
-              <label for="edit_booster1">Booster 1</label>
+              <label for="edit_booster1">Booster Shot 1</label>
               <input id="edit_booster1" name="booster1" type="date">
             </div>
             <div class="form-group">
-              <label for="edit_booster2">Booster 2</label>
+              <label for="edit_booster2">Booster Shot 2</label>
               <input id="edit_booster2" name="booster2" type="date">
             </div>
-
-
             <div class="form-group">
-              <label for="edit_bite_category">Bite Category</label>
-              <input id="edit_bite_category" name="bite_category" type="text">
-            </div>
-            <div class="form-group">
-              <label for="edit_type_of_exposure">Type of Exposure</label>
-              <input id="edit_type_of_exposure" name="type_of_exposure" type="text">
-            </div>
-
-            <div class="form-group full-width">
-              <label for="edit_additional_info">Additional Info</label>
-              <input id="edit_additional_info" name="additional_info" type="text">
-            </div>
-
-            <div class="form-group">
-              <label for="edit_tt1">TT1</label>
+              <label for="edit_tt1">Tetanus Shot 1</label>
               <input id="edit_tt1" name="tt1" type="date">
             </div>
             <div class="form-group">
-              <label for="edit_tt6">TT6</label>
+              <label for="edit_tt6">Tetanus Shot 2 (6 months)</label>
               <input id="edit_tt6" name="tt6" type="date">
             </div>
             <div class="form-group">
-              <label for="edit_tt30">TT30</label>
+              <label for="edit_tt30">Tetanus Shot 3 (30 days)</label>
               <input id="edit_tt30" name="tt30" type="date">
-            </div>  
-            <div class="form-group">
-              <label for="edit_anti_tetanus">Anti-Tetanus</label>
-              <input id="edit_anti_tetanus" name="anti_tetanus" type="text">
             </div>
+            <div class="form-group">
+              <label for="edit_anti_tetanus">Anti-Tetanus Details</label>
+              <input id="edit_anti_tetanus" name="anti_tetanus" type="text" placeholder="Anti-tetanus toxoid dosage details">
+            </div>
+          </div>
+
+          <!-- Additional Notes -->
+          <div class="form-section-header">
+            <h4 style="color: #800020; margin-bottom: 15px; border-bottom: 2px solid #800020; padding-bottom: 5px;">
+              📝 Additional Information
+            </h4>
+          </div>
+          <div class="form-group" style="margin-bottom: 25px;">
+            <label for="edit_additional_info">Additional Remarks</label>
+            <textarea id="edit_additional_info" name="additional_info" rows="3" placeholder="Enter any additional information or special notes about the patient or treatment"></textarea>
+          </div>
 
           <div class="form-actions">
             <button type="button" class="btn-secondary" onclick="closeModal('editPatientModal')">Cancel</button>
-            <button type="submit" class="btn-primary">Save Changes</button>
+            <button type="submit" class="btn-primary">💾 Save Changes</button>
           </div>
         </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- DELETE CONFIRMATION MODAL -->
+  <div id="deleteConfirmModal" class="modal" style="display:none">
+    <div class="modal-content" style="max-width: 500px;">
+      <div class="modal-header">
+        <h2 style="color: white; color: #ffffff !important;">Confirm Delete Patient</h2>
+        <span class="close" onclick="closeDeleteModal()">&times;</span>
+      </div>
+      <div class="modal-body">
+        <div style="text-align: center; padding: 20px 0;">
+          <div style="font-size: 4rem; color: #ff4444; margin-bottom: 20px;">⚠️</div>
+          <h3 style="color: #333; margin-bottom: 15px;">Are you sure?</h3>
+          <p style="color: #666; font-size: 1.1rem; margin-bottom: 25px;">
+            This action will permanently delete the patient record and cannot be undone.
+          </p>
+          <div style="display: flex; gap: 15px; justify-content: center;">
+            <button type="button" class="btn-secondary" onclick="closeDeleteModal()">Cancel</button>
+            <button type="button" class="btn-delete" onclick="confirmDeletePatient()" style="background: #ff4444; color: white; padding: 10px 25px; border: none; border-radius: 5px; font-weight: bold; cursor: pointer;">
+              🗑️ Delete Patient
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
