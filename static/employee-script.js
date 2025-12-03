@@ -632,31 +632,59 @@ function generateSchedRow(label, dateField, doneField, p) {
 
 // EDIT MODAL (prefill)
 function openEditPatientModal(p){
-  const val = (x)=> x??'';
-  document.getElementById('edit_patient_id').value = p.id;
-  document.getElementById('edit_patient_name').value = val(p.patient_name);
-  document.getElementById('edit_date_of_bite').value = val((p.date_of_bite||'').slice(0,10));
-  document.getElementById('edit_service_type').value = val(p.service_type);
-  document.getElementById('edit_contact_number').value = val(p.contact_number);
-  document.getElementById('edit_age').value = val(p.age);
-  document.getElementById('edit_gender').value = val(p.gender);
-  document.getElementById('edit_address').value = val(p.address);
+  const val = (x)=> x ?? '';
 
-  document.getElementById('edit_bite_location').value = val(p.bite_location);
-  document.getElementById('edit_place_of_bite').value = val(p.place_of_bite);
-  document.getElementById('edit_source_of_bite').value = val(p.source_of_bite);
-  document.getElementById('edit_type_of_bite').value = val(p.type_of_bite);
-  document.getElementById('edit_source_status').value = val(p.source_status);
-  document.getElementById('edit_exposure').value = val(p.exposure);
+  document.getElementById('edit_patient_id').value      = p.id;
+  document.getElementById('edit_patient_name').value    = val(p.patient_name);
+  document.getElementById('edit_date_of_bite').value    = val((p.date_of_bite || '').slice(0,10));
+  document.getElementById('edit_service_type').value    = val(p.service_type);
+  document.getElementById('edit_contact_number').value  = val(p.contact_number);
+  document.getElementById('edit_age').value             = val(p.age);
+  document.getElementById('edit_gender').value          = val(p.gender);
+  document.getElementById('edit_address').value         = val(p.address);
 
-  document.getElementById('edit_day0').value  = val((p.day0 || '').slice(0,10));
-  document.getElementById('edit_day3').value  = val((p.day3 || '').slice(0,10));
-  document.getElementById('edit_day7').value  = val((p.day7 || '').slice(0,10));
-  document.getElementById('edit_day14').value = val((p.day14|| '').slice(0,10));
-  document.getElementById('edit_day28').value = val((p.day28|| '').slice(0,10));
+  document.getElementById('edit_bite_location').value   = val(p.bite_location);
+  document.getElementById('edit_place_of_bite').value   = val(p.place_of_bite);
+  document.getElementById('edit_source_of_bite').value  = val(p.source_of_bite);
+  document.getElementById('edit_type_of_bite').value    = val(p.type_of_bite);
+  document.getElementById('edit_source_status').value   = val(p.source_status);
+  document.getElementById('edit_exposure').value        = val(p.exposure);
 
+  document.getElementById('edit_day0').value            = val((p.day0  || '').slice(0,10));
+  document.getElementById('edit_day3').value            = val((p.day3  || '').slice(0,10));
+  document.getElementById('edit_day7').value            = val((p.day7  || '').slice(0,10));
+  document.getElementById('edit_day14').value           = val((p.day14 || '').slice(0,10));
+  document.getElementById('edit_day28').value           = val((p.day28 || '').slice(0,10));
+
+  // ----- EXTRA FIELDS FROM DB -----
+  document.getElementById('edit_other_source').value    = val(p.other_source);
+  document.getElementById('edit_vaccinated').value      = val(p.vaccinated);
+  document.getElementById('edit_weight').value          = val(p.weight);
+  document.getElementById('edit_medical_history').value = val(p.medical_history);
+  document.getElementById('edit_medication').value      = val(p.medication);
+  document.getElementById('edit_consent').value         = val(p.consent);
+
+  document.getElementById('edit_route_of_vaccine').value= val(p.route_of_vaccine);
+  document.getElementById('edit_route_imc').value       = val(p.route_imc);
+
+  document.getElementById('edit_booster1').value        = val((p.booster1 || '').slice(0,10));
+  document.getElementById('edit_booster2').value        = val((p.booster2 || '').slice(0,10));
+
+  document.getElementById('edit_bite_category').value   = val(p.bite_category);
+  document.getElementById('edit_type_of_exposure').value= val(p.type_of_exposure);
+  document.getElementById('edit_additional_info').value = val(p.additional_info);
+
+  document.getElementById('edit_tt1').value             = val((p.tt1  || '').slice(0,10));
+  document.getElementById('edit_tt6').value             = val((p.tt6  || '').slice(0,10));
+  document.getElementById('edit_tt30').value            = val((p.tt30 || '').slice(0,10));
+  document.getElementById('edit_anti_tetanus').value    = val(p.anti_tetanus);
+
+  document.getElementById('editPatientModal').style.display = 'flex';
+  
   openModal('editPatientModal');
 }
+
+
 
 // SAVE EDIT (requires server endpoint)
 async function submitEditPatient(e){
@@ -671,17 +699,43 @@ async function submitEditPatient(e){
     age: Number(document.getElementById('edit_age').value || 0) || null,
     gender: document.getElementById('edit_gender').value || null,
     address: document.getElementById('edit_address').value.trim() || null,
+
     bite_location: document.getElementById('edit_bite_location').value.trim() || null,
     place_of_bite: document.getElementById('edit_place_of_bite').value.trim() || null,
     source_of_bite: document.getElementById('edit_source_of_bite').value.trim() || null,
     type_of_bite: document.getElementById('edit_type_of_bite').value.trim() || null,
     source_status: document.getElementById('edit_source_status').value.trim() || null,
     exposure: document.getElementById('edit_exposure').value.trim() || null,
+
     day0:  document.getElementById('edit_day0').value  || null,
     day3:  document.getElementById('edit_day3').value  || null,
     day7:  document.getElementById('edit_day7').value  || null,
     day14: document.getElementById('edit_day14').value || null,
-    day28: document.getElementById('edit_day28').value || null
+    day28: document.getElementById('edit_day28').value || null,
+
+    // ----- EXTRA FIELDS -----
+    other_source:    document.getElementById('edit_other_source').value.trim() || null,
+    vaccinated:      document.getElementById('edit_vaccinated').value.trim() || null,
+    weight:          Number(document.getElementById('edit_weight').value || 0) || null,
+    medical_history: document.getElementById('edit_medical_history').value.trim() || null,
+    medication:      document.getElementById('edit_medication').value.trim() || null,
+    consent:         document.getElementById('edit_consent').value.trim() || null,
+
+    route_of_vaccine: document.getElementById('edit_route_of_vaccine').value.trim() || null,
+    route_imc:        document.getElementById('edit_route_imc').value.trim() || null,
+
+    booster1: document.getElementById('edit_booster1').value || null, // date
+    booster2: document.getElementById('edit_booster2').value || null, // date
+
+    bite_category:    document.getElementById('edit_bite_category').value.trim() || null,
+    type_of_exposure: document.getElementById('edit_type_of_exposure').value.trim() || null,
+    additional_info:  document.getElementById('edit_additional_info').value.trim() || null,
+
+    tt1:  document.getElementById('edit_tt1').value  || null, // date
+    tt6:  document.getElementById('edit_tt6').value  || null, // date
+    tt30: document.getElementById('edit_tt30').value || null, // date
+
+    anti_tetanus: document.getElementById('edit_anti_tetanus').value.trim() || null
   };
 
   try{
