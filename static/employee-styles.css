@@ -2052,6 +2052,47 @@ body {
   }
 }
 
+/* Mobile override: ensure vaccination option cards stack and fill available width
+   Templates set inline styles for desktop (row + min-width). On small screens
+   we must override those inline styles to prevent overlap. */
+@media (max-width: 480px) {
+  .vaccination-options {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.75rem !important;
+    align-items: stretch !important;
+    justify-content: flex-start !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .vaccination-options .radio-group {
+    min-width: 0 !important;
+    max-width: 100% !important;
+    flex: 0 0 auto !important;
+    width: 100% !important;
+    display: flex !important;
+    align-items: stretch !important;
+    padding: 10px 12px !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Make the radio-label expand to full width so its content wraps instead
+     of causing horizontal overflow */
+  .vaccination-options .radio-label {
+    width: 100% !important;
+    display: flex !important;
+    align-items: flex-start !important;
+    gap: 12px !important;
+    padding: 12px !important;
+  }
+
+  /* Ensure inner text doesn't overflow and small paddings on very narrow screens */
+  .vaccination-options .radio-text small {
+    font-size: 0.82rem !important;
+  }
+}
+
 
 
 /* ========= TOAST NOTIFICATIONS ========= */
@@ -2376,7 +2417,77 @@ input:focus, select:focus, textarea:focus {
 @media (max-width: 540px) {
   .sidebar { position: relative; width: 100%; height: auto; }
   .main-content { margin-left: 0; width: 100%; }
-  .sidebar-menu { display: flex; overflow-x: auto; }
+  /* Ensure the sidebar menu stacks vertically on narrow screens */
+  .sidebar-menu { display: block; overflow-y: auto; max-height: calc(100vh - 220px); }
+  .sidebar-menu li { display: block; }
+  .sidebar .menu-btn { display: block; width: 100%; text-align: left; padding-left: 18px; }
+}
+
+/* Mobile sliding sidebar (hamburger) */
+@media (max-width: 768px) {
+  /* Start hidden off-canvas */
+  .sidebar {
+    transform: translateX(-100%);
+    transition: transform 0.28s ease;
+    width: 260px; /* slide-in width */
+    position: fixed;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    z-index: 1200;
+    overflow-y: auto;
+  }
+
+  /* When open, slide into view */
+  .sidebar.open {
+    transform: translateX(0);
+    box-shadow: 2px 0 18px rgba(0,0,0,0.45);
+  }
+
+  /* main content occupies full width when sidebar hidden */
+  .main-content { margin-left: 0; width: 100%; }
+
+  /* Hamburger toggle button */
+  .mobile-menu-btn {
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    position: fixed;
+    left: 12px;
+    top: 12px;
+    z-index: 1300;
+    background: linear-gradient(135deg,#800020 0%,#a52a2a 100%);
+    color: #fff;
+    border: 0;
+    width: 44px;
+    height: 44px;
+    border-radius: 8px;
+    font-size: 1.35rem;
+    cursor: pointer;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.18);
+  }
+
+  /* Backdrop behind the sidebar */
+  .mobile-sidebar-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.45);
+    z-index: 1190;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.22s ease;
+  }
+  .mobile-sidebar-backdrop.show {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  /* Ensure sidebar bottom stays visible and doesn't overlap content */
+  .sidebar-bottom { position: static; }
+
+  /* Slightly reduce padding within sidebar on small screens */
+  .sidebar-header { padding: 12px; }
+  .menu-btn { padding: 12px 14px; }
 }
 
 /* --- Fix 1: Sidebar footer shouldn't float over content --- */
