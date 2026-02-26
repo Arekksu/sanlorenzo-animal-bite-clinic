@@ -760,6 +760,9 @@ document.addEventListener('DOMContentLoaded', reloadPatientTableFromAPI);
 window.reloadPatientTableFromAPI = reloadPatientTableFromAPI; // optional expose
 window.closeModal = closeModal;
 window.submitEditPatient = submitEditPatient;
+window.showDeleteModal = showDeleteModal;
+window.closeDeleteModal = closeDeleteModal;
+window.confirmDeletePatient = confirmDeletePatient;
 /* === EMPLOYEE DASHBOARD SCRIPT (clean patch, real DB data) === */
 
 /* Prevent horizontal scroll bleed */

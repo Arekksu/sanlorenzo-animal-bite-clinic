@@ -74,6 +74,11 @@
 
     <!-- Main Content -->
     <main class="main-content">
+      <!-- Mobile hamburger menu (visible on small screens) -->
+      <button id="mobileMenuBtn" class="mobile-menu-btn" aria-label="Open menu" title="Menu">
+        ☰
+      </button>
+      <div id="mobileSidebarBackdrop" class="mobile-sidebar-backdrop"></div>
       <!-- Dashboard -->
       <section id="dashboard" class="content-section active">
         <div class="stats-grid">
@@ -1229,6 +1234,45 @@
 
   <script src="{{ url_for('static', filename='employee-script.js') }}"></script>
   <script src="{{ url_for('static', filename='audit-log.js') }}"></script>
+  
+  <script>
+    // Mobile sidebar toggle: toggles .open on .sidebar and toggles backdrop
+    (function(){
+      function $(sel){return document.querySelector(sel)}
+      document.addEventListener('DOMContentLoaded', function(){
+        var btn = $('#mobileMenuBtn');
+        var sidebar = $('.sidebar');
+        var backdrop = $('#mobileSidebarBackdrop');
+        if(!btn || !sidebar || !backdrop) return;
+
+        function openSidebar(){
+          sidebar.classList.add('open');
+          backdrop.classList.add('show');
+          document.body.style.overflow = 'hidden';
+          btn.setAttribute('aria-label','Close menu');
+        }
+        function closeSidebar(){
+          sidebar.classList.remove('open');
+          backdrop.classList.remove('show');
+          document.body.style.overflow = '';
+          btn.setAttribute('aria-label','Open menu');
+        }
+
+        btn.addEventListener('click', function(e){
+          if(sidebar.classList.contains('open')) closeSidebar(); else openSidebar();
+        });
+        backdrop.addEventListener('click', closeSidebar);
+
+        // hide toggle on wider screens, ensure sidebar closed when resizing
+        function updateVisibility(){
+          if(window.innerWidth <= 768){ btn.style.display = 'flex'; }
+          else { btn.style.display = 'none'; closeSidebar(); }
+        }
+        updateVisibility();
+        window.addEventListener('resize', updateVisibility);
+      });
+    })();
+  </script>
   <!-- Inline extra JS you pasted (report, edit modal, etc.) can stay as-is here if needed -->
   <!-- Done -->
    
