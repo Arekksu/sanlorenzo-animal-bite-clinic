@@ -1156,6 +1156,7 @@ def settings():
                                 employee_name=session.get('employee_name'),
                                 user=user,
                                 active_tab='settings',
+                                patients=[],
                                 patients_json=[],
                                 toast_messages=messages)
         
@@ -1168,6 +1169,7 @@ def settings():
                         employee_name=session.get('employee_name'),
                         user=user,
                         active_tab='settings',
+                        patients=[],
                         patients_json=[],
                         toast_messages=[])
 
