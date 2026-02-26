@@ -297,6 +297,7 @@ function wirePatientRowActions(){
   document.querySelectorAll('.btn-delete').forEach(b=>{
     b.onclick = ()=>{
       const id=b.getAttribute('data-patient-id');
+      console.log('Delete button clicked for patient:', id);
       showDeleteModal(id);
     };
   });
@@ -306,31 +307,42 @@ function wirePatientRowActions(){
 let pendingDeletePatientId = null;
 
 function showDeleteModal(patientId) {
+  console.log('showDeleteModal called with patientId:', patientId);
   pendingDeletePatientId = patientId;
   const modal = document.getElementById('deleteConfirmModal');
-  if (modal) {
-    modal.style.display = 'block';
-    
-    // Force reflow to trigger animation
-    modal.offsetHeight;
-    
-    // Add show class for animation
-    setTimeout(() => {
-      modal.classList.add('show');
-    }, 10);
-    
-    // Add click outside to close
-    setTimeout(() => {
-      modal.onclick = function(event) {
-        if (event.target === modal) {
-          closeDeleteModal();
-        }
-      };
-    }, 100);
-    
-    // Add ESC key to close
-    document.addEventListener('keydown', handleDeleteModalEscape);
+  
+  if (!modal) {
+    console.error('deleteConfirmModal not found in DOM');
+    return;
   }
+  
+  console.log('Modal found, displaying...');
+  modal.style.display = 'block';
+  
+  // Force reflow to trigger animation
+  modal.offsetHeight;
+  
+  // Add show class for animation
+  setTimeout(() => {
+    modal.classList.add('show');
+    console.log('Show class added to modal');
+  }, 10);
+  
+  // Add click outside to close (only on overlay/modal background)
+  const handleOutsideClick = function(event) {
+    // Only close if clicking on the modal background, not content
+    if (event.target === modal) {
+      console.log('Clicked outside modal, closing...');
+      closeDeleteModal();
+    }
+  };
+  
+  modal.removeEventListener('click', handleOutsideClick);
+  modal.addEventListener('click', handleOutsideClick);
+  
+  // Add ESC key to close
+  document.addEventListener('keydown', handleDeleteModalEscape);
+  console.log('Modal handlers set up');
 }
 
 function handleDeleteModalEscape(event) {
@@ -357,26 +369,46 @@ function closeDeleteModal() {
 }
 
 async function confirmDeletePatient() {
-  if (!pendingDeletePatientId) return;
+  console.log('confirmDeletePatient called, pendingDeletePatientId:', pendingDeletePatientId);
+  
+  if (!pendingDeletePatientId) {
+    console.warn('No patient ID to delete');
+    showToast('Error: No patient selected for deletion', 'error');
+    return;
+  }
   
   const id = pendingDeletePatientId;
   closeDeleteModal();
   
-  try{
-    const res=await fetch(`/delete-patient/${id}`,{method:'DELETE'});
-    if(!res.ok) {
+  try {
+    console.log('Deleting patient:', id);
+    const res = await fetch(`/delete-patient/${id}`, {method: 'DELETE'});
+    
+    console.log('Delete response status:', res.status);
+    
+    if (!res.ok) {
       const errorData = await res.json().catch(() => ({}));
       throw new Error(errorData.error || `HTTP ${res.status}`);
     }
+    
+    console.log('Patient deleted successfully');
     showToast('Patient deleted successfully!', 'success');
-    await reloadPatientTableFromAPI();
+    
+    // Reload the table
+    if (typeof reloadPatientTableFromAPI === 'function') {
+      console.log('Reloading patient table...');
+      await reloadPatientTableFromAPI();
+    } else {
+      console.warn('reloadPatientTableFromAPI function not found');
+    }
     
     // Update dashboard stats after deletion
     if (typeof updateAllDashboardStats === 'function') {
+      console.log('Updating dashboard stats...');
       updateAllDashboardStats();
     }
-  }catch(err){
-    console.error(err);
+  } catch(err) {
+    console.error('Delete error:', err);
     showToast('Failed to delete patient: ' + err.message, 'error');
   }
 }
@@ -3731,7 +3763,11 @@ function initializeScheduleCalculation() {
 function showToast(message, type = 'info') {
   // Remove any existing toasts
   const existingToasts = document.querySelectorAll('.toast');
-  existingToasts.forEach(toast => document.body.removeChild(toast));
+  existingToasts.forEach(toast => {
+    if (toast.parentNode) {
+      toast.parentNode.removeChild(toast);
+    }
+  });
 
   // Create new toast
   const toast = document.createElement('div');
@@ -3752,7 +3788,11 @@ function showToast(message, type = 'info') {
   // Remove after 3 seconds
   setTimeout(() => {
     toast.classList.remove('show');
-    setTimeout(() => document.body.removeChild(toast), 300);
+    setTimeout(() => {
+      if (toast.parentNode) {
+        toast.parentNode.removeChild(toast);
+      }
+    }, 300);
   }, 3000);
 }
 
@@ -3780,7 +3820,9 @@ function showModal(title, content, onClose = null) {
         modal.classList.remove('show');
         document.removeEventListener('keydown', escKeyHandler);
         setTimeout(() => {
-            document.body.removeChild(modal);
+            if (modal.parentNode) {
+                modal.parentNode.removeChild(modal);
+            }
             if (onClose) onClose();
         }, 300);
     };
@@ -3823,7 +3865,11 @@ function showConfirmModal(title, message, onConfirm, confirmText = 'Confirm', ca
     const closeModal = () => {
         modal.classList.remove('show');
         document.removeEventListener('keydown', escKeyHandler);
-        setTimeout(() => document.body.removeChild(modal), 300);
+        setTimeout(() => {
+            if (modal.parentNode) {
+                modal.parentNode.removeChild(modal);
+            }
+        }, 300);
     };
 
     const escKeyHandler = (e) => {
@@ -3859,7 +3905,11 @@ function showNotification(message, type = 'info') {
     
     setTimeout(() => {
         notification.classList.remove('show');
-        setTimeout(() => document.body.removeChild(notification), 300);
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.parentNode.removeChild(notification);
+            }
+        }, 300);
     }, 4000);
 }
 
