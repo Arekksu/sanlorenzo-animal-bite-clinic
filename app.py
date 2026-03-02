@@ -433,103 +433,119 @@ def employee_dashboard():
     try:
         # Save patient form
         if request.method == "POST":
-            data = (
-                # Personal
-                request.form['patient_name'],
-                request.form['age'],
-                request.form['gender'],
-                request.form['contact_number'],
-                request.form['address'],
-                request.form.get('weight'),
-                request.form.get('medical_history_allergies'),
-                request.form.get('medication'),
-                request.form.get('consent'),
+            try:
+                data = (
+                    # Personal
+                    request.form['patient_name'],
+                    request.form['age'],
+                    request.form['gender'],
+                    request.form['contact_number'],
+                    request.form['address'],
+                    request.form.get('weight'),
+                    request.form.get('medical_history_allergies'),
+                    request.form.get('medication'),
+                    request.form.get('consent'),
 
-                # Service / vaccine
-                request.form['service_type'],
-                request.form.get('route_of_vaccine'),
-                request.form.get('route_im_consent'),
-                request.form.get('booster1'),
-                request.form.get('booster2'),
+                    # Service / vaccine
+                    request.form['service_type'],
+                    request.form.get('route_of_vaccine'),
+                    request.form.get('route_im_consent'),
+                    request.form.get('booster1'),
+                    request.form.get('booster2'),
 
-                # Bite details
-                request.form.get('date_of_bite'),
-                request.form.get('bite_location'),
-                request.form.get('place_of_bite'),
-                request.form.get('type_of_bite'),
-                request.form.get('bite_category'),
+                    # Bite details
+                    request.form.get('date_of_bite'),
+                    request.form.get('bite_location'),
+                    request.form.get('place_of_bite'),
+                    request.form.get('type_of_bite'),
+                    request.form.get('bite_category'),
 
-                # Animal info
-                request.form.get('source_of_bite'),
-                request.form.get('other_source_of_bite'),
-                request.form.get('source_status'),
-                request.form.get('exposure'),
-                request.form.get('type_of_exposure'),
+                    # Animal info
+                    request.form.get('source_of_bite'),
+                    request.form.get('other_source_of_bite'),
+                    request.form.get('source_status'),
+                    request.form.get('exposure'),
+                    request.form.get('type_of_exposure'),
 
-                # Extra / tetanus
-                request.form.get('additional_remarks'),
-                request.form.get('tt1'),
-                request.form.get('tt6'),
-                request.form.get('tt30'),
-                request.form.get('anti_tetanus'),
+                    # Extra / tetanus
+                    request.form.get('additional_remarks'),
+                    request.form.get('tt1'),
+                    request.form.get('tt6'),
+                    request.form.get('tt30'),
+                    request.form.get('anti_tetanus'),
 
-                # Rabies vacc history
-                request.form['vaccinated'],
+                    # Rabies vacc history
+                    request.form['vaccinated'],
 
-                # Schedule
-                request.form.get('day0'),
-                request.form.get('day3'),
-                request.form.get('day7'),
-                request.form.get('day14'),
-                request.form.get('day28'),
-            )
+                    # ERIG Refusal
+                    request.form.get('erig_refusal'),
 
-            conn.execute("""
-            INSERT INTO patients (
-                patient_name, age, gender, contact_number, address,
-                weight, medical_history_allergies, medication, consent,
-                service_type, route_of_vaccine, route_im_consent,
-                booster1, booster2,
-                date_of_bite, bite_location, place_of_bite,
-                type_of_bite, bite_category,
-                source_of_bite, other_source_of_bite, source_status,
-                exposure, type_of_exposure,
-                additional_remarks, tt1, tt6, tt30, anti_tetanus,
-                vaccinated,
-                day0, day3, day7, day14, day28,
-                status
-            ) VALUES (
-                ?, ?, ?, ?, ?,
-                ?, ?, ?, ?,
-                ?, ?, ?,
-                ?, ?,
-                ?, ?, ?,
-                ?, ?,
-                ?, ?, ?,
-                ?, ?,
-                ?, ?, ?, ?, ?,
-                ?,
-                ?, ?, ?, ?, ?,
-                'Processing'
-            )
-        """, data)
-            conn.commit()
+                    # Schedule
+                    request.form.get('day0'),
+                    request.form.get('day3'),
+                    request.form.get('day7'),
+                    request.form.get('day14'),
+                    request.form.get('day28'),
+                )
 
-            # Update analytics
-            update_treatment_completion_status()
-            update_treatment_type_distribution()
+                conn.execute("""
+                INSERT INTO patients (
+                    patient_name, age, gender, contact_number, address,
+                    weight, medical_history_allergies, medication, consent,
+                    service_type, route_of_vaccine, route_im_consent,
+                    booster1, booster2,
+                    date_of_bite, bite_location, place_of_bite,
+                    type_of_bite, bite_category,
+                    source_of_bite, other_source_of_bite, source_status,
+                    exposure, type_of_exposure,
+                    additional_remarks, tt1, tt6, tt30, anti_tetanus,
+                    vaccinated, erig_refusal,
+                    day0, day3, day7, day14, day28,
+                    overall_status
+                ) VALUES (
+                    ?, ?, ?, ?, ?,
+                    ?, ?, ?, ?,
+                    ?, ?, ?,
+                    ?, ?,
+                    ?, ?, ?,
+                    ?, ?,
+                    ?, ?, ?,
+                    ?, ?,
+                    ?, ?, ?, ?, ?,
+                    ?, ?,
+                    ?, ?, ?, ?, ?,
+                    'Processing'
+                )
+            """, data)
+                conn.commit()
 
-            # Log to audit trail
-            log_audit_trail(
-                session['employee_id'],
-                session['employee_name'],
-                f"Added new patient record: {request.form['patient_name']}",
-                request.remote_addr)
+                # Update analytics
+                update_treatment_completion_status()
+                update_treatment_type_distribution()
 
-            flash('Record added successfully!', 'success')
-            if session.get('role') == 'admin':
-                return redirect(url_for('admin_dashboard'))
-            else:
+                # Log to audit trail
+                log_audit_trail(
+                    session['employee_id'],
+                    session['employee_name'],
+                    f"Added new patient record: {request.form['patient_name']}",
+                    request.remote_addr)
+
+                flash('Record added successfully!', 'success')
+                if session.get('role') == 'admin':
+                    return redirect(url_for('admin_dashboard'))
+                else:
+                    return redirect(url_for('employee_dashboard'))
+            except KeyError as e:
+                conn.close()
+                error_msg = f"Missing required field: {str(e)}"
+                print(f"ERROR: {error_msg}")
+                flash(f'Error: {error_msg}', 'danger')
+                return redirect(url_for('employee_dashboard'))
+            except Exception as e:
+                conn.close()
+                error_msg = f"Database error: {str(e)}"
+                print(f"ERROR: {error_msg}")
+                flash(f'Error saving record: {str(e)}', 'danger')
                 return redirect(url_for('employee_dashboard'))
 
 
@@ -545,7 +561,7 @@ def employee_dashboard():
                 source_of_bite, other_source_of_bite, source_status,
                 exposure, type_of_exposure,
                 additional_remarks, tt1, tt6, tt30, anti_tetanus,
-                vaccinated,
+                vaccinated, erig_refusal,
                 day0, day3, day7, day14, day28
             FROM patients
         """).fetchall()
@@ -675,30 +691,32 @@ def delete_patient(patient_id):
         return jsonify({"error": "Unauthorized"}), 401
         
     conn = get_db()
-    
-    # Get patient info before deleting for audit log
-    patient = conn.execute(
-        "SELECT patient_name FROM patients WHERE id = ?", (patient_id,)
-    ).fetchone()
-    
-    if not patient:
-        return jsonify({"error": "Patient not found"}), 404
-    
-    patient_name = patient['patient_name']
-    
-    # Delete the patient
-    conn.execute("DELETE FROM patients WHERE id = ?", (patient_id,))
-    conn.commit()
-    
-    # Log to audit trail
-    log_audit_trail(
-        session['employee_id'],
-        session['employee_name'],
-        f"Deleted patient record: {patient_name} (ID: {patient_id})",
-        request.remote_addr
-    )
-    
-    return jsonify({"message": "Patient deleted successfully"}), 200
+    try:
+        # Get patient info before deleting for audit log
+        patient = conn.execute(
+            "SELECT patient_name FROM patients WHERE id = ?", (patient_id,)
+        ).fetchone()
+        
+        if not patient:
+            return jsonify({"error": "Patient not found"}), 404
+        
+        patient_name = patient['patient_name']
+        
+        # Delete the patient
+        conn.execute("DELETE FROM patients WHERE id = ?", (patient_id,))
+        conn.commit()
+        
+        # Log to audit trail
+        log_audit_trail(
+            session['employee_id'],
+            session['employee_name'],
+            f"Deleted patient record: {patient_name} (ID: {patient_id})",
+            request.remote_addr
+        )
+        
+        return jsonify({"message": "Patient deleted successfully"}), 200
+    finally:
+        conn.close()
 
 @app.route("/api/patients")
 def api_patients():
@@ -955,8 +973,7 @@ def update_patient(pid):
 
     # Optional: fail fast if required field missing
     if not payload.get('patient_name'):
-        return ("Missing 'patient_name' in request. "
-                "Send as form fields or JSON with matching keys."), 400
+        return jsonify({'error': "Missing 'patient_name' in request."}), 400
 
     fields = [
     'patient_name', 'age', 'gender', 'contact_number', 'address',
@@ -1005,9 +1022,14 @@ def update_patient(pid):
             request.remote_addr
         )
         
+        return jsonify({'success': True, 'message': 'Patient updated successfully'})
+        
+    except Exception as e:
+        conn.rollback()
+        print(f"Error updating patient {pid}: {str(e)}")
+        return jsonify({'error': str(e)}), 500
     finally:
         conn.close()
-    return redirect(url_for('employee_dashboard'))
 
 
 
@@ -1200,25 +1222,35 @@ def audit_trail():
 
 
 def log_audit_trail(employee_id, employee_name, action, ip_address):
-    """Log employee actions for audit trail"""
-    conn = None
-    try:
-        conn = get_db()
-        conn.execute('BEGIN IMMEDIATE')
-        conn.execute('''
-            INSERT INTO audit_trail (employee_id, employee_name, action, ip_address)
-            VALUES (?, ?, ?, ?)
-        ''', (employee_id, employee_name, action, ip_address))
-        conn.execute('COMMIT')
-    except Exception as e:
-        if conn:
-            try:
-                conn.execute('ROLLBACK')
-            except:
-                pass
-        # Only raise non-locking errors
-        if not isinstance(e, sqlite3.OperationalError) or 'database is locked' not in str(e):
-            raise
+    """Log employee actions for audit trail (non-blocking)"""
+    import threading
+    
+    def _log():
+        conn = None
+        try:
+            conn = get_db()
+            conn.execute('BEGIN IMMEDIATE')
+            conn.execute('''
+                INSERT INTO audit_trail (employee_id, employee_name, action, ip_address)
+                VALUES (?, ?, ?, ?)
+            ''', (employee_id, employee_name, action, ip_address))
+            conn.execute('COMMIT')
+        except Exception as e:
+            if conn:
+                try:
+                    conn.execute('ROLLBACK')
+                except:
+                    pass
+            # Silently ignore database lock errors on audit trail
+            if isinstance(e, sqlite3.OperationalError) and 'database is locked' in str(e):
+                print(f"Warning: Audit trail log failed due to database lock: {action}")
+        finally:
+            if conn:
+                conn.close()
+    
+    # Run in background thread to avoid blocking the main request
+    thread = threading.Thread(target=_log, daemon=True)
+    thread.start()
 
 def update_treatment_completion_status():
     conn = get_db()

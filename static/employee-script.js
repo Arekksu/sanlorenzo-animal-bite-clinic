@@ -293,11 +293,15 @@ function wirePatientRowActions(){
     };
   });
 
-  // DELETE (with modal confirm)
-  document.querySelectorAll('.btn-delete').forEach(b=>{
+  // DELETE (with modal confirm) — scope ONLY inside view-patient table
+  document.querySelectorAll('#view-patient .patient-table .btn-delete').forEach(b=>{
     b.onclick = ()=>{
-      const id=b.getAttribute('data-patient-id');
+      const id = b.dataset && b.dataset.patientId ? b.dataset.patientId : b.getAttribute('data-patient-id');
       console.log('Delete button clicked for patient:', id);
+      if (!id || id === 'null') {
+        console.warn('Delete button has no valid patient id, ignoring.');
+        return;
+      }
       showDeleteModal(id);
     };
   });
@@ -308,8 +312,23 @@ let pendingDeletePatientId = null;
 
 function showDeleteModal(patientId) {
   console.log('showDeleteModal called with patientId:', patientId);
+  // Defensive: reject empty or string 'null' values which sometimes appear
+  if (!patientId || patientId === 'null') {
+    console.warn('showDeleteModal called with empty/null id, aborting.');
+    return;
+  }
   pendingDeletePatientId = patientId;
   const modal = document.getElementById('deleteConfirmModal');
+  
+  // Explicitly bind confirm button to prevent accidental re-wiring from .btn-delete selector
+  const confirmBtn = document.getElementById('confirmDeleteBtn');
+  if (confirmBtn) {
+    confirmBtn.onclick = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      confirmDeletePatient();
+    };
+  }
   
   if (!modal) {
     console.error('deleteConfirmModal not found in DOM');
@@ -377,8 +396,13 @@ async function confirmDeletePatient() {
     return;
   }
   
-  const id = pendingDeletePatientId;
-  closeDeleteModal();
+  // Ensure numeric id when sending to server
+  const id = Number(pendingDeletePatientId);
+  if (!Number.isFinite(id) || id <= 0) {
+    console.warn('Invalid patient id for deletion:', pendingDeletePatientId);
+    showToast('Error: Invalid patient id', 'error');
+    return;
+  }
   
   try {
     console.log('Deleting patient:', id);
@@ -393,6 +417,9 @@ async function confirmDeletePatient() {
     
     console.log('Patient deleted successfully');
     showToast('Patient deleted successfully!', 'success');
+    
+    // Close modal AFTER successful deletion
+    closeDeleteModal();
     
     // Reload the table
     if (typeof reloadPatientTableFromAPI === 'function') {
@@ -410,6 +437,8 @@ async function confirmDeletePatient() {
   } catch(err) {
     console.error('Delete error:', err);
     showToast('Failed to delete patient: ' + err.message, 'error');
+    // Close modal on error too
+    closeDeleteModal();
   }
 }
 
@@ -1607,9 +1636,15 @@ function wirePatientRowActions() {
     };
   });
 
-  document.querySelectorAll('.btn-delete').forEach(b => {
+  // Second location: also scope to table to avoid capturing modal buttons
+  document.querySelectorAll('#view-patient .patient-table .btn-delete').forEach(b => {
     b.onclick = () => {
-      const id = b.getAttribute('data-patient-id');
+      const id = b.dataset && b.dataset.patientId ? b.dataset.patientId : b.getAttribute('data-patient-id');
+      console.log('Delete button clicked for patient:', id);
+      if (!id || id === 'null') {
+        console.warn('Delete button has no valid patient id, ignoring.');
+        return;
+      }
       showDeleteModal(id);
     };
   });
