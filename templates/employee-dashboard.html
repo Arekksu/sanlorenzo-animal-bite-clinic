@@ -254,6 +254,7 @@
                     <option value="Booster">Booster</option>
                     <option value="Pre-Exposure Prophylaxis">Pre-Exposure Prophylaxis</option>
                     <option value="Post-Exposure Prophylaxis">Post-Exposure Prophylaxis</option>
+                    <option value="none">None</option>
                   </select>
                   <div class="select-arrow">▼</div>
                 </div>
@@ -319,6 +320,7 @@
                   <option value="Category I">CAT I</option>
                   <option value="Category II">CAT II</option>
                   <option value="Category III">CAT III</option>
+                  <option value="none">None</option>
                 </select>
               </div>
 
@@ -336,6 +338,7 @@
                     <option value="Bat">Bat</option>
                     <option value="Monkey">Monkey</option>
                     <option value="Other">Other Animal</option>
+                    <option value="N/A">N/A</option>
                   </select>
                   <div class="select-arrow">▼</div>
                 </div>
@@ -352,6 +355,7 @@
                     <option value="Alive">Alive & Observable</option>
                     <option value="Dead">Dead/Killed</option>
                     <option value="Unknown">Unknown/Lost</option>
+                    <option value="N/A">N/A</option>
                   </select>
                   <div class="select-arrow">▼</div>
                 </div>
@@ -371,12 +375,13 @@
               </div>
               <div class="form-group">
                 <label>Type of Exposure</label>
-                <select name="type_of_exposure" required placeholder="Select type of exposure">
+                 <select name="type_of_exposure" required placeholder="Select type of exposure">
                   <option value="" disabled selected hidden>Select type of exposure</option>
                   <option value="vaccinated_pet">VACCINATED PET</option>
                   <option value="not_vaccinated_pet">NOT VACCINATED PET</option>
-                  <option value="not_vaccinated_stray_animal">NOT VACCINATED STRAY ANIMAL</option>
                   <option value="vaccinated_pet_of_neighbor">VACCINATED PET OF NEIGHBOR</option>
+                  <option value="not_vaccinated_pet_of_neighbor">NOT VACCINATED PET OF NEIGHBOR</option>
+                  <option value="stray">STRAY</option>
                 </select>
               </div>
 
@@ -418,6 +423,7 @@
                     <option value="" disabled selected hidden>Select refusal</option>
                     <option value="I REFUSE TO ADMINISTER ERIG.">I REFUSE TO ADMINISTER ERIG.</option>
                     <option value="I ACCEPT THE ADMINISTER ERIG.">I ACCEPT THE ADMINISTER ERIG.</option>
+                    <option value="N/A">N/A</option>
                   </select>
                 </div>
 
